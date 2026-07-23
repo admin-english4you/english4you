@@ -9,9 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^2.13.0",
+    "@stream-io/video-react-sdk": "^1.39.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "firebase": "^12.16.0",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.26.0",
+    "mercadopago": "^3.2.0",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^6.18.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
