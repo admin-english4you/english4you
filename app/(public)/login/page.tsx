@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LoginForm } from "./_components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Student Login | English4You",
+  title: "Área do Aluno | English4You",
   description:
-    "Sign in to your English4You account to access your live classes, AI practice exercises, and vocabulary decks.",
+    "Acesse sua conta para assistir às aulas ao vivo, praticar com inteligência artificial e revisar seus decks de vocabulário.",
 };
 
 export default function LoginPage() {

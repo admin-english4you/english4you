@@ -13,26 +13,26 @@ const easing = [0.22, 1, 0.36, 1] as const;
 const features = [
   {
     icon: Users,
-    title: "Live Interactive Classes",
+    title: "Aulas Interativas ao Vivo",
     description:
-      "Learn directly from native and certified bilingual teachers in small groups. Real-time feedback, authentic pronunciation, and dynamic conversation practice.",
-    perks: ["Max 6 students per class", "Flexible scheduling"],
+      "Aprenda diretamente com professores nativos e bilíngues certificados em pequenos grupos. Obtenha feedback em tempo real, desenvolva pronúncia autêntica e faça prática dinâmica de conversação.",
+    perks: ["Máximo de 6 alunos por turma", "Agendamento flexível"],
     dark: false,
   },
   {
     icon: LayoutDashboard,
-    title: "Digital Whiteboard",
+    title: "Lousa Digital",
     description:
-      "Our proprietary classroom interface makes learning visual and collaborative. Annotate, drag-and-drop vocabulary, and solve exercises together in real-time.",
-    perks: ["Real-time collaboration", "Beautifully designed materials"],
+      "Nossa interface proprietária torna o aprendizado visual e colaborativo. Faça anotações, arraste e solte vocabulário, e resolva exercícios com seus colegas e professor em tempo real.",
+    perks: ["Colaboração em tempo real", "Materiais com design moderno"],
     dark: false,
   },
   {
     icon: Sparkles,
-    title: "AI-Powered Practice",
+    title: "Prática com Inteligência Artificial",
     description:
-      "Don't let your English rust between classes. Our smart AI tutor analyzes your weaknesses and generates custom speaking and writing exercises just for you.",
-    perks: ["24/7 pronunciation feedback", "Personalized vocabulary decks"],
+      "Não deixe o seu inglês enferrujar entre uma aula e outra. Nosso tutor inteligente de IA analisa seus pontos fracos e gera exercícios personalizados de fala e escrita só para você.",
+    perks: ["Feedback de pronúncia 24 horas por dia", "Decks de vocabulário inteligentes"],
     dark: true,
   },
 ];
@@ -62,15 +62,13 @@ export function FeaturesSection() {
           className="text-center max-w-2xl mx-auto mb-16"
         >
           <p className="text-xs font-bold text-[#016ad1] tracking-widest uppercase mb-3">
-            Our Methodology
+            Nossa Metodologia
           </p>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-[#07274f] mb-5">
-            Designed for real fluency.
+            Projetada para a fluência real.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground">
-            We combine the warmth of a traditional language school with the
-            power of modern technology to deliver faster, more confident
-            speaking.
+            Combinamos a proximidade de uma escola tradicional com o poder da tecnologia para entregar um aprendizado de conversação mais rápido e confiante.
           </p>
         </motion.div>
 

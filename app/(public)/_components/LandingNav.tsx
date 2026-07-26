@@ -4,14 +4,14 @@ import Link from "next/link";
 import { GraduationCap, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { label: "Programs", href: "#programs" },
-  { label: "Methodology", href: "#methodology" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Programas", href: "#programs" },
+  { label: "Metodologia", href: "#methodology" },
+  { label: "Depoimentos", href: "#testimonials" },
+  { label: "Preços", href: "#pricing" },
 ];
 
 export function LandingNav() {
@@ -66,13 +66,17 @@ export function LandingNav() {
             href="/login"
             className="text-sm font-bold text-[#016ad1] hover:text-[#0255a9] transition-colors"
           >
-            Student Login
+            Área do Aluno
           </Link>
-          <Button
-            className="rounded-full px-6 bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/40 hover:-translate-y-0.5 transition-all"
+          <a
+            href="#pricing"
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "rounded-full px-6 bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/40 hover:-translate-y-0.5 transition-all"
+            )}
           >
-            Join Now
-          </Button>
+            Matricule-se Já
+          </a>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -111,11 +115,17 @@ export function LandingNav() {
                   href="/login"
                   className="text-sm font-bold text-[#016ad1] text-center py-2"
                 >
-                  Student Login
+                  Área do Aluno
                 </Link>
-                <Button className="w-full rounded-full bg-[#016ad1] hover:bg-[#0255a9] text-white">
-                  Join Now
-                </Button>
+                <a
+                  href="#pricing"
+                  className={cn(
+                    buttonVariants({ variant: "default" }),
+                    "w-full rounded-full bg-[#016ad1] hover:bg-[#0255a9] text-white text-center"
+                  )}
+                >
+                  Matricule-se Já
+                </a>
               </div>
             </div>
           </motion.div>

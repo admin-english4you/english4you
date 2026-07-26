@@ -19,18 +19,18 @@ const testimonials = [
   {
     stars: 5,
     quote:
-      '"The platform is incredible. I tried traditional schools for years, but the combination of live classes and AI practice here finally got me fluent."',
+      '"A plataforma é incrível. Tentei escolas tradicionais por anos, mas a combinação de aulas ao vivo e prática com IA aqui finalmente me trouxe a fluência."',
     name: "Carolina M.",
-    role: "Software Engineer, São Paulo",
+    role: "Engenheira de Software, São Paulo",
     avatarId: 32,
     offset: "lg:translate-x-4",
   },
   {
     stars: 5,
     quote:
-      '"It feels like a premium experience. The digital whiteboard makes grammar so much easier to understand."',
+      '"Parece uma experiência premium. A lousa digital torna a gramática muito mais fácil de entender."',
     name: "Rafael T.",
-    role: "Marketing Director, Rio de Janeiro",
+    role: "Diretor de Marketing, Rio de Janeiro",
     avatarId: 11,
     offset: "lg:-translate-x-4",
   },
@@ -66,12 +66,10 @@ export function TrustSection() {
               transition={{ duration: 0.5, ease: easing, delay: 0.1 }}
             >
               <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
-                Trusted by ambitious Brazilians worldwide.
+                Aprovado por brasileiros ambiciosos em todo o mundo.
               </h3>
               <p className="text-[#bae0fd] text-base sm:text-lg mb-10 leading-relaxed">
-                Whether you&apos;re preparing for an international career,
-                traveling, or just want to feel confident, English4You gets you
-                there faster.
+                Seja para se preparar para uma carreira internacional, viajar ou apenas ganhar a confiança necessária, a English4You te leva lá mais rápido.
               </p>
               <div className="flex flex-wrap gap-10">
                 <div>
@@ -79,7 +77,7 @@ export function TrustSection() {
                     98%
                   </p>
                   <p className="text-sm font-medium text-[#bae0fd]">
-                    Pass rate in Cambridge exams
+                    De aprovação nos exames de Cambridge
                   </p>
                 </div>
                 <div>
@@ -87,7 +85,7 @@ export function TrustSection() {
                     4.9/5
                   </p>
                   <p className="text-sm font-medium text-[#bae0fd]">
-                    Average student rating
+                    Avaliação média dos alunos
                   </p>
                 </div>
               </div>

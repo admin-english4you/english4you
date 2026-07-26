@@ -16,12 +16,12 @@ const fadeInUp = {
 };
 
 const perks = [
-  "Assista às suas aulas ao vivo diretamente do seu painel.",
-  "Pratique hoje com seus exercícios personalizados de inteligência artificial.",
-  "Revise decks de vocabulário baseados nas suas últimas interações.",
+  "Gerencie suas turmas, horários e aulas diretamente pelo painel.",
+  "Acesse os materiais pedagógicos e diários de classe digitais.",
+  "Acompanhe o progresso, frequência e notas dos seus alunos em tempo real.",
 ];
 
-export function LoginForm() {
+export function StaffLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +30,7 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: substituir por authClient.signIn(email, password)
+    // Simulação de login
     await new Promise((r) => setTimeout(r, 1200));
     setIsLoading(false);
   };
@@ -43,8 +43,8 @@ export function LoginForm() {
         <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=900&q=80"
-            alt="Estudantes colaborando"
+            src="https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=900&q=80"
+            alt="Professor ensinando no computador"
             className="w-full h-full object-cover opacity-75"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#07274f] via-[#07274f]/80 to-transparent" />
@@ -71,7 +71,7 @@ export function LoginForm() {
             className="max-w-md text-white mb-8"
           >
             <h2 className="text-3xl sm:text-4xl font-extrabold mb-7 leading-tight">
-              Bem-vindo de volta à sua jornada de fluência.
+              Portal do Professor e Coordenação
             </h2>
             <ul className="space-y-4">
               {perks.map((perk) => (
@@ -120,10 +120,10 @@ export function LoginForm() {
           <div className="bg-card lg:bg-transparent p-7 sm:p-9 rounded-[2rem] shadow-2xl shadow-slate-200/50 lg:shadow-none lg:p-0">
             <div className="mb-9 text-center lg:text-left">
               <h1 className="text-3xl font-extrabold text-[#07274f] mb-2">
-                Área do Aluno
+                Acesso do Colaborador
               </h1>
               <p className="text-muted-foreground font-medium text-sm">
-                Insira suas credenciais para acessar seu painel.
+                Entre com suas credenciais corporativas.
               </p>
             </div>
 
@@ -131,7 +131,7 @@ export function LoginForm() {
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-bold text-foreground">
-                  Endereço de E-mail
+                  E-mail de Acesso
                 </Label>
                 <div className="relative">
                   <Mail
@@ -143,7 +143,7 @@ export function LoginForm() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="aluno@exemplo.com"
+                    placeholder="nome@english4you.com"
                     required
                     className="pl-10 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-[#016ad1] focus-visible:ring-[#016ad1]/20 text-foreground"
                   />
@@ -203,7 +203,7 @@ export function LoginForm() {
                     />
                   ) : (
                     <>
-                      Entrar
+                      Acessar Painel
                       <ArrowRight size={18} />
                     </>
                   )}
@@ -212,13 +212,15 @@ export function LoginForm() {
             </form>
 
             <p className="mt-7 text-center text-sm text-muted-foreground">
-              Ainda não é aluno?{" "}
-              <Link
-                href="/#pricing"
+              Problemas com seu acesso?{" "}
+              <a
+                href="https://wa.me/5511999999999"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="font-bold text-[#016ad1] hover:text-[#0255a9] transition-colors"
               >
-                Matricule-se já
-              </Link>
+                Contate o suporte interno
+              </a>
             </p>
           </div>
         </motion.div>

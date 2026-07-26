@@ -2,21 +2,21 @@ import Link from "next/link";
 import { GraduationCap, Globe2 } from "lucide-react";
 
 const platformLinks = [
-  { label: "How it works", href: "#" },
-  { label: "Live Classes", href: "#" },
-  { label: "AI Practice", href: "#" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Como funciona", href: "#" },
+  { label: "Aulas ao Vivo", href: "#" },
+  { label: "Prática com IA", href: "#" },
+  { label: "Preços", href: "#pricing" },
 ];
 const companyLinks = [
-  { label: "About Us", href: "#" },
-  { label: "Teachers", href: "#" },
-  { label: "Careers", href: "#" },
-  { label: "Contact", href: "#" },
+  { label: "Sobre nós", href: "#" },
+  { label: "Professores", href: "#" },
+  { label: "Carreiras", href: "#" },
+  { label: "Contato", href: "#" },
 ];
 const legalLinks = [
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Service", href: "#" },
-  { label: "Refund Policy", href: "#" },
+  { label: "Política de Privacidade", href: "#" },
+  { label: "Termos de Serviço", href: "#" },
+  { label: "Política de Reembolso", href: "#" },
 ];
 
 const TwitterIcon = () => (
@@ -46,8 +46,8 @@ export function LandingFooter() {
             </span>
           </Link>
           <p className="text-sm leading-relaxed mb-6 max-w-xs text-slate-400">
-            The premium English learning platform for Brazilians. Combining
-            expert teachers, interactive digital spaces, and AI technology.
+            A plataforma premium de inglês para brasileiros. Combinando
+            professores especialistas, espaços digitais interativos e tecnologia de IA.
           </p>
           <div className="flex items-center gap-3">
             <a
@@ -69,7 +69,7 @@ export function LandingFooter() {
 
         {/* Platform */}
         <div>
-          <h4 className="text-white font-bold text-sm mb-4">Platform</h4>
+          <h4 className="text-white font-bold text-sm mb-4">Plataforma</h4>
           <ul className="space-y-3">
             {platformLinks.map((link) => (
               <li key={link.label}>
@@ -86,7 +86,7 @@ export function LandingFooter() {
 
         {/* Company */}
         <div>
-          <h4 className="text-white font-bold text-sm mb-4">Company</h4>
+          <h4 className="text-white font-bold text-sm mb-4">Empresa</h4>
           <ul className="space-y-3">
             {companyLinks.map((link) => (
               <li key={link.label}>
@@ -103,7 +103,7 @@ export function LandingFooter() {
 
         {/* Legal */}
         <div>
-          <h4 className="text-white font-bold text-sm mb-4">Legal</h4>
+          <h4 className="text-white font-bold text-sm mb-4">Termos</h4>
           <ul className="space-y-3">
             {legalLinks.map((link) => (
               <li key={link.label}>
@@ -121,10 +121,10 @@ export function LandingFooter() {
 
       {/* Bottom bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-        <p>© {new Date().getFullYear()} English4You. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} English4You. Todos os direitos reservados.</p>
         <div className="flex items-center gap-1.5">
           <Globe2 size={14} />
-          <span>São Paulo, Brazil</span>
+          <span>São Paulo, Brasil</span>
         </div>
       </div>
     </footer>

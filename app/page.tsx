@@ -7,9 +7,9 @@ import { CtaSection } from "./(public)/_components/CtaSection";
 import { LandingFooter } from "./(public)/_components/LandingFooter";
 
 export const metadata: Metadata = {
-  title: "English4You — Fluency Meets Innovation",
+  title: "English4You — A fluência encontra a inovação",
   description:
-    "Experience premium English education tailored for Brazilian students. Live classes, interactive digital whiteboards, and AI-powered practice — all in one sophisticated platform.",
+    "Experimente o ensino de inglês premium feito para estudantes brasileiros. Aulas ao vivo, lousas digitais interativas e prática com inteligência artificial — tudo em uma plataforma sofisticada.",
 };
 
 export default function LandingPage() {
@@ -26,4 +26,3 @@ export default function LandingPage() {
     </div>
   );
 }
-

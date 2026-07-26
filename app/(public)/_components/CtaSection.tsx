@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 28 },
@@ -22,7 +23,7 @@ export function CtaSection() {
           transition={{ duration: 0.5, ease: easing }}
           className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#07274f] mb-6 leading-tight"
         >
-          Ready to speak with confidence?
+          Pronto para falar com confiança?
         </motion.h2>
 
         <motion.p
@@ -30,8 +31,7 @@ export function CtaSection() {
           transition={{ duration: 0.5, ease: easing, delay: 0.08 }}
           className="text-base sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
         >
-          Join English4You today and transform the way you learn English. Book
-          your first class in minutes.
+          Junte-se à English4You hoje e transforme a maneira como aprende inglês. Agende sua primeira aula em poucos minutos.
         </motion.p>
 
         <motion.div
@@ -39,15 +39,28 @@ export function CtaSection() {
           transition={{ duration: 0.5, ease: easing, delay: 0.16 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <Button className="w-full sm:w-auto rounded-full px-8 py-6 text-base font-bold bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-xl shadow-[#016ad1]/25 hover:shadow-[#016ad1]/40 hover:-translate-y-1 transition-all">
-            View Pricing Plans
-          </Button>
-          <Button
-            variant="secondary"
-            className="w-full sm:w-auto rounded-full px-8 py-6 text-base font-bold text-[#016ad1] bg-[#f0f7ff] hover:bg-[#e0effe]"
+          <a
+            href="https://wa.me/5511999999999"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "w-full sm:w-64 h-14 rounded-full text-base font-bold bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-xl shadow-[#016ad1]/25 hover:shadow-[#016ad1]/40 hover:-translate-y-1 transition-all flex items-center justify-center"
+            )}
           >
-            Try a Free Class
-          </Button>
+            Ver Planos de Assinatura
+          </a>
+          <a
+            href="https://wa.me/5511999999999"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "secondary" }),
+              "w-full sm:w-64 h-14 rounded-full text-base font-bold text-[#016ad1] bg-[#f0f7ff] hover:bg-[#e0effe] flex items-center justify-center"
+            )}
+          >
+            Experimentar Aula Grátis
+          </a>
         </motion.div>
       </div>
     </section>
