@@ -34,7 +34,7 @@ export function LoginForm() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const result = await authClient.signIn(email, password);
+    const result = await authClient.signIn(email, password, 'STUDENT');
 
     setIsLoading(false);
 

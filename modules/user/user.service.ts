@@ -69,8 +69,8 @@ export const userService = {
   /**
    * Valida as credenciais do usuário para login com e-mail e senha.
    */
-  async authenticateUser(credentials: { email: string; password: string }): Promise<User> {
-    const { email, password } = credentials;
+  async authenticateUser(credentials: { email: string; password: string; portal?: "STUDENT" | "STAFF" }): Promise<User> {
+    const { email, password, portal } = credentials;
 
     if (!email || !password) {
       throw new Error("E-mail e senha são obrigatórios.");
@@ -80,6 +80,14 @@ export const userService = {
 
     if (!user) {
       throw new Error("Usuário não encontrado ou credenciais inválidas.");
+    }
+
+    if (portal === 'STUDENT' && user.role !== 'STUDENT') {
+      throw new Error("Acesso negado. Utilize a página de login da equipe (Staff) para entrar com esta conta.");
+    }
+
+    if (portal === 'STAFF' && user.role === 'STUDENT') {
+      throw new Error("Acesso negado. Utilize a página de login de alunos para entrar com esta conta.");
     }
 
     return user;

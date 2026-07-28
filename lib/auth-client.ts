@@ -15,7 +15,7 @@ export const authClient = {
   /**
    * Realiza login no cliente via Firebase SDK e sincroniza a sessão via Server Action.
    */
-  async signIn(email: string, password: string): Promise<AuthResult<{ user: User; redirectUrl: string }>> {
+  async signIn(email: string, password: string, portal?: "STUDENT" | "STAFF"): Promise<AuthResult<{ user: User; redirectUrl: string }>> {
     try {
       // 1. Tentar autenticar no Firebase Client SDK se configurado
       try {
@@ -27,7 +27,7 @@ export const authClient = {
       }
 
       // 2. Chamar a Server Action para criar o cookie HTTP-only da sessão e buscar usuário no Neon DB
-      const result = await loginAction({ email, password });
+      const result = await loginAction({ email, password, portal });
 
       if (!result.success) {
         return {

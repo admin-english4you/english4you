@@ -29,6 +29,7 @@ export const RoleEnum = z.enum(['ADMIN', 'TEACHER', 'STUDENT']);
 export const LoginSchema = z.object({
   email: z.email('Insira um e-mail válido'),
   password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+  portal: z.enum(['STUDENT', 'STAFF']).optional(),
 });
 
 /**

@@ -34,16 +34,11 @@ export function StaffLoginForm() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const result = await authClient.signIn(email, password);
+    const result = await authClient.signIn(email, password, 'STAFF');
 
     setIsLoading(false);
 
     if (result.success) {
-      // Se um aluno tentar entrar pelo portal de colaboradores
-      if (result.data.user.role === "STUDENT") {
-        setErrorMessage("Sua conta possui perfil de Aluno. Por favor, acesse através da Área do Aluno.");
-        return;
-      }
       window.location.href = result.data.redirectUrl;
     } else {
       setErrorMessage(result.error || "Credenciais inválidas. Verifique seu e-mail e senha corporativos.");
