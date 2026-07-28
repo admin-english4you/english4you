@@ -1,6 +1,9 @@
 "use client";
 
-import { Menu, Search, Bell } from "lucide-react";
+import { Menu, Search, Bell, LogOut, Settings, User as UserIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getMeAction, logoutAction } from "@/modules/user/user.actions";
+import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
 
 interface AppHeaderProps {
   onOpenMobileMenu?: () => void;
@@ -15,6 +18,29 @@ export function AppHeader({
   userRoleTitle = "Diretora Escolar",
   userAvatarText = "SJ",
 }: AppHeaderProps) {
+  const [localUserName, setLocalUserName] = useState(userName);
+  const [localUserRoleTitle, setLocalUserRoleTitle] = useState(userRoleTitle);
+  const [localUserAvatarText, setLocalUserAvatarText] = useState(userAvatarText);
+
+  useEffect(() => {
+    getMeAction().then(user => {
+      if (user) {
+        setLocalUserName(user.name);
+        setLocalUserRoleTitle(
+          user.role === "ADMIN" ? "Administrador" : 
+          user.role === "TEACHER" ? "Professor(a)" : "Aluno(a)"
+        );
+        const initials = user.name
+          .split(" ")
+          .map(n => n[0])
+          .join("")
+          .substring(0, 2)
+          .toUpperCase();
+        setLocalUserAvatarText(initials);
+      }
+    });
+  }, []);
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-10 shrink-0 sticky top-0">
       {/* Mobile Toggle & Brand */}
@@ -51,17 +77,35 @@ export function AppHeader({
 
         <div className="h-8 w-px bg-slate-200"></div>
 
-        <div className="flex items-center gap-3 cursor-pointer group">
-          <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center ring-2 ring-white text-xs group-hover:ring-indigo-200 transition-all shadow-sm">
-            {userAvatarText}
-          </div>
-          <div className="hidden sm:block text-left text-sm">
-            <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
-              {userName}
-            </p>
-            <p className="text-xs text-slate-500 leading-none">{userRoleTitle}</p>
-          </div>
-        </div>
+        <Dropdown 
+          trigger={
+            <div className="flex items-center gap-3 group">
+              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center ring-2 ring-white text-xs group-hover:ring-indigo-200 transition-all shadow-sm">
+                {localUserAvatarText}
+              </div>
+              <div className="hidden sm:block text-left text-sm">
+                <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
+                  {localUserName}
+                </p>
+                <p className="text-xs text-slate-500 leading-none">{localUserRoleTitle}</p>
+              </div>
+            </div>
+          }
+        >
+          <DropdownItem>
+            <UserIcon className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-500" />
+            Meu Perfil
+          </DropdownItem>
+          <DropdownItem>
+            <Settings className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-500" />
+            Configurações
+          </DropdownItem>
+          <DropdownSeparator />
+          <DropdownItem onClick={() => logoutAction()} destructive>
+            <LogOut className="w-4 h-4 mr-3 text-rose-500" />
+            Sair
+          </DropdownItem>
+        </Dropdown>
       </div>
     </header>
   );

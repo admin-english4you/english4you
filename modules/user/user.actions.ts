@@ -66,3 +66,13 @@ export async function logoutAction() {
   cookieStore.delete("e4y_session");
   redirect("/login");
 }
+
+/**
+ * Recupera o usuário atual a partir da sessão e do banco de dados (útil para Client Components)
+ */
+export async function getMeAction() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return null;
+  const user = await userService.getUserById(currentUser.id);
+  return user || null;
+}

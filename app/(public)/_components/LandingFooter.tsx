@@ -10,7 +10,7 @@ const platformLinks = [
 const companyLinks = [
   { label: "Sobre nós", href: "#" },
   { label: "Professores", href: "#" },
-  { label: "Carreiras", href: "#" },
+  { label: "Staff Login", href: "/staff/login" },
   { label: "Contato", href: "#" },
 ];
 const legalLinks = [

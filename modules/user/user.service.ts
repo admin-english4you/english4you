@@ -91,4 +91,11 @@ export const userService = {
   async getUsersForAdmin(): Promise<User[]> {
     return await userRepository.getAllUsers();
   },
+
+  /**
+   * Busca usuário por ID
+   */
+  async getUserById(id: string): Promise<User | undefined> {
+    return await userRepository.findById(id);
+  },
 };

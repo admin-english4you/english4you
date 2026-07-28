@@ -20,4 +20,10 @@ export const userRepository = {
       where: eq(usersTable.email, email),
     });
   },
+
+  async findById(id: string): Promise<User | undefined> {
+    return await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, id),
+    });
+  },
 };
