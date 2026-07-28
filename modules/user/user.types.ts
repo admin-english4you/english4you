@@ -4,4 +4,4 @@ import { RoleEnum, UserSchema } from './user.schema';
 export type Role = z.infer<typeof RoleEnum>;
 export type User = z.infer<typeof UserSchema>;
 
-export type CreateUserDTO = Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateUserDTO = Partial<Pick<User, 'id'>> & Omit<User, 'id' | 'createdAt' | 'updatedAt'>;

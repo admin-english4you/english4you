@@ -2,17 +2,18 @@
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { 
-  TrendingUp, 
-  TrendingDown, 
   DollarSign, 
-  Clock, 
-  AlertCircle, 
-  Download, 
   CreditCard, 
-  ChevronDown, 
-  FileText
+  Download, 
+  FileText, 
+  TrendingUp, 
+  TrendingDown,
+  Clock,
+  AlertCircle,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { PaymentStatus } from "@/modules/finance/finance.types";
 
 interface Transaction {
@@ -40,21 +41,17 @@ export function FinancialOverview() {
   return (
     <AppLayout role="ADMIN">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Visão Geral Financeira</h1>
-            <p className="text-slate-500 text-sm mt-1">Monitore receitas, mensalidades do Mercado Pago e repsasse a professores.</p>
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none">
-              <Download className="w-4 h-4 mr-2" /> Exportar CSV
-            </Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 flex-1 sm:flex-none">
-              <FileText className="w-4 h-4 mr-2" /> Nova Fatura
-            </Button>
-          </div>
-        </div>
+        <PageHeader 
+          title="Visão Geral Financeira" 
+          description="Monitore receitas, mensalidades do Mercado Pago e repsasse a professores."
+        >
+          <Button variant="outline" className="flex-1 sm:flex-none">
+            <Download className="w-4 h-4 mr-2" /> Exportar CSV
+          </Button>
+          <Button className="bg-indigo-600 hover:bg-indigo-700 flex-1 sm:flex-none">
+            <FileText className="w-4 h-4 mr-2" /> Nova Fatura
+          </Button>
+        </PageHeader>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

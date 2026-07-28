@@ -3,6 +3,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Plus, Calendar, Clock, Users, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ClassItem {
   id: string;
@@ -38,16 +39,14 @@ export function ClassesList() {
   return (
     <AppLayout role="ADMIN">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Turmas Ativas</h1>
-            <p className="text-slate-500 text-sm mt-1">Gerencie os horários, matrículas e alocação de professores das turmas.</p>
-          </div>
+        <PageHeader 
+          title="Turmas Ativas" 
+          description="Gerencie os horários, matrículas e alocação de professores das turmas."
+        >
           <Button className="bg-indigo-600 hover:bg-indigo-700">
             <Plus className="w-4 h-4 mr-2" /> Criar Nova Turma
           </Button>
-        </div>
+        </PageHeader>
 
         {/* Classes Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

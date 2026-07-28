@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, Mail, Lock, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, CheckCircle2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
 
 const easing = [0.22, 1, 0.36, 1] as const;
 
@@ -26,13 +27,27 @@ export function StaffLoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulação de login
-    await new Promise((r) => setTimeout(r, 1200));
+    setErrorMessage(null);
+
+    const result = await authClient.signIn(email, password);
+
     setIsLoading(false);
+
+    if (result.success) {
+      // Se um aluno tentar entrar pelo portal de colaboradores
+      if (result.data.user.role === "STUDENT") {
+        setErrorMessage("Sua conta possui perfil de Aluno. Por favor, acesse através da Área do Aluno.");
+        return;
+      }
+      window.location.href = result.data.redirectUrl;
+    } else {
+      setErrorMessage(result.error || "Credenciais inválidas. Verifique seu e-mail e senha corporativos.");
+    }
   };
 
   return (
@@ -118,7 +133,7 @@ export function StaffLoginForm() {
 
           {/* Card wrapper */}
           <div className="bg-card lg:bg-transparent p-7 sm:p-9 rounded-[2rem] shadow-2xl shadow-slate-200/50 lg:shadow-none lg:p-0">
-            <div className="mb-9 text-center lg:text-left">
+            <div className="mb-7 text-center lg:text-left">
               <h1 className="text-3xl font-extrabold text-[#07274f] mb-2">
                 Acesso do Colaborador
               </h1>
@@ -126,6 +141,18 @@ export function StaffLoginForm() {
                 Entre com suas credenciais corporativas.
               </p>
             </div>
+
+            {/* Alert Error Box */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-3 shadow-sm"
+              >
+                <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </motion.div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}

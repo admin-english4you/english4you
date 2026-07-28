@@ -1,22 +1,42 @@
+import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
-/**
- * RoleEnum (Papéis do Usuário)
- * Define os tipos de acesso que um usuário pode ter na plataforma. Isso é a base do seu RBAC (Role-Based Access Control).
- * 
- * ADMIN: Coordenadores, donos da escola. Têm acesso total (criar turmas, gerenciar financeiro). Acessam o Hub /admin.
- * TEACHER: Professores. Podem iniciar aulas e registrar notas/presença. Acessam o Hub /teacher.
- * STUDENT: Alunos. Consomem conteúdo e fazem pagamentos. Acessam o Hub /student.
- */
+export const roleEnumDb = pgEnum('user_role', ['ADMIN', 'TEACHER', 'STUDENT']);
+
+export const usersTable = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  role: roleEnumDb('role').notNull().default('STUDENT'),
+  phone: varchar('phone', { length: 50 }),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
+  status: varchar('status', { length: 50 }).notNull().default('Active'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Zod schemas directly from Drizzle
+export const UserSchema = createSelectSchema(usersTable);
+export const InsertUserSchema = createInsertSchema(usersTable);
+
 export const RoleEnum = z.enum(['ADMIN', 'TEACHER', 'STUDENT']);
 
-export const UserSchema = z.object({
-  id: z.uuid(),
-  name: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres'),
-  email: z.email('E-mail inválido'),
-  role: RoleEnum,
-  phone: z.string().optional(),
-  avatarUrl: z.url().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+/**
+ * LoginSchema
+ * Validação de dados para entrada no sistema via email e senha.
+ */
+export const LoginSchema = z.object({
+  email: z.email('Insira um e-mail válido'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+});
+
+/**
+ * CreateUserByAdminSchema
+ * Usado pelo administrador para convidar/cadastrar novos usuários.
+ */
+export const CreateUserByAdminSchema = z.object({
+  name: z.string().min(3, 'Nome é obrigatório'),
+  email: z.email('Insira um e-mail válido'),
+  role: RoleEnum.default('STUDENT'),
 });

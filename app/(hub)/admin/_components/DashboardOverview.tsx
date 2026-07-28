@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/ui/page-header";
 import { 
   Users, 
   GraduationCap, 
@@ -35,21 +36,17 @@ export function DashboardOverview() {
   return (
     <AppLayout role="ADMIN">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Welcome Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Painel do Administrador</h1>
-            <p className="text-slate-500 text-sm mt-1">Bem-vinda de volta, Sarah! Aqui está o resumo das operações da English4You hoje.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <Link href="/admin/users" className={cn(buttonVariants({ variant: "outline" }), "flex-1 sm:flex-initial")}>
-              <UserPlus className="w-4 h-4 mr-2" /> Novo Usuário
-            </Link>
-            <Link href="/admin/classes" className={cn(buttonVariants({ variant: "default" }), "flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white")}>
-              <PlusCircle className="w-4 h-4 mr-2" /> Criar Turma
-            </Link>
-          </div>
-        </div>
+        <PageHeader 
+          title="Painel do Administrador" 
+          description="Bem-vinda de volta, Sarah! Aqui está o resumo das operações da English4You hoje."
+        >
+          <Link href="/admin/users" className={cn(buttonVariants({ variant: "outline" }), "flex-1 sm:flex-initial")}>
+            <UserPlus className="w-4 h-4 mr-2" /> Novo Usuário
+          </Link>
+          <Link href="/admin/classes" className={cn(buttonVariants({ variant: "default" }), "flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white")}>
+            <PlusCircle className="w-4 h-4 mr-2" /> Criar Turma
+          </Link>
+        </PageHeader>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

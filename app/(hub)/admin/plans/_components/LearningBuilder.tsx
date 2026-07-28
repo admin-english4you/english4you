@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { LessonStatus } from "@/modules/lesson/lesson.types";
 
 interface LessonOutlineItem {
@@ -47,10 +48,11 @@ export function LearningBuilder() {
         
         {/* Left Panel: Outline */}
         <div className="w-full md:w-80 border-r border-slate-200 bg-slate-50/70 flex flex-col shrink-0">
-          <div className="p-4 border-b border-slate-200 bg-white">
-            <h2 className="font-bold text-slate-900 text-base">Estrutura do Módulo</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Currículo do Nível A2 Pre-Intermediate</p>
-          </div>
+          <PageHeader 
+            title="Estrutura do Módulo" 
+            description="Currículo do Nível A2 Pre-Intermediate"
+            className="p-4 rounded-none border-t-0 border-x-0 border-b shadow-none bg-white"
+          />
 
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {lessons.map((lesson) => (
