@@ -19,7 +19,7 @@ const testimonials = [
   {
     stars: 5,
     quote:
-      '"A plataforma é incrível. Tentei escolas tradicionais por anos, mas a combinação de aulas ao vivo e prática com IA aqui finalmente me trouxe a fluência."',
+      '"A plataforma é incrível. Tentei escolas tradicionais por anos, mas a combinação de aulas ao vivo e prática aqui finalmente me trouxe a fluência."',
     name: "Carolina M.",
     role: "Engenheira de Software, São Paulo",
     avatarId: 32,
@@ -28,7 +28,7 @@ const testimonials = [
   {
     stars: 5,
     quote:
-      '"Parece uma experiência premium. A lousa digital torna a gramática muito mais fácil de entender."',
+      '"Parece uma experiência premium. A aula dinâmica torna a gramática muito mais fácil de entender."',
     name: "Rafael T.",
     role: "Diretor de Marketing, Rio de Janeiro",
     avatarId: 11,

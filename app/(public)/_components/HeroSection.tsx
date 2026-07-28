@@ -58,7 +58,7 @@ export function HeroSection() {
             className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-xl"
           >
             Experimente o ensino de inglês premium feito sob medida para estudantes brasileiros.
-            Aulas ao vivo, lousas digitais interativas e prática com inteligência artificial — tudo em uma única plataforma sofisticada.
+            Aulas ao vivo, dinâmicas e interativas, com foco no que você precisa — tudo em uma única plataforma sofisticada.
           </motion.p>
 
           <motion.div

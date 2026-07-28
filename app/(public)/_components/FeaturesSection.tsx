@@ -15,26 +15,34 @@ const features = [
     icon: Users,
     title: "Aulas Interativas ao Vivo",
     description:
-      "Aprenda diretamente com professores nativos e bilíngues certificados em pequenos grupos. Obtenha feedback em tempo real, desenvolva pronúncia autêntica e faça prática dinâmica de conversação.",
-    perks: ["Máximo de 6 alunos por turma", "Agendamento flexível"],
+      "Aprenda diretamente com professores certificados em pequenos grupos. Obtenha feedback em tempo real, desenvolva pronúncia autêntica e faça prática dinâmica de conversação.",
+    perks: ["Máximo de 12 alunos por turma", "Agendamento flexível"],
     dark: false,
   },
   {
     icon: LayoutDashboard,
-    title: "Lousa Digital",
+    title: "Aula dinâmica e interativa",
     description:
-      "Nossa interface proprietária torna o aprendizado visual e colaborativo. Faça anotações, arraste e solte vocabulário, e resolva exercícios com seus colegas e professor em tempo real.",
+      "Nossa plataforma moderna torna o aprendizado visual e colaborativo. Faça anotações e compartilhe com seus colegas e professor em tempo real.",
     perks: ["Colaboração em tempo real", "Materiais com design moderno"],
     dark: false,
   },
   {
     icon: Sparkles,
-    title: "Prática com Inteligência Artificial",
+    title: "Prática baseada nas suas necessidades",
     description:
-      "Não deixe o seu inglês enferrujar entre uma aula e outra. Nosso tutor inteligente de IA analisa seus pontos fracos e gera exercícios personalizados de fala e escrita só para você.",
+      "Desenvolva as habilidades que você realmente precisa com materiais focados nas suas dificuldades e interesses, garantindo um aprendizado mais relevante e engajador.",
     perks: ["Feedback de pronúncia 24 horas por dia", "Decks de vocabulário inteligentes"],
     dark: true,
   },
+  // {
+  //   icon: Sparkles,
+  //   title: "Prática com Inteligência Artificial",
+  //   description:
+  //     "Não deixe o seu inglês enferrujar entre uma aula e outra. Nosso tutor inteligente de IA analisa seus pontos fracos e gera exercícios personalizados de fala e escrita só para você.",
+  //   perks: ["Feedback de pronúncia 24 horas por dia", "Decks de vocabulário inteligentes"],
+  //   dark: true,
+  // },
 ];
 
 export function FeaturesSection() {
