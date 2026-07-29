@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Plus, Filter, Download, Mail, MoreVertical, Search, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Role } from "@/modules/user/user.types";
@@ -29,11 +30,33 @@ export function UsersList({ initialUsers }: UsersListProps) {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<Role>("STUDENT");
   const [newUserPackage, setNewUserPackage] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [usersList, setUsersList] = useState<User[]>(initialUsers);
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrorMessage(null);
+
+    // Validações básicas antes de exibir a tela de confirmação
+    if (!newUserName.trim()) {
+      setFormErrorMessage("Nome completo é obrigatório.");
+      return;
+    }
+    if (!newUserEmail.trim()) {
+      setFormErrorMessage("Endereço de e-mail é obrigatório.");
+      return;
+    }
+    if (newUserRole === "STUDENT" && !newUserPackage) {
+      setFormErrorMessage("Selecione um pacote de aulas para o aluno.");
+      return;
+    }
+
+    // Se estiver tudo preenchido corretamente, mostra a tela de confirmação
+    setShowConfirmation(true);
+  };
+
+  const executeCreateUser = async () => {
     setIsSubmitting(true);
     setFormSuccessMessage(null);
     setFormErrorMessage(null);
@@ -69,12 +92,16 @@ export function UsersList({ initialUsers }: UsersListProps) {
       setNewUserName("");
       setNewUserEmail("");
       setNewUserRole("STUDENT");
+      setNewUserPackage("");
+      setShowConfirmation(false);
+      
       setTimeout(() => {
         setIsModalOpen(false);
         setFormSuccessMessage(null);
       }, 2500);
     } else if (!result.success) {
       setFormErrorMessage(result.error);
+      setShowConfirmation(false); // Retorna para edição se der erro
     }
   };
 
@@ -230,7 +257,10 @@ export function UsersList({ initialUsers }: UsersListProps) {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setShowConfirmation(false);
+        }}
         title="Novo Usuário"
       >
 
@@ -248,98 +278,149 @@ export function UsersList({ initialUsers }: UsersListProps) {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Nome Completo
-                </label>
-                <Input
-                  type="text"
-                  required
-                  placeholder="Ex: Carlos Eduardo"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  className="bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  E-mail do Usuário
-                </label>
-                <Input
-                  type="email"
-                  required
-                  placeholder="carlos@exemplo.com"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  className="bg-white"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Um e-mail será enviado para este endereço com as instruções para criação da senha.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Perfil de Acesso (Role)
-                </label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => {
-                    setNewUserRole(e.target.value as Role);
-                    if (e.target.value !== 'STUDENT') setNewUserPackage("");
-                  }}
-                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-xs text-slate-900 font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                >
-                  <option value="STUDENT">STUDENT (Aluno)</option>
-                  <option value="TEACHER">TEACHER (Professor)</option>
-                  <option value="ADMIN">ADMIN (Administrador)</option>
-                </select>
-              </div>
-
-              {newUserRole === "STUDENT" && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Pacote de Aulas
-                  </label>
-                  <select
-                    value={newUserPackage}
-                    onChange={(e) => setNewUserPackage(e.target.value)}
-                    required
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-xs text-slate-900 font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option value="" disabled>Selecione um pacote...</option>
-                    <option value="11111111-1111-1111-1111-111111111111">Pacote Básico (6 meses - R$ 150/mês)</option>
-                    <option value="22222222-2222-2222-2222-222222222222">Pacote Pro (12 meses - R$ 120/mês)</option>
-                  </select>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    O contrato do aluno será criado automaticamente com base neste pacote.
+              {showConfirmation ? (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                    <h3 className="font-bold text-slate-800 text-sm border-b border-slate-200 pb-2">Confirmar Dados</h3>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Nome Completo</span>
+                      <span className="text-sm font-semibold text-slate-800">{newUserName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">E-mail</span>
+                      <span className="text-sm font-semibold text-slate-800">{newUserEmail}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Perfil de Acesso</span>
+                      <span className="text-sm font-semibold text-slate-800">
+                        {newUserRole === "STUDENT" ? "Aluno" : newUserRole === "TEACHER" ? "Professor" : "Administrador"}
+                      </span>
+                    </div>
+                    {newUserRole === "STUDENT" && (
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Pacote de Aulas</span>
+                        <span className="text-sm font-semibold text-slate-800">
+                          {newUserPackage === "11111111-1111-1111-1111-111111111111" ? "Pacote Básico (6 meses - R$ 150/mês)" : "Pacote Pro (12 meses - R$ 120/mês)"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-[11px] text-amber-600 font-semibold bg-amber-50 border border-amber-200 p-3 rounded-xl">
+                    Importante: Ao confirmar, um e-mail de ativação será enviado automaticamente para o endereço cadastrado.
                   </p>
-                </div>
-              )}
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cadastrando...
-                    </>
-                  ) : (
-                    "Cadastrar e Enviar Convite"
+                  <Modal.Footer>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowConfirmation(false)}
+                      disabled={isSubmitting}
+                    >
+                      Voltar e Editar
+                    </Button>
+                    <Button 
+                      type="button" 
+                      onClick={executeCreateUser}
+                      disabled={isSubmitting}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cadastrando...
+                        </>
+                      ) : (
+                        "Confirmar e Criar"
+                      )}
+                    </Button>
+                  </Modal.Footer>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Nome Completo
+                    </label>
+                    <Input
+                      type="text"
+                      required
+                      placeholder="Ex: Carlos Eduardo"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      E-mail do Usuário
+                    </label>
+                    <Input
+                      type="email"
+                      required
+                      placeholder="carlos@exemplo.com"
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Um e-mail será enviado para este endereço com as instruções para criação da senha.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Perfil de Acesso
+                    </label>
+                    <Select
+                      value={newUserRole}
+                      onChange={(val) => {
+                        setNewUserRole(val as Role);
+                        if (val !== 'STUDENT') setNewUserPackage("");
+                      }}
+                      options={[
+                        { value: "STUDENT", label: "Aluno" },
+                        { value: "TEACHER", label: "Professor" },
+                        { value: "ADMIN", label: "Administrador" }
+                      ]}
+                    />
+                  </div>
+
+                  {newUserRole === "STUDENT" && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Pacote de Aulas
+                      </label>
+                      <Select
+                        value={newUserPackage}
+                        onChange={(val) => setNewUserPackage(val)}
+                        placeholder="Selecione um pacote..."
+                        options={[
+                          { value: "11111111-1111-1111-1111-111111111111", label: "Pacote Básico (6 meses - R$ 150/mês)" },
+                          { value: "22222222-2222-2222-2222-222222222222", label: "Pacote Pro (12 meses - R$ 120/mês)" }
+                        ]}
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        O contrato do aluno será criado automaticamente com base neste pacote.
+                      </p>
+                    </div>
                   )}
-                </Button>
-              </div>
+
+                  <Modal.Footer>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      Cadastrar e Enviar Convite
+                    </Button>
+                  </Modal.Footer>
+                </>
+              )}
             </form>
       </Modal>
     </AppLayout>
