@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, TablePagination } from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { Role } from "@/modules/user/user.types";
 import { createUserByAdminAction } from "@/modules/user/user.actions";
+import Image from "next/image";
 
 import { User } from "@/modules/user/user.types";
 
@@ -132,7 +134,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
 
         {/* Filters and Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm gap-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 sm:pb-0">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-2 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5" /> Filtrar:
             </span>
@@ -183,76 +185,74 @@ export function UsersList({ initialUsers }: UsersListProps) {
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-3.5">Nome</th>
-                  <th className="px-6 py-3.5">Perfil (Role)</th>
-                  <th className="px-6 py-3.5">E-mail</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-sm
-                          ${user.role === 'TEACHER' ? 'bg-amber-100 text-amber-800' : 
-                            user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800' : 
-                            'bg-emerald-100 text-emerald-800'}`}>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900">{user.name}</div>
-                          <div className="text-xs text-slate-400">{user.id}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                        user.role === 'TEACHER' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        user.role === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                        'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{user.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                        <span className={`font-medium ${user.status === 'Active' ? 'text-slate-700' : 'text-slate-400'}`}>
-                          {user.status === 'Active' ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead>Nome</TableHead>
+              <TableHead>Perfil (Role)</TableHead>
+              <TableHead>E-mail</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell isHeaderCell>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-sm relative overflow-hidden shrink-0
+                      ${user.role === 'TEACHER' ? 'bg-amber-100 text-amber-800' : 
+                        user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800' : 
+                        'bg-emerald-100 text-emerald-800'}`}>
+                      {user.avatarUrl ? (
+                        <Image src={user.avatarUrl} alt={user.name} fill sizes="36px" className="object-cover" />
+                      ) : (
+                        user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">{user.name}</div>
+                      <div className="text-[10px] text-slate-400 font-medium md:text-xs">{user.id}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                
+                <TableCell mobileLabel="Perfil">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
+                    user.role === 'TEACHER' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                    user.role === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                    'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    {user.role}
+                  </span>
+                </TableCell>
 
-          <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-            <div>Exibindo {filteredUsers.length} de {usersList.length} usuários</div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>Anterior</Button>
-              <Button variant="outline" size="sm">Próximo</Button>
-            </div>
-          </div>
-        </div>
+                <TableCell mobileLabel="E-mail" className="text-slate-600">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
+                  <span>{user.email}</span>
+                </TableCell>
+
+                <TableCell mobileLabel="Status">
+                  <div className={`w-2 h-2 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                  <span className={`font-medium ${user.status === 'Active' ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {user.status === 'Active' ? 'Ativo' : 'Inativo'}
+                  </span>
+                </TableCell>
+
+                <TableCell mobileLabel="Ações" className="md:justify-end" hideBorderMobile>
+                  <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <TablePagination
+          totalItems={usersList.length}
+          currentItemsCount={filteredUsers.length}
+        />
       </div>
 
       <Modal
