@@ -40,4 +40,5 @@ export const CreateUserByAdminSchema = z.object({
   name: z.string().min(3, 'Nome é obrigatório'),
   email: z.email('Insira um e-mail válido'),
   role: RoleEnum.default('STUDENT'),
+  packageId: z.uuid('ID do pacote inválido').optional(),
 });

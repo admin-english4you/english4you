@@ -13,7 +13,7 @@ export const userService = {
    */
   async createUserByAdmin(
     creatorRole: Role,
-    data: { name: string; email: string; role: Role }
+    data: { name: string; email: string; role: Role; packageId?: string }
   ): Promise<{ user: User; inviteToken: string }> {
     // 1. RBAC Check: Apenas admins podem criar usuários
     if (creatorRole !== "ADMIN") {
@@ -56,7 +56,12 @@ export const userService = {
 
     const inviteToken = `setup_${crypto.randomUUID()}`;
 
-    // 4. Disparar e-mail de onboarding via Resend
+    if (data.role === 'STUDENT' && data.packageId) {
+      // TODO: Implementar criação de contrato no módulo financeiro (associando studentId e packageId)
+      console.log(`[Finance] Pacote ${data.packageId} selecionado para o novo aluno ${userId}. Criação de contrato pendente.`);
+    }
+
+    // 5. Disparar e-mail de onboarding via Resend
     await sendUserInviteEmail({
       email: data.email,
       name: data.name,

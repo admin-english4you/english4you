@@ -127,4 +127,11 @@
   html {
     @apply font-sans;
   }
+
+  /* Global style for all inputs, selects and textareas to maintain consistency */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+  select,
+  textarea {
+    @apply w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 outline-none focus-visible:border-[#016ad1] focus-visible:ring-2 focus-visible:ring-[#016ad1]/20 transition-all placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100;
+  }
 }

@@ -28,6 +28,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<Role>("STUDENT");
+  const [newUserPackage, setNewUserPackage] = useState("");
 
   const [usersList, setUsersList] = useState<User[]>(initialUsers);
 
@@ -41,6 +42,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
       name: newUserName,
       email: newUserEmail,
       role: newUserRole,
+      ...(newUserRole === 'STUDENT' && newUserPackage ? { packageId: newUserPackage } : {}),
     });
 
     setIsSubmitting(false);
@@ -283,7 +285,10 @@ export function UsersList({ initialUsers }: UsersListProps) {
                 </label>
                 <select
                   value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as Role)}
+                  onChange={(e) => {
+                    setNewUserRole(e.target.value as Role);
+                    if (e.target.value !== 'STUDENT') setNewUserPackage("");
+                  }}
                   className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-xs text-slate-900 font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                   <option value="STUDENT">STUDENT (Aluno)</option>
@@ -291,6 +296,27 @@ export function UsersList({ initialUsers }: UsersListProps) {
                   <option value="ADMIN">ADMIN (Administrador)</option>
                 </select>
               </div>
+
+              {newUserRole === "STUDENT" && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Pacote de Aulas
+                  </label>
+                  <select
+                    value={newUserPackage}
+                    onChange={(e) => setNewUserPackage(e.target.value)}
+                    required
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-xs text-slate-900 font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="" disabled>Selecione um pacote...</option>
+                    <option value="11111111-1111-1111-1111-111111111111">Pacote Básico (6 meses - R$ 150/mês)</option>
+                    <option value="22222222-2222-2222-2222-222222222222">Pacote Pro (12 meses - R$ 120/mês)</option>
+                  </select>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    O contrato do aluno será criado automaticamente com base neste pacote.
+                  </p>
+                </div>
+              )}
 
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                 <Button 
