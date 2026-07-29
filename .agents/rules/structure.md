@@ -29,6 +29,14 @@ A arquitetura exige uma separação estrita entre Servidor e Cliente. Siga este 
 - Use SWR para hidratação e background-revalidation (apenas quando o dado mudar com frequência).
 - Use Zustand APENAS para estado global de UI (ex: sidebar aberta), nunca para regras de negócio.
 - **Formulários**: Use sempre **React Hook Form** + **Zod**. Para evitar erros de TypeScript com valores padrão (`.default()`), SEMPRE exponha os tipos usando `z.input<typeof schema>` em vez de `z.infer`. O React Hook Form lida com os dados de entrada, e `z.infer` retorna o tipo de saída (pós-processado), o que causa mismatch em campos opcionais com default.
+- **Sincronização de Estado a partir de Props**: NUNCA utilize `useEffect` para sincronizar e atualizar estados locais a partir de alterações em propriedades (props). Isso causa renderizações síncronas em cascata (cascading renders) que degradam o desempenho. Faça o sincronismo diretamente no corpo do componente (durante a fase de renderização) rastreando o valor anterior:
+  ```tsx
+  const [prevPropValue, setPrevPropValue] = useState(propValue);
+  if (propValue !== prevPropValue) {
+    setPrevPropValue(propValue);
+    setLocalState(propValue);
+  }
+  ```
 
 ## 4. Regras Estritas para Mutações (Server Actions)
 

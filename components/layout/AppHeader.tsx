@@ -2,6 +2,8 @@
 
 import { Menu, Search, Bell, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { getMeAction, logoutAction } from "@/modules/user/user.actions";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
 
@@ -10,6 +12,7 @@ interface AppHeaderProps {
   userName?: string;
   userRoleTitle?: string;
   userAvatarText?: string;
+  userAvatarUrl?: string | null;
 }
 
 export function AppHeader({
@@ -17,10 +20,20 @@ export function AppHeader({
   userName = "Sarah Jenkins",
   userRoleTitle = "Diretora Escolar",
   userAvatarText = "SJ",
+  userAvatarUrl = null,
 }: AppHeaderProps) {
   const [localUserName, setLocalUserName] = useState(userName);
   const [localUserRoleTitle, setLocalUserRoleTitle] = useState(userRoleTitle);
   const [localUserAvatarText, setLocalUserAvatarText] = useState(userAvatarText);
+  const [localUserAvatarUrl, setLocalUserAvatarUrl] = useState<string | null>(userAvatarUrl);
+  const [profilePath, setProfilePath] = useState<string>("/student/profile");
+  const router = useRouter();
+
+  const [prevUserAvatarUrl, setPrevUserAvatarUrl] = useState(userAvatarUrl);
+  if (userAvatarUrl !== prevUserAvatarUrl) {
+    setPrevUserAvatarUrl(userAvatarUrl);
+    setLocalUserAvatarUrl(userAvatarUrl);
+  }
 
   useEffect(() => {
     getMeAction().then(user => {
@@ -37,6 +50,8 @@ export function AppHeader({
           .substring(0, 2)
           .toUpperCase();
         setLocalUserAvatarText(initials);
+        setLocalUserAvatarUrl(user.avatarUrl || null);
+        setProfilePath(`/${user.role.toLowerCase()}/profile`);
       }
     });
   }, []);
@@ -80,8 +95,12 @@ export function AppHeader({
         <Dropdown 
           trigger={
             <div className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center ring-2 ring-white text-xs group-hover:ring-indigo-200 transition-all shadow-sm">
-                {localUserAvatarText}
+              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center ring-2 ring-white text-xs group-hover:ring-indigo-200 transition-all shadow-sm overflow-hidden relative">
+                {localUserAvatarUrl ? (
+                  <Image src={localUserAvatarUrl} alt={localUserName} fill sizes="36px" className="object-cover" />
+                ) : (
+                  localUserAvatarText
+                )}
               </div>
               <div className="hidden sm:block text-left text-sm">
                 <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
@@ -92,7 +111,7 @@ export function AppHeader({
             </div>
           }
         >
-          <DropdownItem>
+          <DropdownItem onClick={() => router.push(profilePath)}>
             <UserIcon className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-500" />
             Meu Perfil
           </DropdownItem>

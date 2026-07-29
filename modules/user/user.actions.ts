@@ -7,7 +7,8 @@ import { LoginSchema, CreateUserByAdminSchema } from "./user.schema";
 import { userService } from "./user.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getHomeRouteForRole } from "@/lib/rbac";
-import { createSafeAction } from "@/lib/safe-action";
+import { createSafeAction, ActionResult } from "@/lib/safe-action";
+import { User } from "./user.types";
 import { z } from "zod";
 
 /**
@@ -75,4 +76,53 @@ export async function getMeAction() {
   if (!currentUser) return null;
   const user = await userService.getUserById(currentUser.id);
   return user || null;
+}
+
+/**
+ * Server Action para atualizar o avatar do usuário logado.
+ */
+export async function updateAvatarAction(formData: FormData): Promise<ActionResult<User>> {
+  try {
+    const file = formData.get("avatar") as File | null;
+    if (!file || file.size === 0) {
+      throw new Error("Nenhum arquivo enviado.");
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("A imagem deve ter no máximo 5MB.");
+    }
+
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
+    }
+
+    const updatedUser = await userService.updateAvatar(currentUser.id, file);
+
+    // Atualizar o cookie de sessão para manter os dados sincronizados
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("e4y_session");
+    if (sessionCookie && sessionCookie.value) {
+      try {
+        const sessionData = JSON.parse(sessionCookie.value);
+        sessionData.user = updatedUser;
+        cookieStore.set("e4y_session", JSON.stringify(sessionData), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60, // 7 dias
+        });
+      } catch (err) {
+        console.error("Erro ao atualizar cookie de sessão:", err);
+      }
+    }
+
+    revalidatePath("/", "layout"); // Revalida toda a aplicação para atualizar o header e a página
+    return { success: true, data: updatedUser };
+  } catch (err: unknown) {
+    console.error("Action error:", err);
+    const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro interno no servidor.";
+    return { success: false, error: errorMessage };
+  }
 }

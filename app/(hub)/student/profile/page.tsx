@@ -1,0 +1,14 @@
+import { getCurrentUser } from "@/lib/auth-server";
+import { userService } from "@/modules/user/user.service";
+import { ProfileEditor } from "@/modules/user/_components/ProfileEditor";
+import { redirect } from "next/navigation";
+
+export default async function StudentProfilePage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect("/login");
+
+  const user = await userService.getUserById(currentUser.id);
+  if (!user) redirect("/login");
+
+  return <ProfileEditor user={user} />;
+}

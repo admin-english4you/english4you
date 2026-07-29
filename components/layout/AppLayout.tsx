@@ -10,6 +10,7 @@ interface AppLayoutProps {
   userName?: string;
   userRoleTitle?: string;
   userAvatarText?: string;
+  userAvatarUrl?: string | null;
 }
 
 export function AppLayout({
@@ -18,6 +19,7 @@ export function AppLayout({
   userName = "Sarah Jenkins",
   userRoleTitle = "Diretora Escolar",
   userAvatarText = "SJ",
+  userAvatarUrl = null,
 }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -38,6 +40,7 @@ export function AppLayout({
           userName={userName}
           userRoleTitle={userRoleTitle}
           userAvatarText={userAvatarText}
+          userAvatarUrl={userAvatarUrl}
         />
 
         {/* Dynamic Page Content */}

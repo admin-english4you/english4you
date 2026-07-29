@@ -1,7 +1,8 @@
 import { User, Role } from "./user.types";
 import { userRepository } from "./user.repository";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminStorage } from "@/lib/firebase-admin";
 import { sendUserInviteEmail } from "@/lib/resend";
+import crypto from "crypto";
 
 /**
  * Service do módulo de Usuários (Regras de Negócio e RBAC).
@@ -110,5 +111,70 @@ export const userService = {
    */
   async getUserById(id: string): Promise<User | undefined> {
     return await userRepository.findById(id);
+  },
+
+  /**
+   * Atualiza o avatar do usuário (faz upload pro Firebase Admin Storage e atualiza no DB)
+   */
+  async updateAvatar(userId: string, file: File): Promise<User> {
+    if (!adminStorage) {
+      throw new Error("Serviço de Storage não configurado no servidor.");
+    }
+
+    const bucket = adminStorage.bucket();
+    const bucketName = bucket.name;
+
+    // 1. Buscar o usuário atual para ver se já possui um avatar cadastrado
+    const currentUser = await userRepository.findById(userId);
+    if (currentUser?.avatarUrl) {
+      const prefix = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`;
+      if (currentUser.avatarUrl.startsWith(prefix)) {
+        const parts = currentUser.avatarUrl.split('/o/');
+        if (parts.length > 1) {
+          const pathAndQuery = parts[1];
+          const encodedPath = pathAndQuery.split('?')[0];
+          const oldFilePath = decodeURIComponent(encodedPath);
+          
+          try {
+            const oldFileRef = bucket.file(oldFilePath);
+            const [exists] = await oldFileRef.exists();
+            if (exists) {
+              await oldFileRef.delete();
+            }
+          } catch (err) {
+            console.error("Erro ao deletar avatar antigo no Firebase Storage:", err);
+            // Não barramos o upload se falhar a deleção do antigo
+          }
+        }
+      }
+    }
+
+    const extension = file.name.split('.').pop() || "jpg";
+    // Usando timestamp para evitar problemas de cache do navegador com o mesmo nome
+    const timestamp = Date.now();
+    const filePath = `avatars/${userId}/avatar_${timestamp}.${extension}`;
+    const fileRef = bucket.file(filePath);
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Gerar token de download para o Firebase Storage
+    const downloadToken = crypto.randomUUID();
+
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: file.type,
+        cacheControl: 'public, max-age=31536000',
+        metadata: {
+          firebaseStorageDownloadTokens: downloadToken,
+        }
+      }
+    });
+
+    // Formata URL pública do Firebase Storage com o token
+    const avatarUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+
+    // Atualiza o Drizzle (Neon)
+    return await userRepository.updateUser(userId, { avatarUrl });
   },
 };

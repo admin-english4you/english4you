@@ -19,6 +19,18 @@ trigger: always_on
 - **O que faz:** Valida o payload estritamente com Zod. Pega o usuário logado via sessão do servidor (ex: `getCurrentUser()`). Repassa os dados validados para o `Service`. Captura erros (`try/catch`) e mascara falhas, retornando `{ success: true }` ou `{ success: false, error: string }`. E revalida o cache do Next.js (`revalidatePath`).
 - **O que NÃO faz:** Não contém regras de negócio complexas e nunca escreve queries do Drizzle.
 - **Error Masking:** SEMPRE use `actionClient` ou `protectedAction` de `@/lib/safe-action`. Isso garante que erros internos do servidor (SQL, DB, etc.) sejam mascarados automaticamente antes de chegar ao cliente.
+- **Tipagem de Retorno em Actions Customizadas:** Quando uma Action não utilizar o wrapper `createSafeAction` (ex: uploads de arquivos via `FormData`), você **DEVE declarar explicitamente o tipo de retorno** como `Promise<ActionResult<T>>` (importado de `@/lib/safe-action`). Isso garante que o TypeScript consiga fazer o estreitamento de tipo (type narrowing) corretamente no Client (`if (!result.success) { setError(result.error) }`), evitando erros de compilação onde `error` é considerado `undefined`.
+  ```typescript
+  // Exemplo correto:
+  export async function uploadAction(formData: FormData): Promise<ActionResult<DataType>> {
+    try {
+      // ... lógica ...
+      return { success: true, data: resultData };
+    } catch (e) {
+      return { success: false, error: "Mensagem amigável" };
+    }
+  }
+  ```
 
 **🔌 APIs (`/app/api/...`)**
 - **Regra:** Comunicação com o Mundo Externo.

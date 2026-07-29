@@ -26,4 +26,12 @@ export const userRepository = {
       where: eq(usersTable.id, id),
     });
   },
+
+  async updateUser(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
+    const [user] = await db.update(usersTable)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(usersTable.id, id))
+      .returning();
+    return user;
+  },
 };
