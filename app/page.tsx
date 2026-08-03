@@ -3,6 +3,7 @@ import { LandingNav } from "./(public)/_components/LandingNav";
 import { HeroSection } from "./(public)/_components/HeroSection";
 import { FeaturesSection } from "./(public)/_components/FeaturesSection";
 import { TrustSection } from "./(public)/_components/TrustSection";
+import { PricingSection } from "./(public)/_components/PricingSection";
 import { CtaSection } from "./(public)/_components/CtaSection";
 import { LandingFooter } from "./(public)/_components/LandingFooter";
 
@@ -20,6 +21,7 @@ export default function LandingPage() {
         <HeroSection />
         <FeaturesSection />
         <TrustSection />
+        <PricingSection />
         <CtaSection />
       </main>
       <LandingFooter />

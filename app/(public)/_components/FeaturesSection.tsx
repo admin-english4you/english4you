@@ -29,20 +29,20 @@ const features = [
   },
   {
     icon: Sparkles,
-    title: "Prática baseada nas suas necessidades",
+    title: "Aprendizado pensado para você",
     description:
-      "Desenvolva as habilidades que você realmente precisa com materiais focados nas suas dificuldades e interesses, garantindo um aprendizado mais relevante e engajador.",
-    perks: ["Feedback de pronúncia 24 horas por dia", "Decks de vocabulário inteligentes"],
+      "Cada aluno aprende de um jeito. Por isso, nossas aulas e materiais são adaptados às suas necessidades, dificuldades e objetivos, tornando o aprendizado mais leve, eficiente e conectado à sua realidade.",
+    perks: [],
     dark: true,
   },
-  // {
-  //   icon: Sparkles,
-  //   title: "Prática com Inteligência Artificial",
-  //   description:
-  //     "Não deixe o seu inglês enferrujar entre uma aula e outra. Nosso tutor inteligente de IA analisa seus pontos fracos e gera exercícios personalizados de fala e escrita só para você.",
-  //   perks: ["Feedback de pronúncia 24 horas por dia", "Decks de vocabulário inteligentes"],
-  //   dark: true,
-  // },
+  {
+    icon: Sparkles,
+    title: "Aprimore sua pronúncia com confiança",
+    description:
+      "Receba orientações claras para desenvolver uma pronúncia mais natural ao longo das aulas e pratique sempre que quiser com os recursos disponíveis na plataforma.",
+    perks: [],
+    dark: true,
+  },
 ];
 
 export function FeaturesSection() {
@@ -81,14 +81,14 @@ export function FeaturesSection() {
         </motion.div>
 
         {/* Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
               {...fadeInUp}
-              transition={{ duration: 0.5, ease: easing, delay: i * 0.1 }}
+              transition={{ duration: 0.5, ease: easing, delay: i * 0.08 }}
               whileHover={{ y: -6 }}
-              className={`rounded-3xl p-7 sm:p-8 transition-shadow ${
+              className={`rounded-2xl p-5 sm:p-6 transition-shadow flex flex-col ${
                 f.dark
                   ? "bg-[#07274f] border border-slate-700 shadow-xl relative overflow-hidden"
                   : "bg-card border border-border shadow-sm hover:shadow-md"
@@ -97,22 +97,22 @@ export function FeaturesSection() {
               {f.dark && (
                 <div
                   aria-hidden
-                  className="absolute top-0 right-0 w-32 h-32 bg-[#016ad1] rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
+                  className="absolute top-0 right-0 w-24 h-24 bg-[#016ad1] rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
                 />
               )}
-              <div className="relative z-10">
+              <div className="relative z-10 flex flex-col flex-1">
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${
                     f.dark
                       ? "bg-white/10 border border-white/20 text-white"
                       : "bg-[#f0f7ff] text-[#016ad1]"
                   }`}
                 >
-                  <f.icon size={26} />
+                  <f.icon size={20} />
                 </div>
 
                 <h3
-                  className={`text-xl font-bold mb-3 ${
+                  className={`text-base sm:text-lg font-bold mb-2 leading-snug ${
                     f.dark ? "text-white" : "text-[#07274f]"
                   }`}
                 >
@@ -120,29 +120,31 @@ export function FeaturesSection() {
                 </h3>
 
                 <p
-                  className={`leading-relaxed mb-6 text-sm sm:text-base ${
+                  className={`leading-relaxed text-xs sm:text-sm ${
                     f.dark ? "text-slate-300" : "text-muted-foreground"
-                  }`}
+                  } ${f.perks.length > 0 ? "mb-5" : ""}`}
                 >
                   {f.description}
                 </p>
 
-                <ul className="space-y-2">
-                  {f.perks.map((perk) => (
-                    <li
-                      key={perk}
-                      className={`flex items-center gap-2 text-sm font-medium ${
-                        f.dark ? "text-slate-200" : "text-foreground"
-                      }`}
-                    >
-                      <CheckCircle2
-                        size={15}
-                        className={f.dark ? "text-[#38a5f8]" : "text-green-500"}
-                      />
-                      {perk}
-                    </li>
-                  ))}
-                </ul>
+                {f.perks.length > 0 && (
+                  <ul className="space-y-1.5 mt-auto pt-1">
+                    {f.perks.map((perk) => (
+                      <li
+                        key={perk}
+                        className={`flex items-center gap-2 text-xs sm:text-sm font-medium ${
+                          f.dark ? "text-slate-200" : "text-foreground"
+                        }`}
+                      >
+                        <CheckCircle2
+                          size={14}
+                          className={`shrink-0 ${f.dark ? "text-[#38a5f8]" : "text-green-500"}`}
+                        />
+                        {perk}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </motion.div>
           ))}

@@ -57,8 +57,11 @@ export function HeroSection() {
             transition={{ duration: 0.55, ease: easing, delay: 0.14 }}
             className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-xl"
           >
-            Experimente o ensino de inglês premium feito sob medida para estudantes brasileiros.
-            Aulas ao vivo, dinâmicas e interativas, com foco no que você precisa — tudo em uma única plataforma sofisticada.
+            Descubra uma nova forma de aprender inglês, desenvolvida especialmente para brasileiros.
+            Com aulas ao vivo, dinâmicas e interativas, você aprende de forma prática e eficiente,
+            desenvolvendo vocabulário, gramática, pronúncia e conversação de maneira integrada.
+            Tudo isso em uma única plataforma moderna, criada para oferecer uma experiência de
+            aprendizagem completa, flexível e envolvente.
           </motion.p>
 
           <motion.div

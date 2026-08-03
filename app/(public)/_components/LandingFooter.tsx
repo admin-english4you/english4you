@@ -5,7 +5,7 @@ const platformLinks = [
   { label: "Como funciona", href: "#" },
   { label: "Aulas ao Vivo", href: "#" },
   { label: "Prática com IA", href: "#" },
-  { label: "Preços", href: "#pricing" },
+  { label: "Investimento", href: "#pricing" },
 ];
 const companyLinks = [
   { label: "Sobre nós", href: "#" },

@@ -11,7 +11,7 @@ const navLinks = [
   { label: "Programas", href: "#programs" },
   { label: "Metodologia", href: "#methodology" },
   { label: "Depoimentos", href: "#testimonials" },
-  { label: "Preços", href: "#pricing" },
+  { label: "Investimento", href: "#pricing" },
 ];
 
 export function LandingNav() {

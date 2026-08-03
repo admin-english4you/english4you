@@ -13,10 +13,7 @@ const easing = [0.22, 1, 0.36, 1] as const;
 
 export function CtaSection() {
   return (
-    <section
-      id="pricing"
-      className="py-20 sm:py-28 bg-background"
-    >
+    <section className="py-20 sm:py-28 bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
         <motion.h2
           {...fadeInUp}
