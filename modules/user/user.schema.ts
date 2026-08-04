@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, pgEnum, index } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -12,9 +12,14 @@ export const usersTable = pgTable('users', {
   phone: varchar('phone', { length: 50 }),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   status: varchar('status', { length: 50 }).notNull().default('Active'),
+  // Turma atual do aluno (nullable, sem FK para evitar import circular com class.schema.ts).
+  // Um usuário pertence a no máximo uma turma por vez; integridade é garantida no Service.
+  classGroupId: uuid('class_group_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (table) => [
+  index('users_class_group_id_idx').on(table.classGroupId),
+]);
 
 // Zod schemas directly from Drizzle
 export const UserSchema = createSelectSchema(usersTable);

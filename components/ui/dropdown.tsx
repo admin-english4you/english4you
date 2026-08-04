@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface DropdownProps {
   trigger: ReactNode;
@@ -9,35 +10,72 @@ interface DropdownProps {
   width?: "w-48" | "w-56" | "w-64" | "auto";
 }
 
+// Usado apenas para estimar a posição horizontal do menu quando align="right"
+// (o menu é portado para document.body, então não pode se auto-medir antes de abrir).
+const WIDTH_PX: Record<NonNullable<DropdownProps["width"]>, number> = {
+  "w-48": 192,
+  "w-56": 224,
+  "w-64": 256,
+  auto: 192,
+};
+
 export function Dropdown({ trigger, children, align = "right", width = "w-48" }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    function updatePosition() {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const menuWidth = WIDTH_PX[width];
+      const left = align === "right" ? rect.right - menuWidth : rect.left;
+      setPosition({ top: rect.bottom + 4, left });
+    }
+
+    updatePosition();
+
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedTrigger = triggerRef.current?.contains(target);
+      const clickedMenu = menuRef.current?.contains(target);
+      if (!clickedTrigger && !clickedMenu) {
         setIsOpen(false);
       }
     }
+
+    // capture:true para pegar scroll em qualquer container ancestral (ex: tabelas com overflow-x-auto)
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen, align, width]);
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
+    <>
+      <div ref={triggerRef} onClick={() => setIsOpen((prev) => !prev)} className="inline-block cursor-pointer">
         {trigger}
       </div>
-      {isOpen && (
-        <div 
-          className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-2 ${width} bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden focus:outline-none transition-all duration-200 z-50`}
-        >
-          <div onClick={() => setIsOpen(false)}>
-            {children}
-          </div>
-        </div>
-      )}
-    </div>
+      {isOpen && position && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: position.top, left: position.left }}
+            className={`${width} bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden focus:outline-none transition-all duration-200 z-[100]`}
+          >
+            <div onClick={() => setIsOpen(false)}>{children}</div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
@@ -50,10 +88,10 @@ interface DropdownItemProps {
 
 export function DropdownItem({ children, onClick, className = "", destructive = false }: DropdownItemProps) {
   const baseClass = "flex w-full items-center px-4  py-2.5 text-sm transition-colors text-left";
-  const colorClass = destructive 
-    ? "text-rose-600 hover:bg-rose-50" 
+  const colorClass = destructive
+    ? "text-rose-600 hover:bg-rose-50"
     : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-700";
-    
+
   return (
     <button onClick={onClick} className={`${baseClass} ${colorClass} ${className}`}>
       {children}

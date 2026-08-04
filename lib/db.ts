@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as userSchema from '@/modules/user/user.schema';
+import * as lessonSchema from '@/modules/lesson/lesson.schema';
+import * as planSchema from '@/modules/plan/plan.schema';
+import * as classSchema from '@/modules/class/class.schema';
 
 const databaseUrl = process.env.DATABASE_URL!;
 
@@ -9,8 +12,11 @@ if (!databaseUrl) {
 }
 
 const sql = neon(databaseUrl);
-export const db = drizzle(sql, { 
+export const db = drizzle(sql, {
   schema: {
-    ...userSchema
-  } 
+    ...userSchema,
+    ...lessonSchema,
+    ...planSchema,
+    ...classSchema,
+  }
 });

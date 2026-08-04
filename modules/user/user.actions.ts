@@ -8,6 +8,7 @@ import { userService } from "./user.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getHomeRouteForRole } from "@/lib/rbac";
 import { createSafeAction, ActionResult } from "@/lib/safe-action";
+import { AppError } from "@/lib/errors";
 import { User } from "./user.types";
 import { z } from "zod";
 
@@ -48,7 +49,7 @@ export async function createUserByAdminAction(input: z.infer<typeof CreateUserBy
   const safeAction = createSafeAction(CreateUserByAdminSchema, async (data) => {
     const currentUser = await getCurrentUser();
     if (!currentUser || currentUser.role !== "ADMIN") {
-      throw new Error("Acesso negado. Apenas administradores podem executar esta ação.");
+      throw new AppError("Acesso negado. Apenas administradores podem executar esta ação.");
     }
 
     const result = await userService.createUserByAdmin(currentUser.role, data);
@@ -85,16 +86,16 @@ export async function updateAvatarAction(formData: FormData): Promise<ActionResu
   try {
     const file = formData.get("avatar") as File | null;
     if (!file || file.size === 0) {
-      throw new Error("Nenhum arquivo enviado.");
+      throw new AppError("Nenhum arquivo enviado.");
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
-      throw new Error("A imagem deve ter no máximo 5MB.");
+      throw new AppError("A imagem deve ter no máximo 5MB.");
     }
 
     const currentUser = await getCurrentUser();
     if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
+      throw new AppError("Usuário não autenticado.");
     }
 
     const updatedUser = await userService.updateAvatar(currentUser.id, file);
@@ -122,7 +123,9 @@ export async function updateAvatarAction(formData: FormData): Promise<ActionResu
     return { success: true, data: updatedUser };
   } catch (err: unknown) {
     console.error("Action error:", err);
-    const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro interno no servidor.";
-    return { success: false, error: errorMessage };
+    if (err instanceof AppError) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Ocorreu um erro interno no servidor. Tente novamente." };
   }
 }

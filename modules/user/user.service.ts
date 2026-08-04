@@ -2,6 +2,7 @@ import { User, Role } from "./user.types";
 import { userRepository } from "./user.repository";
 import { adminAuth, adminStorage } from "@/lib/firebase-admin";
 import { sendUserInviteEmail } from "@/lib/resend";
+import { AppError } from "@/lib/errors";
 import crypto from "crypto";
 
 /**
@@ -18,7 +19,7 @@ export const userService = {
   ): Promise<{ user: User; inviteToken: string }> {
     // 1. RBAC Check: Apenas admins podem criar usuários
     if (creatorRole !== "ADMIN") {
-      throw new Error("Apenas administradores podem cadastrar novos usuários.");
+      throw new AppError("Apenas administradores podem cadastrar novos usuários.");
     }
 
     // 2. Gerar ID unificado (UUID) para servir como id no Neon DB e uid no Firebase Auth
@@ -53,6 +54,7 @@ export const userService = {
       status: "Active",
       avatarUrl: null,
       phone: null,
+      classGroupId: null,
     });
 
     const inviteToken = `setup_${crypto.randomUUID()}`;
@@ -79,21 +81,21 @@ export const userService = {
     const { email, password, portal } = credentials;
 
     if (!email || !password) {
-      throw new Error("E-mail e senha são obrigatórios.");
+      throw new AppError("E-mail e senha são obrigatórios.");
     }
 
     const user = await userRepository.findByEmail(email);
 
     if (!user) {
-      throw new Error("Usuário não encontrado ou credenciais inválidas.");
+      throw new AppError("Usuário não encontrado ou credenciais inválidas.");
     }
 
     if (portal === 'STUDENT' && user.role !== 'STUDENT') {
-      throw new Error("Acesso negado. Utilize a página de login da equipe (Staff) para entrar com esta conta.");
+      throw new AppError("Acesso negado. Utilize a página de login da equipe (Staff) para entrar com esta conta.");
     }
 
     if (portal === 'STAFF' && user.role === 'STUDENT') {
-      throw new Error("Acesso negado. Utilize a página de login de alunos para entrar com esta conta.");
+      throw new AppError("Acesso negado. Utilize a página de login de alunos para entrar com esta conta.");
     }
 
     return user;
@@ -144,6 +146,7 @@ export const userService = {
           } catch (err) {
             console.error("Erro ao deletar avatar antigo no Firebase Storage:", err);
             // Não barramos o upload se falhar a deleção do antigo
+            //TODO: Talvez falhar o upload se não conseguir deletar o antigo seja mais seguro, mas isso depende do caso de uso.
           }
         }
       }
@@ -176,5 +179,87 @@ export const userService = {
 
     // Atualiza o Drizzle (Neon)
     return await userRepository.updateUser(userId, { avatarUrl });
+  },
+
+  /**
+   * Lista de professores para seletores (ex: atribuir professor de uma turma).
+   */
+  async getTeachersForSelect(actingRole: Role): Promise<User[]> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem visualizar a lista de professores.");
+    }
+    return await userRepository.findTeachers();
+  },
+
+  /**
+   * Alunos disponíveis para entrar em uma turma: sem turma atual, ou já
+   * pertencentes a esta mesma turma (útil pra reabrir o modal de adicionar).
+   */
+  async getAvailableStudentsForClass(actingRole: Role, classGroupId?: string): Promise<User[]> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem visualizar alunos disponíveis.");
+    }
+    return await userRepository.findAvailableStudents(classGroupId);
+  },
+
+  /**
+   * Alunos atualmente matriculados em uma turma.
+   */
+  async getStudentsByClassGroupId(actingRole: Role, classGroupId: string): Promise<User[]> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem visualizar os alunos da turma.");
+    }
+    return await userRepository.findStudentsByClassGroupId(classGroupId);
+  },
+
+  async countStudentsInClassGroup(actingRole: Role, classGroupId: string): Promise<number> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem consultar a ocupação da turma.");
+    }
+    return await userRepository.countStudentsInClassGroup(classGroupId);
+  },
+
+  async countStudentsByClassGroupIds(actingRole: Role, classGroupIds: string[]): Promise<Record<string, number>> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem consultar a ocupação das turmas.");
+    }
+    return await userRepository.countStudentsByClassGroupIds(classGroupIds);
+  },
+
+  /**
+   * Busca usuários por lote de IDs (ex: resolver professores substitutos das aulas).
+   */
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    return await userRepository.findByIds(ids);
+  },
+
+  /**
+   * Vincula um aluno a uma turma (usado por adicionar-aluno e transferir-aluno).
+   * A validação de capacidade/elegibilidade da turma é responsabilidade do classService.
+   */
+  async assignClassGroup(actingRole: Role, userId: string, classGroupId: string): Promise<User> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem gerenciar a turma de um aluno.");
+    }
+    return await userRepository.setClassGroupId(userId, classGroupId);
+  },
+
+  /**
+   * Desvincula um aluno de sua turma atual.
+   */
+  async clearClassGroup(actingRole: Role, userId: string): Promise<User> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem gerenciar a turma de um aluno.");
+    }
+    return await userRepository.setClassGroupId(userId, null);
+  },
+
+  /**
+   * Retorna (sem executar) a query de limpeza em lote de `classGroupId`, para ser
+   * combinada em um `db.batch([...])` junto de outra escrita (ex: desativar turma).
+   * Uso interno — quem chama já deve ter feito o RBAC check (ex: classService.deactivateClass).
+   */
+  bulkClearClassGroupQuery(userIds: string[]) {
+    return userRepository.bulkClearClassGroupIdQuery(userIds);
   },
 };

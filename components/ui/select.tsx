@@ -15,6 +15,7 @@ interface SelectProps {
   placeholder?: string;
   className?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export function Select({
@@ -23,6 +24,7 @@ export function Select({
   options,
   placeholder = "Selecione...",
   className = "",
+  disabled = false,
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
@@ -43,8 +45,9 @@ export function Select({
     <div className={`relative w-full ${className}`} ref={selectRef}>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 flex items-center justify-between outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all font-medium text-left"
+        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 flex items-center justify-between outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all font-medium text-left disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
       >
         <span className={selectedOption ? "text-slate-900" : "text-slate-400"}>
           {selectedOption ? selectedOption.label : placeholder}

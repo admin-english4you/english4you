@@ -92,9 +92,9 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
         <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
           <p className="font-semibold text-slate-800 text-xs mb-1">Precisa de ajuda?</p>
           <p className="text-slate-500 text-xs mb-2">Acesse os guias administrativos da escola.</p>
-          <a href="#" className="text-indigo-600 font-medium text-xs hover:underline flex items-center gap-1">
+          <Link href="/admin/docs" onClick={onCloseMobile} className="text-indigo-600 font-medium text-xs hover:underline flex items-center gap-1">
             Ver documentação →
-          </a>
+          </Link>
         </div>
       </div>
     </div>

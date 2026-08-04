@@ -84,6 +84,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
           status: "Active",
           avatarUrl: null,
           phone: null,
+          classGroupId: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

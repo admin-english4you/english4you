@@ -28,6 +28,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@google/genai": "^2.13.0",
+    "@hookform/resolvers": "^5.7.1",
     "@neondatabase/serverless": "^1.1.0",
     "@stream-io/video-react-sdk": "^1.39.3",
     "class-variance-authority": "^0.7.1",
@@ -44,6 +45,7 @@
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.84.0",
     "resend": "^6.18.0",
     "shadcn": "^4.14.0",
     "tailwind-merge": "^3.6.0",
