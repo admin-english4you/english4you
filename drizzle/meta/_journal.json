@@ -8,6 +8,27 @@
       "when": 1785858177045,
       "tag": "0000_glorious_masked_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785878162458,
+      "tag": "0001_many_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785899830025,
+      "tag": "0002_equal_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785935232515,
+      "tag": "0003_sticky_penance",
+      "breakpoints": true
     }
   ]
 }

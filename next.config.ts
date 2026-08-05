@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      // Padrão do Next.js é 1MB — pequeno demais para upload de áudio/vídeo
+      // de lições via Server Action (ver modules/lesson/lesson.actions.ts).
+      bodySizeLimit: "150mb",
+    },
+  },
 };
 
 export default nextConfig;

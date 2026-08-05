@@ -214,13 +214,86 @@ export default function AdminDocsPage() {
 
             <DocSection id="planos" title="Planos de Ensino" icon={BookOpen}>
               <p>
-                Em <code>/admin/plans</code> fica o editor de lições, onde é montado o currículo (plano de ensino)
-                que depois é atribuído às turmas em <Link href="/admin/classes" className="text-indigo-600 hover:underline">Turmas</Link>.
+                Em <code>/admin/plans</code> você monta o currículo (plano de ensino) — nome, descrição, lições e
+                conteúdo — que depois é atribuído a uma turma em{" "}
+                <Link href="/admin/classes" className="text-indigo-600 hover:underline">Turmas</Link>.
               </p>
+
+              <h3>Criando um plano</h3>
+              <p>
+                Clique em <strong>&quot;Criar Plano&quot;</strong> na página inicial e informe nome e descrição. Todo
+                plano novo começa como <strong>Rascunho</strong> — use o botão &quot;Editar Plano&quot;, na página do
+                plano, para trocar o status entre <strong>Rascunho / Ativo / Arquivado</strong>. Só planos{" "}
+                <strong>Ativos</strong> aparecem no seletor de plano de ensino da página de Turmas.
+              </p>
+
+              <h3>Página do plano: lições</h3>
+              <p>
+                Clicar num plano abre uma tela dividida em dois painéis: à esquerda, a lista de lições do plano
+                (nessa ordem que elas serão dadas); à direita, o editor da lição selecionada.
+              </p>
+              <ul>
+                <li>
+                  <strong>Adicionar Lição</strong> cria uma lição em branco (título e nível) já no final da ordem do
+                  plano.
+                </li>
+                <li>
+                  Use as <strong>setas para cima/baixo</strong> em cada lição para reordenar — não há arrastar-e-soltar
+                  ainda, só os botões de seta.
+                </li>
+                <li>
+                  <strong>Ativar/Desativar</strong> por lição controla se ela já está liberada para o aluno. Uma
+                  lição só pode ser ativada depois de gerar (e revisar) os itens de prática dela — veja abaixo.
+                </li>
+              </ul>
+
+              <h3>Editando uma lição</h3>
+              <ul>
+                <li><strong>Título e Nível</strong> — campos simples de texto.</li>
+                <li>
+                  <strong>Conteúdo da Aula</strong> — editor de texto rico (negrito, itálico, sublinhado, listas,
+                  link). Ao colar conteúdo de outro documento (Word, Google Docs, uma página) que contenha imagens,
+                  elas são enviadas automaticamente para o servidor — não é preciso fazer upload manual. Clique numa
+                  imagem já inserida para redimensioná-la ou movê-la; se você excluir uma imagem do texto e salvar a
+                  lição, ela também é apagada do servidor. Também dá pra arrastar um arquivo de imagem direto para
+                  dentro do editor.
+                  <br />
+                  <span className="text-slate-400">
+                    Observação: se colar de um documento e uma imagem específica não aparecer (aparece um aviso
+                    tracejado no lugar dela), é porque o programa de origem não incluiu os dados da imagem no
+                    clipboard, só um caminho de arquivo local — nesse caso, copie a imagem sozinha (clique direito →
+                    Copiar) ou arraste o arquivo de imagem direto para o editor.
+                  </span>
+                </li>
+                <li>
+                  <strong>Áudio / Vídeo</strong> (opcional) — upload de um arquivo de áudio ou vídeo da aula.
+                </li>
+                <li>
+                  <strong>Transcrição</strong> (opcional) — pode ser colada manualmente, ou fica em branco e a IA
+                  preenche automaticamente na primeira vez que gerar os itens de prática (usando o áudio/vídeo
+                  enviado).
+                </li>
+              </ul>
+
+              <h3>Gerando itens de prática com IA</h3>
+              <p>
+                O botão <strong>&quot;Gerar com IA&quot;</strong> analisa o conteúdo escrito (e a transcrição do
+                áudio/vídeo, se houver) e gera automaticamente entre 20–40 itens de <strong>Vocabulário</strong> e
+                10–15 de <strong>Estrutura</strong> (gramática) para a prática do aluno. Os itens já entram{" "}
+                <strong>aprovados</strong> — cabe a você <strong>remover</strong> os que não fizerem sentido, em vez
+                de aprovar um por um. Clique em qualquer item da lista para ver todos os detalhes gerados
+                (significados, exemplos, fonética, forma gramatical, etc.).
+              </p>
+              <p>
+                Gerar de novo numa lição que já tem itens não apaga os que você já aprovou — só adiciona uma nova
+                leva. Uma lição só pode ser <strong>ativada</strong> quando não sobrar nenhum item pendente de
+                revisão (raro, já que tudo entra aprovado por padrão, mas pode acontecer em fluxos futuros).
+              </p>
+
               <InDevelopmentNotice>
-                Em desenvolvimento: esta tela ainda é um protótipo de interface, sem gravação real no banco de dados.
-                Hoje, planos e lições só podem ser inseridos diretamente por um desenvolvedor. Assim que a
-                persistência for implementada, esta seção será atualizada.
+                Em desenvolvimento: os itens de prática gerados aqui (vocabulário/estrutura) ainda não viram a tela
+                de prática do aluno — essa montagem final (flashcards, quiz, etc. a partir destes itens) é uma
+                etapa separada que ainda não foi construída.
               </InDevelopmentNotice>
             </DocSection>
 

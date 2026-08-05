@@ -46,3 +46,32 @@ export const InsertPlanSchema = createInsertSchema(plansTable);
 export const PlanLessonSchema = createSelectSchema(planLessonsTable, {
   order: (schema) => schema.positive(),
 });
+
+export const CreatePlanSchema = z.object({
+  name: z.string().min(2, 'O nome do plano é obrigatório'),
+  description: z.string().optional(),
+});
+
+export const UpdatePlanSchema = z.object({
+  planId: z.uuid(),
+  name: z.string().min(2, 'O nome do plano é obrigatório').optional(),
+  description: z.string().optional(),
+  status: PlanStatusEnum.optional(),
+});
+
+/** Cria a lição e já a anexa ao final da ordem deste plano, num único fluxo. */
+export const AddLessonToPlanSchema = z.object({
+  planId: z.uuid(),
+  title: z.string().min(2, 'O título da lição é obrigatório'),
+  level: z.string().min(1, 'Informe o nível da lição'),
+});
+
+export const RemoveLessonFromPlanSchema = z.object({
+  planId: z.uuid(),
+  lessonId: z.uuid(),
+});
+
+export const ReorderPlanLessonsSchema = z.object({
+  planId: z.uuid(),
+  orderedLessonIds: z.array(z.uuid()).min(1),
+});

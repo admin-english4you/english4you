@@ -1,0 +1,1 @@
+ALTER TABLE "learning_items" ALTER COLUMN "review_status" SET DEFAULT 'APPROVED';

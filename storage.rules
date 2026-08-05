@@ -4,12 +4,21 @@ service firebase.storage {
     match /avatars/{userId} {
       // Allows any user (even unauthenticated) to read avatar files
       allow read: if true;
-      
+
       // Uploads are handled via the Server Action using the Firebase Admin SDK,
       // which bypasses security rules. Therefore, direct client writes are disabled.
       allow write: if false;
     }
-    
+
+    match /lessons/{lessonId}/{fileName} {
+      // Lesson audio/video is public content, same as avatars.
+      allow read: if true;
+
+      // Uploads are handled via the Server Action using the Firebase Admin SDK,
+      // which bypasses security rules. Therefore, direct client writes are disabled.
+      allow write: if false;
+    }
+
     // Default rule: deny all access to any other paths
     match /{allPaths=**} {
       allow read, write: if false;

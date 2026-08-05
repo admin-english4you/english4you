@@ -4,6 +4,7 @@ import * as userSchema from '@/modules/user/user.schema';
 import * as lessonSchema from '@/modules/lesson/lesson.schema';
 import * as planSchema from '@/modules/plan/plan.schema';
 import * as classSchema from '@/modules/class/class.schema';
+import * as practiceSchema from '@/modules/practice/practice.schema';
 
 const databaseUrl = process.env.DATABASE_URL!;
 
@@ -18,5 +19,6 @@ export const db = drizzle(sql, {
     ...lessonSchema,
     ...planSchema,
     ...classSchema,
+    ...practiceSchema,
   }
 });
