@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Loader2, AlertTriangle } from "lucide-react";
+import { BookOpen, AlertTriangle } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plan } from "@/modules/plan/plan.types";
@@ -82,8 +82,8 @@ export function PlanAssignmentCard({ classGroupId, currentPlan, activePlans, isE
             <Button type="button" variant="outline" size="sm" onClick={() => setShowConfirmation(false)} disabled={isPending}>
               Cancelar
             </Button>
-            <Button type="button" size="sm" onClick={executeAssign} disabled={isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
-              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Troca"}
+            <Button type="button" size="sm" onClick={executeAssign} loading={isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
+              Confirmar Troca
             </Button>
           </div>
         </div>
@@ -97,8 +97,8 @@ export function PlanAssignmentCard({ classGroupId, currentPlan, activePlans, isE
               options={activePlans.map((p) => ({ value: p.id, label: p.name }))}
             />
           </div>
-          <Button type="button" onClick={handleSaveClick} disabled={!hasChanges || isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+          <Button type="button" onClick={handleSaveClick} disabled={!hasChanges} loading={isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Salvar
           </Button>
         </div>
       ) : (

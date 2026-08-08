@@ -1,7 +1,14 @@
 import { db } from '@/lib/db';
 import { learningItemsTable, quizQuestionsTable } from './practice.schema';
-import { eq, and, asc, sql } from 'drizzle-orm';
-import { LearningItem, NewLearningItem, QuizQuestion, NewQuizQuestion } from './practice.types';
+import { eq, and, asc, inArray, sql } from 'drizzle-orm';
+import {
+  LearningItem,
+  NewLearningItem,
+  QuizQuestion,
+  NewQuizQuestion,
+  QuizRenderMode,
+  QuizSectionType,
+} from './practice.types';
 
 export interface QuizCoverage {
   vocabulary: number;
@@ -17,6 +24,50 @@ export const practiceRepository = {
       where: eq(learningItemsTable.lessonId, lessonId),
       orderBy: [asc(learningItemsTable.createdAt)],
     });
+  },
+
+  /** Só o conteúdo aprovado — é o que o aluno pode ver. Usa o índice (lesson, status). */
+  async findApprovedByLessonId(lessonId: string): Promise<LearningItem[]> {
+    return await db.query.learningItemsTable.findMany({
+      where: and(
+        eq(learningItemsTable.lessonId, lessonId),
+        eq(learningItemsTable.reviewStatus, 'APPROVED')
+      ),
+      orderBy: [asc(learningItemsTable.createdAt)],
+    });
+  },
+
+  /** Perguntas aprovadas de um modo, opcionalmente restritas a algumas seções. */
+  async findApprovedQuizQuestions(
+    lessonId: string,
+    renderMode: QuizRenderMode,
+    sections?: QuizSectionType[]
+  ): Promise<QuizQuestion[]> {
+    return await db.query.quizQuestionsTable.findMany({
+      where: and(
+        eq(quizQuestionsTable.lessonId, lessonId),
+        eq(quizQuestionsTable.reviewStatus, 'APPROVED'),
+        eq(quizQuestionsTable.renderMode, renderMode),
+        sections && sections.length > 0 ? inArray(quizQuestionsTable.section, sections) : undefined
+      ),
+      orderBy: [asc(quizQuestionsTable.createdAt)],
+    });
+  },
+
+  /** Contagens de itens aprovados por tipo, para decidir se um dia tem conteúdo. */
+  async countApprovedItemsByType(lessonId: string): Promise<{ vocab: number; structure: number }> {
+    const rows = await db
+      .select({ type: learningItemsTable.type, count: sql<number>`count(*)` })
+      .from(learningItemsTable)
+      .where(
+        and(eq(learningItemsTable.lessonId, lessonId), eq(learningItemsTable.reviewStatus, 'APPROVED'))
+      )
+      .groupBy(learningItemsTable.type);
+
+    return {
+      vocab: Number(rows.find((r) => r.type === 'VOCABULARY')?.count ?? 0),
+      structure: Number(rows.find((r) => r.type === 'STRUCTURE')?.count ?? 0),
+    };
   },
 
   async countPendingByLessonId(lessonId: string): Promise<number> {

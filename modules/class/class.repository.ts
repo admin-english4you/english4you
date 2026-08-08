@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { classGroupsTable, classRecordsTable } from './class.schema';
-import { eq, desc, asc, and, ne } from 'drizzle-orm';
+import { eq, desc, asc, and, ne, lt, gte } from 'drizzle-orm';
 import { ClassGroup, ClassRecord, NewClassGroup, NewClassRecord } from './class.types';
 
 export const classRepository = {
@@ -85,6 +85,39 @@ export const classRepository = {
   async findRecordsByClassGroupId(classGroupId: string): Promise<ClassRecord[]> {
     return await db.query.classRecordsTable.findMany({
       where: eq(classRecordsTable.classGroupId, classGroupId),
+      orderBy: [asc(classRecordsTable.date)],
+    });
+  },
+
+  /** Aulas já ocorridas, da mais recente para a mais antiga. */
+  async findRecordsByClassGroupIdBefore(
+    classGroupId: string,
+    before: Date,
+    limit?: number
+  ): Promise<ClassRecord[]> {
+    return await db.query.classRecordsTable.findMany({
+      where: and(eq(classRecordsTable.classGroupId, classGroupId), lt(classRecordsTable.date, before)),
+      orderBy: [desc(classRecordsTable.date)],
+      limit,
+    });
+  },
+
+  /** Aulas a partir de um instante, da mais próxima para a mais distante. */
+  async findRecordsByClassGroupIdFrom(
+    classGroupId: string,
+    from: Date,
+    limit?: number
+  ): Promise<ClassRecord[]> {
+    return await db.query.classRecordsTable.findMany({
+      where: and(eq(classRecordsTable.classGroupId, classGroupId), gte(classRecordsTable.date, from)),
+      orderBy: [asc(classRecordsTable.date)],
+      limit,
+    });
+  },
+
+  async findNextRecordByClassGroupId(classGroupId: string, from: Date): Promise<ClassRecord | undefined> {
+    return await db.query.classRecordsTable.findFirst({
+      where: and(eq(classRecordsTable.classGroupId, classGroupId), gte(classRecordsTable.date, from)),
       orderBy: [asc(classRecordsTable.date)],
     });
   },

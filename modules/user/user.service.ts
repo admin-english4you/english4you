@@ -116,6 +116,41 @@ export const userService = {
   },
 
   /**
+   * Lê o aluno FRESCO do banco — ponto de entrada de toda leitura da área do aluno.
+   *
+   * `getCurrentUser()` devolve um snapshot do cookie escrito no login, então
+   * `classGroupId` e `role` de lá podem estar obsoletos (um aluno transferido
+   * de turma hoje de manhã ainda leria a turma de ontem). Nenhum método
+   * student-scoped deve confiar na sessão para descobrir a turma.
+   */
+  async getStudentById(userId: string): Promise<User> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("Usuário não encontrado.");
+    }
+    if (user.role !== "STUDENT") {
+      throw new AppError("Esta área é exclusiva de alunos.");
+    }
+    return user;
+  },
+
+  /**
+   * Colegas de turma do aluno, apenas com os campos exibíveis.
+   *
+   * Deliberadamente NÃO reusa `getStudentsByClassGroupId`: aquele é admin-only
+   * e devolve o `User` inteiro, incluindo e-mail e telefone dos colegas.
+   */
+  async getClassmatesForStudent(
+    studentUserId: string
+  ): Promise<Pick<User, "id" | "name" | "avatarUrl">[]> {
+    const student = await userRepository.findById(studentUserId);
+    if (!student?.classGroupId) return [];
+
+    const classmates = await userRepository.findStudentsByClassGroupId(student.classGroupId);
+    return classmates.map(({ id, name, avatarUrl }) => ({ id, name, avatarUrl }));
+  },
+
+  /**
    * Atualiza o avatar do usuário (faz upload pro Firebase Admin Storage e atualiza no DB)
    */
   async updateAvatar(userId: string, file: File): Promise<User> {

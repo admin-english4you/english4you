@@ -8,23 +8,25 @@ import { Camera, Mail, Shield, User as UserIcon, Loader2, AlertCircle } from "lu
 import { PageHeader } from "@/components/ui/page-header";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { getInitials } from "@/components/ui/avatar";
 import Image from "next/image";
 
 interface ProfileEditorProps {
   user: User;
+  /**
+   * Conteúdo extra exibido ao lado do cartão de perfil (ex: o card de próxima
+   * aula do aluno). Fica como slot para que cada hub componha o que precisa
+   * sem duplicar o fluxo de upload de avatar.
+   */
+  aside?: React.ReactNode;
 }
 
-export function ProfileEditor({ user }: ProfileEditorProps) {
+export function ProfileEditor({ user, aside }: ProfileEditorProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initials = user.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase();
+  const initials = getInitials(user.name);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,7 +73,8 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
         </motion.div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className={aside ? "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start" : undefined}>
+      <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden${aside ? " lg:col-span-2" : ""}`}>
         {/* Banner */}
         <div className="h-32 bg-gradient-to-r from-indigo-600 to-blue-500 w-full relative"></div>
         
@@ -123,20 +126,11 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isPending}
+                loading={isPending}
                 className="rounded-full shadow-sm"
               >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4 mr-2" />
-                    Trocar Foto
-                  </>
-                )}
+                {!isPending && <Camera className="w-4 h-4 mr-2" />}
+                {isPending ? "Enviando..." : "Trocar Foto"}
               </Button>
             </div>
           </div>
@@ -172,6 +166,9 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
             </p>
           </div>
         </div>
+      </div>
+
+        {aside && <div className="lg:col-span-1 space-y-6">{aside}</div>}
       </div>
     </AppLayout>
   );

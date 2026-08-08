@@ -3,12 +3,33 @@
 import { Menu, Search, Bell, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { getMeAction, logoutAction } from "@/modules/user/user.actions";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
+import { Avatar } from "@/components/ui/avatar";
+
+type HeaderRole = "ADMIN" | "TEACHER" | "STUDENT";
+
+const ROLE_TITLES: Record<HeaderRole, string> = {
+  ADMIN: "Administrador",
+  TEACHER: "Professor(a)",
+  STUDENT: "Aluno(a)",
+};
+
+const MOBILE_BRAND: Record<HeaderRole, string> = {
+  ADMIN: "E4Y Admin",
+  TEACHER: "E4Y Professor",
+  STUDENT: "English4You",
+};
+
+const SEARCH_PLACEHOLDER: Record<HeaderRole, string> = {
+  ADMIN: "Buscar alunos, turmas ou professores...",
+  TEACHER: "Buscar turmas ou alunos...",
+  STUDENT: "Buscar aulas e materiais...",
+};
 
 interface AppHeaderProps {
   onOpenMobileMenu?: () => void;
+  role?: HeaderRole;
   userName?: string;
   userRoleTitle?: string;
   userAvatarText?: string;
@@ -17,16 +38,15 @@ interface AppHeaderProps {
 
 export function AppHeader({
   onOpenMobileMenu,
+  role = "ADMIN",
   userName = "Sarah Jenkins",
   userRoleTitle = "Diretora Escolar",
-  userAvatarText = "SJ",
   userAvatarUrl = null,
 }: AppHeaderProps) {
   const [localUserName, setLocalUserName] = useState(userName);
   const [localUserRoleTitle, setLocalUserRoleTitle] = useState(userRoleTitle);
-  const [localUserAvatarText, setLocalUserAvatarText] = useState(userAvatarText);
   const [localUserAvatarUrl, setLocalUserAvatarUrl] = useState<string | null>(userAvatarUrl);
-  const [profilePath, setProfilePath] = useState<string>("/student/profile");
+  const [profilePath, setProfilePath] = useState<string>(`/${role.toLowerCase()}/profile`);
   const router = useRouter();
 
   const [prevUserAvatarUrl, setPrevUserAvatarUrl] = useState(userAvatarUrl);
@@ -39,17 +59,7 @@ export function AppHeader({
     getMeAction().then(user => {
       if (user) {
         setLocalUserName(user.name);
-        setLocalUserRoleTitle(
-          user.role === "ADMIN" ? "Administrador" : 
-          user.role === "TEACHER" ? "Professor(a)" : "Aluno(a)"
-        );
-        const initials = user.name
-          .split(" ")
-          .map(n => n[0])
-          .join("")
-          .substring(0, 2)
-          .toUpperCase();
-        setLocalUserAvatarText(initials);
+        setLocalUserRoleTitle(ROLE_TITLES[user.role]);
         setLocalUserAvatarUrl(user.avatarUrl || null);
         setProfilePath(`/${user.role.toLowerCase()}/profile`);
       }
@@ -67,7 +77,7 @@ export function AppHeader({
         >
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-bold text-lg text-indigo-600">E4Y Admin</span>
+        <span className="font-bold text-lg text-indigo-600">{MOBILE_BRAND[role]}</span>
       </div>
 
       {/* Global Search Bar */}
@@ -75,7 +85,7 @@ export function AppHeader({
         <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
         <input
           type="text"
-          placeholder="Buscar alunos, turmas ou professores..."
+          placeholder={SEARCH_PLACEHOLDER[role]}
           className="w-full pl-9 pr-4 py-2 bg-slate-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
         />
       </div>
@@ -95,13 +105,12 @@ export function AppHeader({
         <Dropdown 
           trigger={
             <div className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center ring-2 ring-white text-xs group-hover:ring-indigo-200 transition-all shadow-sm overflow-hidden relative">
-                {localUserAvatarUrl ? (
-                  <Image src={localUserAvatarUrl} alt={localUserName} fill sizes="36px" className="object-cover" />
-                ) : (
-                  localUserAvatarText
-                )}
-              </div>
+              <Avatar
+                name={localUserName}
+                src={localUserAvatarUrl}
+                size="sm"
+                className="ring-2 ring-white group-hover:ring-indigo-200 transition-all shadow-sm"
+              />
               <div className="hidden sm:block text-left text-sm">
                 <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
                   {localUserName}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Filter, Download, Mail, MoreVertical, Search, Check, Loader2 } from "lucide-react";
+import { Plus, Filter, Download, Mail, MoreVertical, Search, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -117,7 +117,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader 
           title="Gestão de Usuários" 
           description="Gerencie alunos, professores e a equipe administrativa da escola."
@@ -320,19 +320,13 @@ export function UsersList({ initialUsers }: UsersListProps) {
                     >
                       Voltar e Editar
                     </Button>
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       onClick={executeCreateUser}
-                      disabled={isSubmitting}
+                      loading={isSubmitting}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cadastrando...
-                        </>
-                      ) : (
-                        "Confirmar e Criar"
-                      )}
+                      {isSubmitting ? "Cadastrando..." : "Confirmar e Criar"}
                     </Button>
                   </Modal.Footer>
                 </div>

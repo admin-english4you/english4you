@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, ArrowRight, BookOpen, Loader2 } from "lucide-react";
+import { Plus, ArrowRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -88,7 +88,7 @@ export function PlansList({ initialPlans }: PlansListProps) {
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader
           title="Planos de Ensino"
           description="Monte o currículo, as lições e o conteúdo pedagógico da escola."
@@ -174,14 +174,8 @@ export function PlansList({ initialPlans }: PlansListProps) {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando...
-                </>
-              ) : (
-                "Criar Plano"
-              )}
+            <Button type="submit" loading={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              {isSubmitting ? "Criando..." : "Criar Plano"}
             </Button>
           </Modal.Footer>
         </form>

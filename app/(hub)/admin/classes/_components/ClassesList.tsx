@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Calendar, Clock, Users, ArrowRight, Trash2, Loader2, Search } from "lucide-react";
+import { Plus, Calendar, Clock, Users, ArrowRight, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -127,7 +127,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader
           title="Turmas"
           description="Gerencie os horários, matrículas e alocação de professores das turmas."
@@ -331,14 +331,8 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando...
-                </>
-              ) : (
-                "Criar Turma"
-              )}
+            <Button type="submit" loading={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              {isSubmitting ? "Criando..." : "Criar Turma"}
             </Button>
           </Modal.Footer>
         </form>

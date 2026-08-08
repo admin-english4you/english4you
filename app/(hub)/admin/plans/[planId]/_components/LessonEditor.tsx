@@ -450,8 +450,8 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
           </span>
         </div>
 
-        <Button type="button" size="sm" onClick={handleSubmit(onSave)} disabled={isSubmitting || isSavePending} className="bg-indigo-600 hover:bg-indigo-700">
-          {isSavePending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+        <Button type="button" size="sm" onClick={handleSubmit(onSave)} disabled={isSubmitting} loading={isSavePending} className="bg-indigo-600 hover:bg-indigo-700">
+          {!isSavePending && <Save className="w-4 h-4 mr-1.5" />}
           Salvar
         </Button>
       </div>
@@ -511,7 +511,10 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   <Link2 className="w-4 h-4" />
                 </button>
               </div>
-              <EditorContent editor={editor} className="min-h-[260px] p-4 text-slate-800 text-sm leading-relaxed [&_.ProseMirror]:outline-none" />
+              {/* `lesson-prose` é a mesma classe do leitor do aluno — sem ela o
+                  preflight do Tailwind achata h1/ul/ol e o que o admin escreve
+                  não é o que o aluno vê. */}
+              <EditorContent editor={editor} className="lesson-prose min-h-[260px] p-4" />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
               Imagens coladas ou arrastadas no conteúdo são enviadas automaticamente para o servidor. Clique numa imagem para redimensioná-la ou movê-la. Se colar de um documento (Word/Docs) e a imagem não aparecer, tente copiar a imagem sozinha (clique direito nela → Copiar) ou arraste o arquivo direto para aqui.
@@ -533,8 +536,8 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   </button>
                 </div>
               ) : (
-                <Button type="button" variant="outline" size="sm" onClick={() => audioInputRef.current?.click()} disabled={isMediaPending}>
-                  {isMediaPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Music className="w-3.5 h-3.5 mr-1.5" />}
+                <Button type="button" variant="outline" size="sm" onClick={() => audioInputRef.current?.click()} loading={isMediaPending}>
+                  {!isMediaPending && <Music className="w-3.5 h-3.5 mr-1.5" />}
                   Enviar Áudio
                 </Button>
               )}
@@ -549,8 +552,8 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   </button>
                 </div>
               ) : (
-                <Button type="button" variant="outline" size="sm" onClick={() => videoInputRef.current?.click()} disabled={isMediaPending}>
-                  {isMediaPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Video className="w-3.5 h-3.5 mr-1.5" />}
+                <Button type="button" variant="outline" size="sm" onClick={() => videoInputRef.current?.click()} loading={isMediaPending}>
+                  {!isMediaPending && <Video className="w-3.5 h-3.5 mr-1.5" />}
                   Enviar Vídeo
                 </Button>
               )}
@@ -577,8 +580,8 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   {learningItems.length} gerados{pendingCount > 0 ? ` • ${pendingCount} pendente${pendingCount > 1 ? "s" : ""} de revisão` : ""}
                 </p>
               </div>
-              <Button type="button" size="sm" onClick={handleGenerate} disabled={isGeneratePending} className="bg-indigo-600 hover:bg-indigo-700">
-                {isGeneratePending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+              <Button type="button" size="sm" onClick={handleGenerate} loading={isGeneratePending} className="bg-indigo-600 hover:bg-indigo-700">
+                {!isGeneratePending && <Sparkles className="w-4 h-4 mr-1.5" />}
                 {isGeneratePending ? "Gerando... até 60s" : "Gerar com IA"}
               </Button>
             </div>
@@ -677,16 +680,11 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
               <Button
                 type="button"
                 onClick={handleActivate}
-                disabled={!canActivate || isActivatePending}
+                disabled={!canActivate}
+                loading={isActivatePending}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {isActivatePending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Ativando...
-                  </>
-                ) : (
-                  "Aprovar e Ativar Lição"
-                )}
+                {isActivatePending ? "Ativando..." : "Aprovar e Ativar Lição"}
               </Button>
             )}
             {lesson.status !== "ACTIVE" && activationBlockReason && (

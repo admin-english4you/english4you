@@ -11,10 +11,15 @@ import {
   ClassGroupDetail,
   ClassGroupListItem,
   ClassRecord,
+  ClassRecordDetail,
   CreateClassGroupInput,
   NewClassRecord,
+  StudentClassOverview,
+  StudentClassRecordDetail,
+  StudentTaughtRecord,
 } from './class.types';
 import { ScheduleSlot, WeekdayEnum } from './class.schema';
+import { addDaysToKey, todayKey, weekdayIndex, zonedWallClockToUtc } from '@/lib/date';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
 
@@ -24,17 +29,17 @@ function jsDayToWeekday(jsDay: number): ScheduleSlot['weekday'] {
   return map[jsDay];
 }
 
-function combineDateAndTime(date: Date, time: string): Date {
-  const [hours, minutes] = time.split(':').map(Number);
-  const combined = new Date(date);
-  combined.setHours(hours, minutes, 0, 0);
-  return combined;
-}
-
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+/**
+ * Monta o instante da aula a partir do dia e do horário do `schedule`.
+ *
+ * Usa o fuso da aplicação explicitamente, e não `setHours` (que usa o fuso do
+ * processo Node): o Drizzle grava `timestamp` como `toISOString()` e relê como
+ * UTC, então "19:00" digitado pelo admin viraria 19:00 UTC na Vercel e 19:00
+ * BRT na máquina do dev — três horas de diferença, o bastante para deslocar em
+ * um dia toda aula noturna e, com ela, o ciclo de prática do aluno.
+ */
+function combineDayKeyAndTime(dayKey: string, time: string): Date {
+  return zonedWallClockToUtc(dayKey, time);
 }
 
 /**
@@ -49,15 +54,16 @@ function buildScheduleRecords(classGroupId: string, schedule: ScheduleSlot[], le
   });
 
   const records: NewClassRecord[] = [];
-  let cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
+  // O calendário é percorrido em dias do fuso da aplicação ('YYYY-MM-DD'), não
+  // em Date, para que a virada de dia não dependa do fuso do processo.
+  let cursor = todayKey();
   let lessonIndex = 0;
 
   const maxIterations = 7 * lessons.length + 14; // margem de segurança, nunca deveria ser atingido
   let iterations = 0;
 
   while (lessonIndex < lessons.length && iterations < maxIterations) {
-    const currentWeekday = jsDayToWeekday(cursor.getDay());
+    const currentWeekday = jsDayToWeekday(weekdayIndex(cursor));
     const matchingSlots = sortedSlots.filter((slot) => slot.weekday === currentWeekday);
 
     for (const slot of matchingSlots) {
@@ -67,14 +73,14 @@ function buildScheduleRecords(classGroupId: string, schedule: ScheduleSlot[], le
         classGroupId,
         lessonId: lesson.id,
         teacherId: null,
-        date: combineDateAndTime(cursor, slot.time),
+        date: combineDayKeyAndTime(cursor, slot.time),
         completed: false,
         attendance: [],
       });
       lessonIndex += 1;
     }
 
-    cursor = addDays(cursor, 1);
+    cursor = addDaysToKey(cursor, 1);
     iterations += 1;
   }
 
@@ -128,9 +134,149 @@ async function freeAllStudentsAndSetStatus(
 }
 
 /**
+ * Hidrata ClassRecords crus com a lição e o professor substituto.
+ * As lições vêm dos ids presentes nos próprios records (não do plano atual da
+ * turma), porque uma aula pode ter sido gerada por um plano que depois mudou.
+ */
+async function hydrateRecords(records: ClassRecord[]): Promise<ClassRecordDetail[]> {
+  if (records.length === 0) return [];
+
+  const lessonIds = Array.from(new Set(records.map((r) => r.lessonId)));
+  const substituteTeacherIds = Array.from(
+    new Set(records.map((r) => r.teacherId).filter((v): v is string => Boolean(v)))
+  );
+
+  const [lessons, substituteTeachers] = await Promise.all([
+    lessonService.getLessonsByIds(lessonIds),
+    userService.getUsersByIds(substituteTeacherIds),
+  ]);
+
+  const lessonsById = new Map(lessons.map((l) => [l.id, l]));
+  const teachersById = new Map(substituteTeachers.map((t) => [t.id, t]));
+
+  return records.map((r) => ({
+    ...r,
+    lesson: lessonsById.get(r.lessonId),
+    teacher: r.teacherId ? teachersById.get(r.teacherId) ?? null : null,
+  }));
+}
+
+/**
  * Service do módulo de Turmas (Regras de Negócio e RBAC).
  */
 export const classService = {
+  // ---------------------------------------------------------------------------
+  // Leituras do ALUNO
+  //
+  // Contrato destes métodos: recebem `studentUserId`, nunca `actingRole`. Eles
+  // releem o aluno do banco (via userService.getStudentById) e derivam a turma
+  // dessa linha fresca — a sessão em cookie é um snapshot e pode estar obsoleta.
+  // Todo id vindo da URL é validado contra a turma assim obtida.
+  // ---------------------------------------------------------------------------
+
+  /** Turma do aluno com professor, plano e a grade separada em passadas/futuras. */
+  async getStudentClassOverview(studentUserId: string): Promise<StudentClassOverview | null> {
+    const student = await userService.getStudentById(studentUserId);
+    if (!student.classGroupId) return null;
+
+    const classGroup = await classRepository.findById(student.classGroupId);
+    if (!classGroup) return null;
+
+    const now = new Date();
+    const [teacher, plan, pastRaw, upcomingRaw] = await Promise.all([
+      classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
+      classGroup.planId ? planService.getPlanById(classGroup.planId) : Promise.resolve(undefined),
+      classRepository.findRecordsByClassGroupIdBefore(classGroup.id, now),
+      classRepository.findRecordsByClassGroupIdFrom(classGroup.id, now),
+    ]);
+
+    const [pastRecords, upcomingRecords] = await Promise.all([
+      hydrateRecords(pastRaw),
+      hydrateRecords(upcomingRaw),
+    ]);
+
+    return {
+      classGroup,
+      teacher: teacher ?? null,
+      plan: plan ?? null,
+      pastRecords,
+      upcomingRecords,
+      nextRecord: upcomingRecords[0] ?? null,
+      totalLessons: pastRecords.length + upcomingRecords.length,
+      completedLessons: pastRecords.length,
+    };
+  },
+
+  /** Próxima aula agendada do aluno (card do perfil e do dashboard). */
+  async getStudentNextClass(studentUserId: string): Promise<ClassRecordDetail | null> {
+    const student = await userService.getStudentById(studentUserId);
+    if (!student.classGroupId) return null;
+
+    const record = await classRepository.findNextRecordByClassGroupId(student.classGroupId, new Date());
+    if (!record) return null;
+
+    const [hydrated] = await hydrateRecords([record]);
+    return hydrated ?? null;
+  },
+
+  /**
+   * Uma aula específica, validando que ela pertence à turma do aluno.
+   * Devolve `null` (e não lança) para a página responder com notFound().
+   */
+  async getStudentClassRecord(
+    studentUserId: string,
+    recordId: string
+  ): Promise<StudentClassRecordDetail | null> {
+    const student = await userService.getStudentById(studentUserId);
+    if (!student.classGroupId) return null;
+
+    const record = await classRepository.findRecordById(recordId);
+    if (!record || record.classGroupId !== student.classGroupId) return null;
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup) return null;
+
+    const [[hydrated], classmates, headTeacher] = await Promise.all([
+      hydrateRecords([record]),
+      userService.getClassmatesForStudent(studentUserId),
+      classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
+    ]);
+
+    return {
+      ...hydrated,
+      classGroup,
+      // Substituto tem precedência; sem ele, o titular da turma.
+      effectiveTeacher: hydrated.teacher ?? headTeacher ?? null,
+      classmates,
+    };
+  },
+
+  /**
+   * Aulas já ministradas cuja lição está publicada — é a partir daqui que os
+   * ciclos de prática são construídos.
+   *
+   * ATENÇÃO: o filtro é `date < agora` + `lesson.status === 'ACTIVE'`, e NÃO
+   * `record.completed`. A coluna `completed` nunca é marcada como true em lugar
+   * nenhum do código: não existe fluxo de "encerrar aula" do professor. Quando
+   * esse fluxo existir, este filtro deve ser revisto para usá-la.
+   */
+  async getStudentTaughtRecords(studentUserId: string): Promise<StudentTaughtRecord[]> {
+    const student = await userService.getStudentById(studentUserId);
+    if (!student.classGroupId) return [];
+
+    const records = await classRepository.findRecordsByClassGroupIdBefore(student.classGroupId, new Date());
+    if (records.length === 0) return [];
+
+    const lessons = await lessonService.getLessonsByIds(
+      Array.from(new Set(records.map((r) => r.lessonId)))
+    );
+    const lessonsById = new Map(lessons.map((l) => [l.id, l]));
+
+    return records
+      .map((record) => ({ record, lesson: lessonsById.get(record.lessonId) }))
+      .filter((entry): entry is StudentTaughtRecord => entry.lesson?.status === 'ACTIVE');
+  },
+
   async createClass(actingRole: Role, data: CreateClassGroupInput): Promise<ClassGroup> {
     assertAdmin(actingRole);
     return await classRepository.create({
@@ -173,31 +319,12 @@ export const classService = {
       classRepository.findRecordsByClassGroupId(id),
     ]);
 
-    const lessonIds = records.map((r) => r.lessonId);
-    const substituteTeacherIds = Array.from(
-      new Set(records.map((r) => r.teacherId).filter((v): v is string => Boolean(v)))
-    );
-
-    // As lições são resolvidas pelos ids presentes nos records (não pelo plano atual),
-    // já que uma aula pode ter sido gerada por um plano que depois foi trocado.
-    const [lessons, substituteTeachers] = await Promise.all([
-      lessonService.getLessonsByIds(lessonIds),
-      userService.getUsersByIds(substituteTeacherIds),
-    ]);
-
-    const lessonsById = new Map(lessons.map((l) => [l.id, l]));
-    const teachersById = new Map(substituteTeachers.map((t) => [t.id, t]));
-
     return {
       ...classGroup,
       teacher: teacher ?? null,
       plan: plan ?? null,
       students,
-      records: records.map((r: ClassRecord) => ({
-        ...r,
-        lesson: lessonsById.get(r.lessonId),
-        teacher: r.teacherId ? teachersById.get(r.teacherId) ?? null : null,
-      })),
+      records: await hydrateRecords(records),
     };
   },
 

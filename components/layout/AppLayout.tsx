@@ -35,8 +35,9 @@ export function AppLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Header */}
-        <AppHeader 
+        <AppHeader
           onOpenMobileMenu={() => setMobileOpen(true)}
+          role={role}
           userName={userName}
           userRoleTitle={userRoleTitle}
           userAvatarText={userAvatarText}
@@ -44,7 +45,7 @@ export function AppLayout({
         />
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/60 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 p-4 sm:p-6 lg:p-8 w-full">
           {children}
         </main>
       </div>

@@ -66,7 +66,7 @@ function DocSection({
 export default function AdminDocsPage() {
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader
           title="Documentação do Painel Administrativo"
           description="Guia de uso para a equipe administrativa: o que cada página faz e como usar cada funcionalidade."

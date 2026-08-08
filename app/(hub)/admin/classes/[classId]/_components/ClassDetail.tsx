@@ -83,7 +83,7 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader
           title={classData.name}
           description={`Nível ${classData.level}`}

@@ -11,7 +11,14 @@ import {
 } from '@/lib/gemini';
 import { AppError } from '@/lib/errors';
 import { Role } from '@/modules/user/user.types';
-import { LearningItem, NewLearningItem, QuizQuestion, NewQuizQuestion, QuizSectionType } from './practice.types';
+import {
+  LearningItem,
+  NewLearningItem,
+  QuizQuestion,
+  NewQuizQuestion,
+  QuizRenderMode,
+  QuizSectionType,
+} from './practice.types';
 
 function assertAdmin(actingRole: Role) {
   if (actingRole !== 'ADMIN') {
@@ -113,6 +120,51 @@ function mapListeningQuiz(lessonId: string, questions: RawQuizQuestion[]): NewQu
  * Service do módulo de Prática (LearningItems e QuizQuestions gerados via IA).
  */
 export const practiceService = {
+  // ---------------------------------------------------------------------------
+  // Leituras de CONTEÚDO APROVADO (sem RBAC de papel)
+  //
+  // Estes três getters não checam papel de propósito: devolvem apenas conteúdo
+  // já aprovado e sem nenhum dado pessoal. Quem chama (progressService) já
+  // validou que o aluno tem direito àquela lição, a partir da turma dele.
+  // Mesmo precedente dos já existentes `lessonService.getLessonsByIds` e
+  // `planService.getOrderedLessonsForPlan`.
+  // ---------------------------------------------------------------------------
+
+  async getApprovedItemsForLesson(lessonId: string): Promise<LearningItem[]> {
+    return await practiceRepository.findApprovedByLessonId(lessonId);
+  },
+
+  async getApprovedQuizQuestions(
+    lessonId: string,
+    renderMode: QuizRenderMode,
+    sections?: QuizSectionType[]
+  ): Promise<QuizQuestion[]> {
+    return await practiceRepository.findApprovedQuizQuestions(lessonId, renderMode, sections);
+  },
+
+  /**
+   * O que a lição consegue oferecer de prática. `hasListening` é o que decide,
+   * junto do `audioUrl`, se o ciclo usa o dia 6 como compreensão auditiva.
+   */
+  async getLessonPracticeCapabilities(lessonId: string): Promise<{
+    hasListening: boolean;
+    vocabCount: number;
+    structureCount: number;
+    sectionCoverage: QuizCoverage;
+  }> {
+    const [counts, coverage] = await Promise.all([
+      practiceRepository.countApprovedItemsByType(lessonId),
+      practiceRepository.countApprovedQuizQuestionsByModeAndSection(lessonId),
+    ]);
+
+    return {
+      hasListening: coverage.listening > 0,
+      vocabCount: counts.vocab,
+      structureCount: counts.structure,
+      sectionCoverage: coverage,
+    };
+  },
+
   async getItemsForLesson(actingRole: Role, lessonId: string): Promise<LearningItem[]> {
     assertAdmin(actingRole);
     return await practiceRepository.findByLessonId(lessonId);

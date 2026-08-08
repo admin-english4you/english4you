@@ -39,6 +39,17 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Tokens de gamificação — usados pela área do aluno (prática, XP, trilha) */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-xp: var(--xp);
+  --color-streak: var(--streak);
+  --color-locked: var(--locked);
+  --color-heart: var(--heart);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -81,6 +92,18 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Gamificação: a paleta base não tem verde de acerto, âmbar de aviso nem
+     dourado de XP — cada tela inventava os seus inline (emerald-*, amber-*). */
+  --success: oklch(0.68 0.17 150);
+  --success-foreground: oklch(0.98 0.01 150);
+  --success-soft: oklch(0.95 0.05 150);
+  --warning: oklch(0.8 0.15 85);
+  --warning-foreground: oklch(0.32 0.06 85);
+  --warning-soft: oklch(0.96 0.05 85);
+  --xp: oklch(0.78 0.16 80);
+  --streak: oklch(0.7 0.19 45);
+  --locked: oklch(0.75 0.01 250);
+  --heart: oklch(0.64 0.22 20);
 }
 
 .dark {
@@ -115,6 +138,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --success: oklch(0.7 0.17 150);
+  --success-foreground: oklch(0.16 0.03 150);
+  --success-soft: oklch(0.28 0.06 150);
+  --warning: oklch(0.82 0.15 85);
+  --warning-foreground: oklch(0.2 0.04 85);
+  --warning-soft: oklch(0.3 0.06 85);
+  --xp: oklch(0.8 0.16 80);
+  --streak: oklch(0.72 0.19 45);
+  --locked: oklch(0.42 0.01 250);
+  --heart: oklch(0.68 0.22 20);
 }
 
 @layer base {
@@ -136,6 +169,67 @@
   }
 }
 
+@layer components {
+  /*
+   * Estilos do conteúdo da lição (HTML salvo pelo TipTap).
+   * O preflight do Tailwind zera h1/ul/ol e `@tailwindcss/typography` não está
+   * instalado — sem este bloco, títulos e listas renderizam como corpo de texto
+   * tanto no leitor do aluno quanto no editor do admin. As duas telas usam
+   * esta mesma classe justamente para o WYSIWYG ser verdadeiro.
+   */
+  .lesson-prose {
+    @apply text-slate-800 text-[15px] leading-relaxed;
+  }
+  .lesson-prose .ProseMirror {
+    @apply outline-none;
+  }
+  .lesson-prose h1 {
+    @apply text-2xl font-bold mt-6 mb-3 text-slate-900 first:mt-0;
+  }
+  .lesson-prose h2 {
+    @apply text-xl font-bold mt-5 mb-2 text-slate-900 first:mt-0;
+  }
+  .lesson-prose h3 {
+    @apply text-lg font-semibold mt-4 mb-2 text-slate-900 first:mt-0;
+  }
+  .lesson-prose p {
+    @apply my-3;
+  }
+  .lesson-prose strong {
+    @apply font-semibold text-slate-900;
+  }
+  .lesson-prose em {
+    @apply italic;
+  }
+  .lesson-prose a {
+    @apply text-indigo-600 underline underline-offset-2 hover:text-indigo-700;
+  }
+  .lesson-prose ul {
+    @apply list-disc pl-6 my-3 space-y-1;
+  }
+  .lesson-prose ol {
+    @apply list-decimal pl-6 my-3 space-y-1;
+  }
+  .lesson-prose blockquote {
+    @apply border-l-4 border-slate-200 pl-4 italic text-slate-600 my-4;
+  }
+  .lesson-prose img {
+    @apply rounded-lg my-4 max-w-full h-auto;
+  }
+  .lesson-prose hr {
+    @apply my-6 border-slate-200;
+  }
+  .lesson-prose code {
+    @apply bg-slate-100 px-1.5 py-0.5 rounded text-[13px] font-mono text-slate-800;
+  }
+  .lesson-prose pre {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-4 my-4 overflow-x-auto text-[13px];
+  }
+  .lesson-prose pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+}
+
 /* Custom utility to hide scrollbars while preserving scroll functionality */
 @utility scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
@@ -143,4 +237,19 @@
   &::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
   }
+}
+
+/* Utilitários 3D do flip de flashcard. Usam nomes próprios, em vez dos
+   nativos do Tailwind 4, para não depender do minor instalado. */
+@utility card-perspective {
+  perspective: 1200px;
+}
+
+@utility card-3d {
+  transform-style: preserve-3d;
+}
+
+@utility card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }

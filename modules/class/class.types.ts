@@ -36,3 +36,34 @@ export type ClassGroupDetail = ClassGroup & {
   students: User[];
   records: ClassRecordDetail[];
 };
+
+/** Dados de um colega de turma exibíveis para outro aluno (sem e-mail/telefone). */
+export type ClassmateSummary = Pick<User, 'id' | 'name' | 'avatarUrl'>;
+
+/** Visão da turma sob a ótica do aluno: professor titular, plano e a grade dividida. */
+export type StudentClassOverview = {
+  classGroup: ClassGroup;
+  teacher: User | null;
+  plan: Plan | null;
+  /** Aulas já ocorridas, da mais recente para a mais antiga. */
+  pastRecords: ClassRecordDetail[];
+  /** Aulas futuras, da mais próxima para a mais distante. */
+  upcomingRecords: ClassRecordDetail[];
+  nextRecord: ClassRecordDetail | null;
+  totalLessons: number;
+  completedLessons: number;
+};
+
+/** Uma aula específica aberta pelo aluno, com o professor efetivo já resolvido. */
+export type StudentClassRecordDetail = ClassRecordDetail & {
+  classGroup: ClassGroup;
+  /** `record.teacherId` (substituto) com fallback para o titular da turma. */
+  effectiveTeacher: User | null;
+  classmates: ClassmateSummary[];
+};
+
+/** Aula já ministrada cuja lição está publicada — fonte dos ciclos de prática. */
+export type StudentTaughtRecord = {
+  record: ClassRecord;
+  lesson: Lesson;
+};

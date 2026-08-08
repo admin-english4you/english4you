@@ -83,6 +83,19 @@ export const lessonService = {
     return await lessonRepository.findById(id);
   },
 
+  /**
+   * Leitura sem RBAC de papel: devolve a lição apenas se ela já foi publicada
+   * (nunca DISABLED, que é o estado "o aluno ainda não chegou aqui").
+   *
+   * A posse — "este aluno tem direito a esta lição?" — é validada por quem
+   * chama (classService/progressService), a partir da turma do aluno.
+   */
+  async getPublishedLessonById(lessonId: string): Promise<Lesson | undefined> {
+    const lesson = await lessonRepository.findById(lessonId);
+    if (!lesson || lesson.status === 'DISABLED') return undefined;
+    return lesson;
+  },
+
   /** Cria a lição em branco (título/nível). Anexá-la a um plano é responsabilidade do planService. */
   async createLessonInPlan(actingRole: Role, data: CreateLessonInput): Promise<Lesson> {
     assertAdmin(actingRole);
@@ -248,6 +261,16 @@ export const lessonService = {
       }
     }
 
-    return await lessonRepository.updateStatus(lessonId, status as LessonStatus);
+    // Carimba a PRIMEIRA ativação. É a partir dela (e não só da data da aula)
+    // que o ciclo de prática do aluno começa — sem isso, ativar uma lição
+    // atrasada geraria 6 dias já vencidos. Reativar depois de um DISABLE não
+    // reinicia o carimbo, para não empurrar o ciclo de quem já começou.
+    let activatedAt: Date | undefined;
+    if (status === 'ACTIVE') {
+      const current = await lessonRepository.findById(lessonId);
+      if (current && !current.activatedAt) activatedAt = new Date();
+    }
+
+    return await lessonRepository.updateStatus(lessonId, status as LessonStatus, activatedAt);
   },
 };

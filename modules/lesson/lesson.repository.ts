@@ -41,10 +41,15 @@ export const lessonRepository = {
     return lesson;
   },
 
-  async updateStatus(id: string, status: z.infer<typeof LessonStatusEnum>): Promise<Lesson> {
+  /** `activatedAt` só é passado pelo Service, na primeira transição para ACTIVE. */
+  async updateStatus(
+    id: string,
+    status: z.infer<typeof LessonStatusEnum>,
+    activatedAt?: Date
+  ): Promise<Lesson> {
     const [lesson] = await db
       .update(lessonsTable)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, updatedAt: new Date(), ...(activatedAt ? { activatedAt } : {}) })
       .where(eq(lessonsTable.id, id))
       .returning();
     return lesson;

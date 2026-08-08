@@ -21,6 +21,15 @@ export const lessonsTable = pgTable('lessons', {
   audioUrl: varchar('audio_url', { length: 500 }),
   videoUrl: varchar('video_url', { length: 500 }),
   status: lessonStatusEnumDb('status').notNull().default('DISABLED'),
+  /**
+   * Quando a lição passou para ACTIVE pela primeira vez.
+   *
+   * Existe porque `status` é GLOBAL, e não por turma: se a aula acontece com a
+   * lição ainda DISABLED e o admin só a ativa uma semana depois, o ciclo de 6
+   * dias de prática nasceria inteiro no passado (todos os dias expirados). O
+   * ciclo começa em max(data da aula, activatedAt).
+   */
+  activatedAt: timestamp('activated_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => [

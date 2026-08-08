@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
-import { Plus, ChevronUp, ChevronDown, PlayCircle, FileText, Loader2, Pencil } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown, PlayCircle, FileText, Pencil } from "lucide-react";
 import { Plan } from "@/modules/plan/plan.types";
 import { Lesson } from "@/modules/lesson/lesson.types";
 import { LearningItem, QuizQuestion } from "@/modules/practice/practice.types";
@@ -142,7 +142,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader title={plan.name} description={plan.description || "Sem descrição."}>
           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${PLAN_STATUS_STYLES[plan.status]}`}>
             {PLAN_STATUS_LABELS[plan.status]}
@@ -278,8 +278,8 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
             <Button type="button" variant="outline" onClick={closeAddLessonModal}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmittingLesson} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              {isSubmittingLesson ? <Loader2 className="w-4 h-4 animate-spin" /> : "Adicionar"}
+            <Button type="submit" loading={isSubmittingLesson} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              Adicionar
             </Button>
           </Modal.Footer>
         </form>
@@ -314,8 +314,8 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
             <Button type="button" variant="outline" onClick={() => setIsEditPlanModalOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmittingPlan} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              {isSubmittingPlan ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+            <Button type="submit" loading={isSubmittingPlan} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              Salvar
             </Button>
           </Modal.Footer>
         </form>

@@ -35,7 +35,7 @@ export function DashboardOverview() {
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="mx-auto space-y-8">
         <PageHeader 
           title="Painel do Administrador" 
           description="Bem-vinda de volta, Sarah! Aqui está o resumo das operações da English4You hoje."

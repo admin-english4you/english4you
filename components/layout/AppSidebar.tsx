@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  GraduationCap, 
-  DollarSign, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  GraduationCap,
+  DollarSign,
+  Home,
+  Sparkles,
   X
 } from "lucide-react";
 
@@ -17,29 +19,54 @@ export interface NavItem {
   icon: React.ElementType;
 }
 
+type SidebarRole = "ADMIN" | "TEACHER" | "STUDENT";
+
 interface AppSidebarProps {
-  role?: "ADMIN" | "TEACHER" | "STUDENT";
+  role?: SidebarRole;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
 
 const adminNavItems: NavItem[] = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Início", href: "/admin", icon: LayoutDashboard },
   { name: "Usuários", href: "/admin/users", icon: Users },
   { name: "Turmas", href: "/admin/classes", icon: GraduationCap },
   { name: "Planos de Ensino", href: "/admin/plans", icon: BookOpen },
   { name: "Financeiro", href: "/admin/finance", icon: DollarSign },
 ];
 
+const teacherNavItems: NavItem[] = [
+  { name: "Início", href: "/teacher", icon: LayoutDashboard },
+];
+
+const studentNavItems: NavItem[] = [
+  { name: "Início", href: "/student", icon: Home },
+  { name: "Turma", href: "/student/classes", icon: GraduationCap },
+  { name: "Prática", href: "/student/practice", icon: Sparkles },
+];
+
+const NAV_BY_ROLE: Record<SidebarRole, NavItem[]> = {
+  ADMIN: adminNavItems,
+  TEACHER: teacherNavItems,
+  STUDENT: studentNavItems,
+};
+
+const HOME_BY_ROLE: Record<SidebarRole, string> = {
+  ADMIN: "/admin",
+  TEACHER: "/teacher",
+  STUDENT: "/student",
+};
+
 export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }: AppSidebarProps) {
   const pathname = usePathname();
-  const navItems = adminNavItems;
+  const navItems = NAV_BY_ROLE[role];
+  const homeHref = HOME_BY_ROLE[role];
 
   const content = (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
-        <Link href="/admin" className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-indigo-600">
+        <Link href={homeHref} className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-indigo-600">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-extrabold shadow-sm">
             E4
           </div>
@@ -55,19 +82,13 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
         )}
       </div>
 
-      {/* Role Badge */}
-      <div className="px-6 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Painel</span>
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">
-          {role}
-        </span>
-      </div>
-
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+          // A home do papel só é ativa em match exato; as demais casam por prefixo
+          // para que subrotas (ex: /student/classes/[recordId]) mantenham o item aceso.
+          const isActive = pathname === item.href || (item.href !== homeHref && pathname.startsWith(item.href));
 
           return (
             <Link
@@ -87,23 +108,25 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
         })}
       </nav>
 
-      {/* Footer Support */}
-      <div className="p-4 border-t border-slate-200">
-        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-          <p className="font-semibold text-slate-800 text-xs mb-1">Precisa de ajuda?</p>
-          <p className="text-slate-500 text-xs mb-2">Acesse os guias administrativos da escola.</p>
-          <Link href="/admin/docs" onClick={onCloseMobile} className="text-indigo-600 font-medium text-xs hover:underline flex items-center gap-1">
-            Ver documentação →
-          </Link>
+      {/* Footer Support — a documentação existe apenas no hub administrativo */}
+      {role === "ADMIN" && (
+        <div className="p-4 border-t border-slate-200">
+          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+            <p className="font-semibold text-slate-800 text-xs mb-1">Precisa de ajuda?</p>
+            <p className="text-slate-500 text-xs mb-2">Acesse os guias administrativos da escola.</p>
+            <Link href="/admin/docs" onClick={onCloseMobile} className="text-indigo-600 font-medium text-xs hover:underline flex items-center gap-1">
+              Ver documentação →
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="w-64 hidden md:flex shrink-0 z-20 h-screen sticky top-0">
+      <aside className="hidden md:flex shrink-0 z-20 h-screen sticky top-0">
         {content}
       </aside>
 

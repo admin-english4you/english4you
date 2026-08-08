@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { User } from "@/modules/user/user.types";
@@ -64,8 +64,8 @@ export function TeacherAssignmentCard({ classGroupId, currentTeacher, teachers, 
               options={teachers.map((t) => ({ value: t.id, label: t.name }))}
             />
           </div>
-          <Button type="button" onClick={handleSave} disabled={!hasChanges || isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+          <Button type="button" onClick={handleSave} disabled={!hasChanges} loading={isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Salvar
           </Button>
         </div>
       ) : (

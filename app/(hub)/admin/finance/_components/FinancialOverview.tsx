@@ -40,7 +40,7 @@ export function FinancialOverview() {
 
   return (
     <AppLayout role="ADMIN">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         <PageHeader 
           title="Visão Geral Financeira" 
           description="Monitore receitas, mensalidades do Mercado Pago e repsasse a professores."

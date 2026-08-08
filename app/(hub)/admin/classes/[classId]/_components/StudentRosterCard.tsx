@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Loader2 } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -170,10 +170,11 @@ export function StudentRosterCard({
             <Button
               type="button"
               onClick={handleAddStudent}
-              disabled={!selectedNewStudentId || isPending}
+              disabled={!selectedNewStudentId}
+              loading={isPending}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Adicionar"}
+              Adicionar
             </Button>
           </Modal.Footer>
         </div>
@@ -204,10 +205,11 @@ export function StudentRosterCard({
             <Button
               type="button"
               onClick={handleTransfer}
-              disabled={!selectedTargetClassId || isPending}
+              disabled={!selectedTargetClassId}
+              loading={isPending}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Transferir"}
+              Transferir
             </Button>
           </Modal.Footer>
         </div>
