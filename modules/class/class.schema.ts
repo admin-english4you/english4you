@@ -185,3 +185,8 @@ export const GetTeacherStudentDetailSchema = z.object({
 export const GetStudentCallAccessSchema = z.object({
   recordId: z.uuid(),
 });
+
+/** Troca a sessão atual por um custom token do Firebase pro board ao vivo (RTDB). */
+export const GetBoardAuthTokenSchema = z.object({
+  recordId: z.uuid(),
+});

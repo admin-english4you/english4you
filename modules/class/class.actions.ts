@@ -22,6 +22,7 @@ import {
   MarkAttendanceSchema,
   GetTeacherStudentDetailSchema,
   GetStudentCallAccessSchema,
+  GetBoardAuthTokenSchema,
 } from "./class.schema";
 import { classService } from "./class.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -344,6 +345,26 @@ export async function getStudentCallAccessAction(input: z.infer<typeof GetStuden
     }
 
     return await classService.getStudentCallAccess(currentUser.id, data.recordId);
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Custom token do Firebase pro board ao vivo desta aula — quem chama troca
+ * este token pela sessão do Firebase antes de assinar/publicar o canal RTDB
+ * (ver lib/realtime-board.ts). `data.token` vem `null` se o RTDB não estiver
+ * configurado ou o usuário ainda não for membro sincronizado deste board.
+ */
+export async function getBoardAuthTokenAction(input: z.infer<typeof GetBoardAuthTokenSchema>) {
+  const safeAction = createSafeAction(GetBoardAuthTokenSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const token = await classService.getBoardAuthToken(currentUser.id, data.recordId);
+    return { token };
   });
 
   return safeAction(input);

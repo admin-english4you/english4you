@@ -78,7 +78,9 @@ export function TeacherVideoPanel({
           </CallRoom>
         ) : (
           <div className="space-y-4 p-4">
-            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900">
+            {/* Tracejada, igual ao estado vazio de "Alunos" abaixo — sinaliza
+                "ainda não está ao vivo", não uma câmera já ligada. */}
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-700 bg-slate-900/60">
               <Video className="h-7 w-7 text-slate-600" />
               <span className="absolute bottom-2 left-2 rounded bg-slate-950/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
                 Você (professor)
@@ -101,10 +103,10 @@ export function TeacherVideoPanel({
                   {students.map((student) => (
                     <div
                       key={student.id}
-                      className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
-                      title={student.name}
+                      className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-800 bg-slate-800/30"
+                      title={`${student.name} — ainda não conectado`}
                     >
-                      <span className="text-xs font-bold text-slate-500">{getInitials(student.name)}</span>
+                      <span className="text-xs font-bold text-slate-600">{getInitials(student.name)}</span>
                     </div>
                   ))}
                 </div>

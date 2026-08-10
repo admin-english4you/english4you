@@ -58,14 +58,25 @@ export function VideoPanel({
   const [wantsToJoin, setWantsToJoin] = useState(false);
 
   useEffect(() => {
-    if (callAccess) return;
+    // Só para de revalidar depois que o aluno ENTROU de fato na chamada
+    // (CallStateWatcher assume dali em diante, ver handleLeft). Enquanto
+    // `wantsToJoin` é false — inclusive com `callAccess` já setado, tela
+    // "Entrar na chamada" — o poll continua: sem isso, um professor que
+    // encerra a aula enquanto o aluno está parado nessa tela nunca é
+    // percebido, e o botão de entrar fica ativo pra sempre, apontando pra
+    // uma call que já não existe mais (o aluno conseguiria efetivamente
+    // reabri-la ao clicar). Depende só de `wantsToJoin`, não de `callAccess`
+    // — senão cada resposta do poll (um token novo, mesmo que a call
+    // continue a mesma) reiniciaria este efeito e disparava outro poll na
+    // hora, num ciclo sem o intervalo de 5s valer nada.
+    if (wantsToJoin) return;
 
     let cancelled = false;
     const poll = () => {
       getStudentCallAccessAction({ recordId: classRecordId }).then((result) => {
         if (cancelled) return;
-        if (result.success && result.data) {
-          setCallAccess(result.data);
+        if (result.success) {
+          setCallAccess(result.data ?? null);
         }
       });
     };
@@ -79,7 +90,7 @@ export function VideoPanel({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [callAccess, classRecordId]);
+  }, [wantsToJoin, classRecordId]);
 
   const markedRef = useRef(false);
   const handleJoined = () => {
@@ -181,15 +192,18 @@ export function VideoPanel({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900">
-          <span className="text-2xl font-bold text-slate-600">
-            {teacherName ? getInitials(teacherName) : <Video className="h-6 w-6" />}
+        {/* Sem avatar do professor aqui de propósito — ele ainda NÃO está
+            conectado nesta tela (chamada não começou, ou o professor caiu e
+            não voltou), então um avatar pareceria uma câmera ligada. Borda
+            tracejada + indicador pulsando comunicam "aguardando", não "ao
+            vivo" (mesmo idioma visual do estado vazio de "Colegas" abaixo). */}
+        <div className="relative flex aspect-video flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-4 text-center">
+          <span className="relative flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-600 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-slate-600" />
           </span>
-          {teacherName && (
-            <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-200">
-              {teacherName}
-            </span>
-          )}
+          <p className="text-xs font-medium text-slate-400">{waitingLabel}</p>
+          {teacherName && <p className="max-w-[85%] truncate text-[11px] text-slate-600">{teacherName}</p>}
         </div>
 
         <div>
@@ -206,10 +220,10 @@ export function VideoPanel({
               {participants.map((person) => (
                 <div
                   key={person.id}
-                  className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
-                  title={person.name}
+                  className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-800 bg-slate-800/30"
+                  title={`${person.name} — ainda não conectado`}
                 >
-                  <span className="text-xs font-bold text-slate-500">{getInitials(person.name)}</span>
+                  <span className="text-xs font-bold text-slate-600">{getInitials(person.name)}</span>
                 </div>
               ))}
             </div>

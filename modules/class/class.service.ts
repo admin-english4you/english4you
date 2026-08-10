@@ -33,7 +33,7 @@ import {
 } from '@/lib/stream-server';
 import { notificationService } from '@/modules/notification/notification.service';
 import { sendClassRecordingEmail } from '@/lib/resend';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
 
@@ -592,13 +592,22 @@ export const classService = {
       throw new AppError('Você não tem permissão para encerrar esta aula.');
     }
 
-    await stopCallRecording(recordId);
-    await endStreamCall(recordId);
-
+    // `completed` é marcado ANTES de derrubar a call no Stream, não depois:
+    // `endStreamCall` desconecta quem estiver conectado quase imediatamente,
+    // e o client do aluno reage a isso revalidando o acesso (ver
+    // VideoPanel.tsx). Se o Postgres só fosse atualizado depois, essa
+    // revalidação podia chegar primeiro e ainda ler `completed: false`,
+    // recebendo um acesso novo (`buildCallAccess` -> `getOrCreate`) que
+    // reabre a call que acabou de ser encerrada.
+    //
     // Sem early-return se já completed: encerrar precisa ser sempre seguro de
     // chamar de novo (ex: reabriu e encerrou de novo) — o update em si já é
     // idempotente (setar true quando já é true não muda nada).
-    return await classRepository.updateRecordCompleted(recordId, true);
+    const updated = await classRepository.updateRecordCompleted(recordId, true);
+    await stopCallRecording(recordId);
+    await endStreamCall(recordId);
+
+    return updated;
   },
 
   /** Salva as anotações desta ocorrência da aula — isolado de lessons.content. */
@@ -613,6 +622,29 @@ export const classService = {
     }
 
     return await classRepository.updateRecordBoard(recordId, boardContent);
+  },
+
+  /**
+   * Token do Firebase Auth (custom token, mesmo uid do usuário) pro board ao
+   * vivo desta aula — a sessão desta plataforma é cookie próprio (ver
+   * lib/auth-server.ts), não Firebase Auth, então sem isto o client nunca
+   * tem `auth != null` e as regras em database.rules.json barram tudo
+   * (permission_denied tanto pra ler quanto pra escrever). O client troca
+   * este token por uma sessão do Firebase antes de assinar/publicar o canal
+   * (ver lib/realtime-board.ts).
+   *
+   * `null` se o Admin SDK não estiver configurado ou o usuário ainda não for
+   * membro sincronizado deste board (ver `syncBoardMembers` — só populado
+   * depois que a página da sala já carregou uma vez pro professor ou aluno) —
+   * a própria checagem de membro aqui é defesa em profundidade, já que as
+   * regras do RTDB fariam o mesmo bloqueio no path do conteúdo de qualquer
+   * forma.
+   */
+  async getBoardAuthToken(userId: string, recordId: string): Promise<string | null> {
+    if (!adminAuth || !adminDb) return null;
+    const snapshot = await adminDb.ref(`class-boards/${recordId}/members/${userId}`).once('value');
+    if (!snapshot.exists()) return null;
+    return await adminAuth.createCustomToken(userId);
   },
 
   /** Marca presença automática do aluno ao entrar de fato na chamada. Idempotente. */
