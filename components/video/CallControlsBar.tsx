@@ -89,7 +89,7 @@ function MicToggleButton() {
       label={optionsAwareIsMute ? "Ativar microfone" : "Desativar microfone"}
       active={!optionsAwareIsMute}
       disabled={isTogglePending}
-      onClick={() => void microphone.toggle()}
+      onClick={() => void microphone.toggle().catch(() => {})}
     >
       {optionsAwareIsMute ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
     </ControlButton>
@@ -105,7 +105,7 @@ function CameraToggleButton() {
       label={optionsAwareIsMute ? "Ativar câmera" : "Desativar câmera"}
       active={!optionsAwareIsMute}
       disabled={isTogglePending}
-      onClick={() => void camera.toggle()}
+      onClick={() => void camera.toggle().catch(() => {})}
     >
       {optionsAwareIsMute ? <VideoOff className="h-4 w-4" /> : <Video className="h-4 w-4" />}
     </ControlButton>
@@ -126,7 +126,11 @@ function ScreenShareToggleButton() {
       active={isSharing}
       tone="share"
       disabled={isTogglePending || someoneElseSharing}
-      onClick={() => void screenShare.toggle()}
+      // O navegador pode negar/cancelar o seletor de tela (usuário fechou o
+      // picker, negou a permissão) — sem o catch, isso vira uma promise
+      // rejeitada sem handler ("Uncaught (in promise) NotAllowedError") no
+      // console, sem afetar o estado do botão (o SDK já reverte sozinho).
+      onClick={() => void screenShare.toggle().catch(() => {})}
     >
       <ScreenShare className="h-4 w-4" />
     </ControlButton>
