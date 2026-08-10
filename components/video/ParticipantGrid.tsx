@@ -1,17 +1,24 @@
 "use client";
 
 import { ParticipantView, useCallStateHooks } from "@stream-io/video-react-sdk";
+import { hasScreenShare } from "@stream-io/video-client";
 
 /**
  * Grade de tiles com vídeo/áudio reais dos participantes conectados.
  *
  * `ParticipantView` sem `trackType` renderiza só a câmera (`videoTrack`, o
  * default do SDK) — a track de compartilhamento de tela é uma track
- * SEPARADA (`screenShareTrack`) que nunca aparecia em lugar nenhum, nem pro
- * próprio professor. Quando alguém está compartilhando (`screenShareStream`
- * presente no participante), essa tela ganha um tile grande em destaque
- * (mesma ideia do `SpeakerLayout` pronto do SDK), e a grade de câmeras
- * continua embaixo, menor.
+ * SEPARADA (`screenShareTrack`) que nunca aparecia em lugar nenhum.
+ *
+ * Achar o apresentador com `hasScreenShare` (checa `publishedTracks`, que
+ * chega via sinalização assim que ALGUÉM publica a track — local ou remoto)
+ * em vez de `participant.screenShareStream` (só populado depois que a SFU
+ * já está de fato enviando a mídia PRA VOCÊ): pro professor, que está
+ * compartilhando, `screenShareStream` é o preview local e já vem pronto na
+ * hora, então "funcionava" pra ele; pro aluno, que só recebe via SFU, esse
+ * campo só existe DEPOIS que algum elemento de vídeo pede a track — e esse
+ * pedido só acontece se a gente já tivesse decidido renderizar o tile, um
+ * impasse que nunca se resolve sozinho. `hasScreenShare` quebra esse ciclo.
  */
 export function ParticipantGrid() {
   const { useParticipants } = useCallStateHooks();
@@ -25,7 +32,7 @@ export function ParticipantGrid() {
     );
   }
 
-  const presenter = participants.find((participant) => !!participant.screenShareStream);
+  const presenter = participants.find(hasScreenShare);
 
   return (
     <div className="flex h-full flex-col gap-2 p-2">
