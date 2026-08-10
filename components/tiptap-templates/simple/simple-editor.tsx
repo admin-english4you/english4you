@@ -465,7 +465,7 @@ export function SimpleEditor({
   }, [closeSearchAndReplace, isSearchAndReplaceOpen, openSearchAndReplace])
 
   return (
-    <div className={cn("simple-editor-wrapper", className)}>
+    <div className={cn("simple-editor-wrapper scrollbar-hide", className)}>
       <EditorContext.Provider value={{ editor }}>
         {editable && (
           <Toolbar

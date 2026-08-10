@@ -126,17 +126,7 @@ export function VideoPanel({
 
   if (callAccess && !wantsToJoin) {
     return (
-      <div className="flex h-full flex-col bg-slate-900">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Chamada de vídeo
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-            Ao vivo
-          </span>
-        </div>
-
+      <div className="flex h-fit flex-col bg-slate-900">
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-4">
           <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900">
             <span className="text-2xl font-bold text-slate-600">
@@ -160,17 +150,9 @@ export function VideoPanel({
 
   if (callAccess) {
     return (
-      <div className="flex h-full flex-col bg-slate-900">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Chamada de vídeo
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-            Ao vivo
-          </span>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-fit flex-col bg-slate-900">
+      
+        <div className="flex flex-col">
           <CallRoom
             apiKey={callAccess.apiKey}
             token={callAccess.token}
@@ -181,10 +163,10 @@ export function VideoPanel({
             onJoined={handleJoined}
             onLeft={handleLeft}
           >
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div>            
+              <CallControlsBar showLeave />
               <ParticipantGrid mobileFocusUserId={teacherUserId ?? undefined} />
             </div>
-            <CallControlsBar showLeave />
           </CallRoom>
         </div>
       </div>

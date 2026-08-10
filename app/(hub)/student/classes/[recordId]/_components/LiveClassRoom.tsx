@@ -86,7 +86,7 @@ export function LiveClassRoom({
             desktop (`lg:block`) sempre aparece, independente disso. */}
         <aside
           className={cn(
-            "order-1 min-h-0 border-slate-800 lg:order-2 lg:col-span-1 lg:block lg:h-full lg:border-l",
+            "order-1 h-full border-slate-800 lg:order-2 lg:col-span-1 lg:block lg:h-full lg:border-l",
             isCallActive ? "block border-b" : "hidden"
           )}
         >
@@ -126,7 +126,7 @@ export function LiveClassRoom({
           <div
             className={cn(
               "overflow-hidden lg:h-full lg:overflow-visible",
-              videoOpenMobile ? "h-[65vh]" : "h-0"
+              videoOpenMobile ? "h-fit" : "h-0"
             )}
           >
             <VideoPanel
