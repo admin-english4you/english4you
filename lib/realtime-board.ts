@@ -21,8 +21,13 @@ function contentPath(recordId: string) {
 
 /** Publica o HTML atual do board no canal ao vivo desta aula. */
 export function pushBoardContent(recordId: string, html: string): void {
-  if (!rtdb) return;
-  void set(ref(rtdb, contentPath(recordId)), html).catch(() => {});
+  if (!rtdb) {
+    console.warn("[realtime-board] RTDB não configurado (NEXT_PUBLIC_FIREBASE_DATABASE_URL ausente) — board ao vivo desligado.");
+    return;
+  }
+  void set(ref(rtdb, contentPath(recordId)), html).catch((err) => {
+    console.warn("[realtime-board] Falha ao publicar o board ao vivo (aluno não vai ver esta edição em tempo real):", err);
+  });
 }
 
 /**
@@ -30,14 +35,24 @@ export function pushBoardContent(recordId: string, html: string): void {
  * segura de chamar (inclusive quando o RTDB não está configurado).
  */
 export function subscribeToBoardContent(recordId: string, onChange: (html: string) => void): () => void {
-  if (!rtdb) return () => {};
+  if (!rtdb) {
+    console.warn("[realtime-board] RTDB não configurado (NEXT_PUBLIC_FIREBASE_DATABASE_URL ausente) — board ao vivo desligado.");
+    return () => {};
+  }
 
   try {
-    return onValue(ref(rtdb, contentPath(recordId)), (snapshot) => {
-      const value = snapshot.val();
-      if (typeof value === "string") onChange(value);
-    });
-  } catch {
+    return onValue(
+      ref(rtdb, contentPath(recordId)),
+      (snapshot) => {
+        const value = snapshot.val();
+        if (typeof value === "string") onChange(value);
+      },
+      (err) => {
+        console.warn("[realtime-board] Falha ao assinar o board ao vivo (não vai atualizar em tempo real):", err);
+      }
+    );
+  } catch (err) {
+    console.warn("[realtime-board] Falha ao assinar o board ao vivo:", err);
     return () => {};
   }
 }
