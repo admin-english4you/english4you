@@ -1,10 +1,17 @@
 import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { uploadLessonContentImageAction, rehostLessonContentImageAction } from "@/modules/lesson/lesson.actions";
 
 const IMAGE_NODE_NAME = "imageResize";
 
-function isOwnStorageUrl(src: string): boolean {
+/** Funções de upload que o dono do conteúdo (lição, board da aula, etc.) injeta — cada um sabe pra onde/como persistir suas próprias imagens. */
+export interface ContentImageUploaders {
+  /** Envia um arquivo de imagem (colado ou arrastado) e devolve a URL pública. */
+  uploadFile: (file: File) => Promise<string>;
+  /** Baixa uma imagem externa (URL remota, ex: colada de outra página) e reenvia pro nosso Storage. */
+  rehostUrl: (sourceUrl: string) => Promise<string>;
+}
+
+export function isOwnStorageUrl(src: string): boolean {
   return src.includes("firebasestorage.googleapis.com");
 }
 
@@ -32,23 +39,12 @@ function replaceImageSrc(editor: Editor, oldSrc: string, newSrc: string): void {
   }
 }
 
-async function uploadBlobSrc(lessonId: string, src: string): Promise<string> {
+async function uploadBlobSrc(uploadFile: ContentImageUploaders["uploadFile"], src: string): Promise<string> {
   const res = await fetch(src);
   const blob = await res.blob();
   const extension = blob.type.split("/")[1]?.split("+")[0] || "png";
-
-  const formData = new FormData();
-  formData.append("image", blob, `pasted.${extension}`);
-
-  const result = await uploadLessonContentImageAction(lessonId, formData);
-  if (!result.success || !result.data) throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
-  return result.data.url;
-}
-
-async function rehostRemoteSrc(lessonId: string, src: string): Promise<string> {
-  const result = await rehostLessonContentImageAction({ lessonId, sourceUrl: src });
-  if (!result.success || !result.data) throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
-  return result.data.url;
+  const file = new File([blob], `pasted.${extension}`, { type: blob.type || "image/png" });
+  return uploadFile(file);
 }
 
 /**
@@ -60,7 +56,7 @@ async function rehostRemoteSrc(lessonId: string, src: string): Promise<string> {
  */
 export async function processContentImages(
   editor: Editor,
-  lessonId: string,
+  uploaders: ContentImageUploaders,
   processedNodes: WeakSet<PMNode>,
   onError: (message: string) => void
 ): Promise<void> {
@@ -77,9 +73,10 @@ export async function processContentImages(
 
   for (const src of pending) {
     try {
-      const newUrl = src.startsWith("data:") || src.startsWith("blob:")
-        ? await uploadBlobSrc(lessonId, src)
-        : await rehostRemoteSrc(lessonId, src);
+      const newUrl =
+        src.startsWith("data:") || src.startsWith("blob:")
+          ? await uploadBlobSrc(uploaders.uploadFile, src)
+          : await uploaders.rehostUrl(src);
 
       replaceImageSrc(editor, src, newUrl);
       if (src.startsWith("blob:")) {

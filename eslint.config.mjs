@@ -19,6 +19,28 @@ const eslintConfig = defineConfig([
     "brain/**",
     "**/knowledge/**",
     "**/artifacts/**",
+    // Componentes/hooks instalados via `npx @tiptap/cli add simple-editor`
+    // ("install as source code", não um pacote versionado) — não são
+    // mantidos por nós, e várias das regras `react-hooks/*` mais novas
+    // (leitura de ref durante o render, setState síncrono em Effect) não
+    // passam no código deles como vem do template oficial. `simple-editor.tsx`
+    // (o único arquivo aqui que de fato editamos) já foi corrigido e continua
+    // no lint normal — só o resto do pacote fica de fora.
+    "components/tiptap-icons/**",
+    "components/tiptap-node/**",
+    "components/tiptap-ui/**",
+    "components/tiptap-ui-primitive/**",
+    "hooks/use-composed-ref.ts",
+    "hooks/use-cursor-visibility.ts",
+    "hooks/use-element-rect.ts",
+    "hooks/use-is-breakpoint.ts",
+    "hooks/use-menu-navigation.ts",
+    "hooks/use-scrolling.ts",
+    "hooks/use-throttled-callback.ts",
+    "hooks/use-tiptap-editor.ts",
+    "hooks/use-unmount.ts",
+    "hooks/use-window-size.ts",
+    "lib/tiptap-utils.ts",
   ]),
 ]);
 

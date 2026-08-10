@@ -190,3 +190,15 @@ export const GetStudentCallAccessSchema = z.object({
 export const GetBoardAuthTokenSchema = z.object({
   recordId: z.uuid(),
 });
+
+/** Baixa (no servidor) uma imagem externa colada no board e reenvia pro nosso Storage. */
+export const RehostBoardContentImageSchema = z.object({
+  recordId: z.uuid(),
+  sourceUrl: z.url('URL de imagem inválida'),
+});
+
+/** Apaga do Storage as imagens do board que foram removidas do editor ao salvar. */
+export const DeleteBoardContentImagesSchema = z.object({
+  recordId: z.uuid(),
+  imageUrls: z.array(z.string()).max(50),
+});

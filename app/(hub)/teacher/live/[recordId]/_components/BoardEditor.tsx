@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { ImageResize } from "tiptap-extension-resize-image";
-import { Bold, Check, Italic, List, ListOrdered, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { saveBoardContentAction } from "@/modules/class/class.actions";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
+import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
+import type { ContentImageUploaders } from "@/components/editor/content-image-sync";
+import { findRemovedOwnImages } from "@/components/editor/content-image-sync";
+import {
+  saveBoardContentAction,
+  uploadBoardContentImageAction,
+  rehostBoardContentImageAction,
+  deleteBoardContentImagesAction,
+} from "@/modules/class/class.actions";
 import { pushBoardContent } from "@/lib/realtime-board";
 
 interface BoardEditorProps {
   recordId: string;
-  /**
-   * Ponto de partida: `class_records.boardContent` se já existir, senão uma
-   * CÓPIA de `lessons.content` (ver TeacherClassRoom) — o professor edita
-   * livremente a partir daí. Editar aqui nunca volta a afetar o material
-   * canônico nem outras turmas.
-   */
   initialContent: string | null;
 }
 
@@ -29,40 +27,85 @@ const AUTOSAVE_DELAY_MS = 1500;
 const LIVE_PUSH_DELAY_MS = 300;
 
 /**
- * Único editor da sala de aula (não faz sentido mostrar o material original
- * em somente-leitura ao lado de uma cópia editável dele — dois TipTap
- * duplicados na mesma tela). Extensões espelham `LessonEditor`/
- * `LessonContentView`: como o conteúdo inicial pode vir de uma cópia do
- * material da lição (que pode ter imagens), precisa do `ImageResize` também.
+ * Editor de anotações da aula ao vivo — usa o `SimpleEditor` compartilhado
+ * (ver `components/tiptap-templates/simple/simple-editor.tsx`) com upload
+ * real de imagem coladas/arrastadas (Firebase Storage, via
+ * `classService.uploadBoardContentImage`).
  */
 export function BoardEditor({ recordId, initialContent }: BoardEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Conteúdo salvo mais recentemente no Postgres — usado só pra descobrir
+  // quais imagens saíram do texto entre um autosave e o próximo.
+  const lastSavedContentRef = useRef(initialContent || "<p></p>");
+  // Enquanto > 0, o autosave e o push ao vivo esperam: salvar/publicar uma
+  // imagem colada ainda como blob local (antes do upload em segundo plano
+  // terminar) gravaria uma URL que não sobrevive a um F5, e pro aluno seria
+  // uma imagem quebrada até o upload terminar. `processContentImages`
+  // dispara outro `onChange` assim que troca pela URL final, então o
+  // autosave/push são reagendados sozinhos — não fica preso esperando.
+  const pendingUploadsRef = useRef(0);
 
-  const editor = useEditor({
-    extensions: [StarterKit, ImageResize.configure({ minWidth: 80, maxWidth: 700 })],
-    content: initialContent || "<p></p>",
-    immediatelyRender: false,
-    onUpdate: ({ editor }) => {
-      setSaveState("saving");
-
-      if (liveTimerRef.current) clearTimeout(liveTimerRef.current);
-      liveTimerRef.current = setTimeout(() => {
-        pushBoardContent(recordId, editor.getHTML());
-      }, LIVE_PUSH_DELAY_MS);
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        void save(editor.getHTML());
-      }, AUTOSAVE_DELAY_MS);
-    },
-  });
+  const uploaders = useMemo<ContentImageUploaders>(
+    () => ({
+      uploadFile: async (file) => {
+        pendingUploadsRef.current += 1;
+        try {
+          const formData = new FormData();
+          formData.append("image", file);
+          const result = await uploadBoardContentImageAction(recordId, formData);
+          if (!result.success || !result.data) {
+            throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
+          }
+          return result.data.url;
+        } finally {
+          pendingUploadsRef.current -= 1;
+        }
+      },
+      rehostUrl: async (sourceUrl) => {
+        pendingUploadsRef.current += 1;
+        try {
+          const result = await rehostBoardContentImageAction({ recordId, sourceUrl });
+          if (!result.success || !result.data) {
+            throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
+          }
+          return result.data.url;
+        } finally {
+          pendingUploadsRef.current -= 1;
+        }
+      },
+    }),
+    [recordId]
+  );
 
   async function save(html: string) {
     const result = await saveBoardContentAction({ recordId, boardContent: html });
     setSaveState(result.success ? "saved" : "error");
+    if (!result.success) return;
+
+    const removedImageUrls = findRemovedOwnImages(lastSavedContentRef.current, html);
+    lastSavedContentRef.current = html;
+    if (removedImageUrls.length > 0) {
+      await deleteBoardContentImagesAction({ recordId, imageUrls: removedImageUrls });
+    }
   }
+
+  const handleChange = (html: string) => {
+    setSaveState("saving");
+
+    if (liveTimerRef.current) clearTimeout(liveTimerRef.current);
+    liveTimerRef.current = setTimeout(() => {
+      if (pendingUploadsRef.current > 0) return;
+      pushBoardContent(recordId, html);
+    }, LIVE_PUSH_DELAY_MS);
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (pendingUploadsRef.current > 0) return;
+      void save(html);
+    }, AUTOSAVE_DELAY_MS);
+  };
 
   useEffect(() => {
     return () => {
@@ -73,68 +116,19 @@ export function BoardEditor({ recordId, initialContent }: BoardEditorProps) {
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2">
-        <div className="flex items-center gap-1">
-          <ToolbarButton
-            label="Negrito"
-            active={editor?.isActive("bold")}
-            onClick={() => editor?.chain().focus().toggleBold().run()}
-            icon={Bold}
-          />
-          <ToolbarButton
-            label="Itálico"
-            active={editor?.isActive("italic")}
-            onClick={() => editor?.chain().focus().toggleItalic().run()}
-            icon={Italic}
-          />
-          <ToolbarButton
-            label="Lista"
-            active={editor?.isActive("bulletList")}
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            icon={List}
-          />
-          <ToolbarButton
-            label="Lista numerada"
-            active={editor?.isActive("orderedList")}
-            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-            icon={ListOrdered}
-          />
-        </div>
-
+      <div className="flex shrink-0 items-center justify-end border-b border-slate-200 px-3 py-2">
         <SaveIndicator state={saveState} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
-        <EditorContent editor={editor} className="lesson-prose min-h-full p-4 text-sm scrollbar-hide" />
+      <div className="min-h-0 flex-1">
+        <SimpleEditor
+          content={initialContent || "<p></p>"}
+          onChange={handleChange}
+          uploaders={uploaders}
+          onImageUploadError={() => setSaveState("error")}
+        />
       </div>
     </div>
-  );
-}
-
-function ToolbarButton({
-  label,
-  active,
-  onClick,
-  icon: Icon,
-}: {
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-  icon: typeof Bold;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800",
-        active && "bg-amber-50 text-amber-700"
-      )}
-    >
-      <Icon className="h-4 w-4" />
-    </button>
   );
 }
 

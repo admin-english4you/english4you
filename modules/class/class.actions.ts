@@ -23,11 +23,16 @@ import {
   GetTeacherStudentDetailSchema,
   GetStudentCallAccessSchema,
   GetBoardAuthTokenSchema,
+  RehostBoardContentImageSchema,
+  DeleteBoardContentImagesSchema,
 } from "./class.schema";
 import { classService } from "./class.service";
 import { getCurrentUser } from "@/lib/auth-server";
-import { createSafeAction } from "@/lib/safe-action";
+import { createSafeAction, ActionResult } from "@/lib/safe-action";
 import { AppError } from "@/lib/errors";
+
+const CONTENT_IMAGE_SIZE_LIMIT = 15 * 1024 * 1024; // 15MB
+const ACCEPTED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp"];
 
 /**
  * Server Action para criar uma nova turma (nome, nível e horário).
@@ -295,6 +300,82 @@ export async function saveBoardContentAction(input: z.infer<typeof SaveBoardCont
 
     const result = await classService.updateRecordBoard(currentUser.id, data.recordId, data.boardContent);
     return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para subir uma imagem colada/arrastada diretamente no board
+ * da aula ao vivo (arquivo de clipboard, ou blob já convertido pelo client).
+ * Mesmo padrão de `uploadLessonContentImageAction`.
+ */
+export async function uploadBoardContentImageAction(
+  recordId: string,
+  formData: FormData
+): Promise<ActionResult<{ url: string }>> {
+  try {
+    const file = formData.get("image") as File | null;
+    if (!file || file.size === 0) {
+      throw new AppError("Nenhuma imagem enviada.");
+    }
+
+    if (file.size > CONTENT_IMAGE_SIZE_LIMIT) {
+      throw new AppError(`A imagem deve ter no máximo ${CONTENT_IMAGE_SIZE_LIMIT / (1024 * 1024)}MB.`);
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (extension && !ACCEPTED_IMAGE_EXTENSIONS.includes(extension)) {
+      throw new AppError(`Formato de imagem não suportado. Use: ${ACCEPTED_IMAGE_EXTENSIONS.join(", ")}.`);
+    }
+
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const url = await classService.uploadBoardContentImage(currentUser.id, recordId, file);
+    return { success: true, data: { url } };
+  } catch (err: unknown) {
+    console.error("Action error:", err);
+    if (err instanceof AppError) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Ocorreu um erro interno no servidor. Tente novamente." };
+  }
+}
+
+/**
+ * Server Action para baixar (no servidor) uma imagem externa colada no board
+ * e reenviá-la para o nosso Storage, evitando depender de um host de terceiros.
+ */
+export async function rehostBoardContentImageAction(input: z.infer<typeof RehostBoardContentImageSchema>) {
+  const safeAction = createSafeAction(RehostBoardContentImageSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const url = await classService.rehostBoardContentImage(currentUser.id, data.recordId, data.sourceUrl);
+    return { url };
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para apagar do Storage as imagens do board que foram
+ * removidas do editor (chamada ao salvar as anotações da aula).
+ */
+export async function deleteBoardContentImagesAction(input: z.infer<typeof DeleteBoardContentImagesSchema>) {
+  const safeAction = createSafeAction(DeleteBoardContentImagesSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await classService.deleteBoardContentImages(currentUser.id, data.recordId, data.imageUrls);
+    return { deleted: data.imageUrls.length };
   });
 
   return safeAction(input);

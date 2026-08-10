@@ -2,7 +2,7 @@ import { lessonRepository } from './lesson.repository';
 import { Lesson, LessonStatus, CreateLessonInput } from './lesson.types';
 import { Role } from '@/modules/user/user.types';
 import { AppError } from '@/lib/errors';
-import { adminStorage } from '@/lib/firebase-admin';
+import { uploadBufferToStorage, deleteStorageFileByUrl, fetchExternalImage } from '@/lib/storage-upload';
 import { practiceService } from '@/modules/practice/practice.service';
 import crypto from 'crypto';
 
@@ -11,64 +11,6 @@ function assertAdmin(actingRole: Role) {
     throw new AppError('Apenas administradores podem gerenciar lições.');
   }
 }
-
-function storageUrlPrefix(bucketName: string): string {
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`;
-}
-
-/** Sobe um buffer para um caminho do Storage e retorna a URL pública (com download token). */
-async function uploadBufferToStorage(filePath: string, buffer: Buffer, contentType: string): Promise<string> {
-  if (!adminStorage) {
-    throw new AppError('Serviço de Storage não configurado no servidor.');
-  }
-
-  const bucket = adminStorage.bucket();
-  const fileRef = bucket.file(filePath);
-  const downloadToken = crypto.randomUUID();
-
-  await fileRef.save(buffer, {
-    metadata: {
-      contentType,
-      cacheControl: 'public, max-age=31536000',
-      metadata: {
-        firebaseStorageDownloadTokens: downloadToken,
-      },
-    },
-  });
-
-  return `${storageUrlPrefix(bucket.name)}${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
-}
-
-/** Apaga (best-effort) um arquivo do Storage a partir da sua URL pública. Não lança em caso de falha. */
-async function deleteStorageFileByUrl(url: string): Promise<void> {
-  if (!adminStorage) return;
-
-  const bucket = adminStorage.bucket();
-  const prefix = storageUrlPrefix(bucket.name);
-  if (!url.startsWith(prefix)) return;
-
-  const parts = url.split('/o/');
-  if (parts.length < 2) return;
-
-  const filePath = decodeURIComponent(parts[1].split('?')[0]);
-  try {
-    const fileRef = bucket.file(filePath);
-    const [exists] = await fileRef.exists();
-    if (exists) {
-      await fileRef.delete();
-    }
-  } catch (err) {
-    console.error('Erro ao deletar arquivo do Firebase Storage:', err);
-  }
-}
-
-const CONTENT_IMAGE_EXTENSION_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-};
 
 /**
  * Travas de conteúdo para DISABLED/IN_PROGRESS -> ACTIVE: bloqueia enquanto
@@ -225,20 +167,7 @@ export const lessonService = {
   async rehostContentImage(actingRole: Role, lessonId: string, sourceUrl: string): Promise<string> {
     assertAdmin(actingRole);
 
-    const res = await fetch(sourceUrl);
-    if (!res.ok) {
-      throw new AppError('Não foi possível baixar a imagem colada.');
-    }
-
-    const contentType = res.headers.get('content-type') ?? '';
-    if (!contentType.startsWith('image/')) {
-      throw new AppError('O conteúdo colado não é uma imagem válida.');
-    }
-
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const extensionFromType = contentType.split('/')[1]?.split('+')[0] ?? 'png';
-    const extension = CONTENT_IMAGE_EXTENSION_MIME[extensionFromType] ? extensionFromType : 'png';
+    const { buffer, contentType, extension } = await fetchExternalImage(sourceUrl);
     const filePath = `lessons/${lessonId}/content_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${extension}`;
 
     return await uploadBufferToStorage(filePath, buffer, contentType);

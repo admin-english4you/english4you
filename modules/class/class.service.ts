@@ -34,6 +34,8 @@ import {
 import { notificationService } from '@/modules/notification/notification.service';
 import { sendClassRecordingEmail } from '@/lib/resend';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { uploadBufferToStorage, deleteStorageFileByUrl, fetchExternalImage } from '@/lib/storage-upload';
+import crypto from 'crypto';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
 
@@ -622,6 +624,60 @@ export const classService = {
     }
 
     return await classRepository.updateRecordBoard(recordId, boardContent);
+  },
+
+  /**
+   * Sobe uma imagem colada/arrastada diretamente no board da aula (clipboard
+   * ou blob já convertido pelo client) e devolve a URL pública. Mesmo padrão
+   * de `lessonService.uploadContentImage`, só que guardada sob
+   * `class-boards/{recordId}/` em vez de `lessons/{lessonId}/` — não mexe em
+   * `boardContent`, quem embute a URL no HTML é o editor.
+   */
+  async uploadBoardContentImage(teacherUserId: string, recordId: string, file: File): Promise<string> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para editar esta aula.');
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+    const filePath = `class-boards/${recordId}/content_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${extension}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    return await uploadBufferToStorage(filePath, buffer, file.type || 'image/png');
+  },
+
+  /** Baixa uma imagem externa colada no board e reenvia pro nosso Storage — mesmo motivo de `lessonService.rehostContentImage`. */
+  async rehostBoardContentImage(teacherUserId: string, recordId: string, sourceUrl: string): Promise<string> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para editar esta aula.');
+    }
+
+    const { buffer, contentType, extension } = await fetchExternalImage(sourceUrl);
+    const filePath = `class-boards/${recordId}/content_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${extension}`;
+    return await uploadBufferToStorage(filePath, buffer, contentType);
+  },
+
+  /** Apaga (best-effort) imagens do board que foram removidas do editor, só as desta aula. */
+  async deleteBoardContentImages(teacherUserId: string, recordId: string, imageUrls: string[]): Promise<void> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para editar esta aula.');
+    }
+
+    const ownImages = imageUrls.filter((url) => url.includes(`/class-boards%2F${recordId}%2Fcontent_`));
+    await Promise.all(ownImages.map((url) => deleteStorageFileByUrl(url)));
   },
 
   /**

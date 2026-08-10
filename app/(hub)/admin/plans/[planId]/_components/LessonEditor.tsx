@@ -1,21 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { ImageResize } from "tiptap-extension-resize-image";
-import type { Node as PMNode } from "@tiptap/pm/model";
 import { z } from "zod";
 import {
-  Bold,
-  Italic,
-  Underline as UnderlineIcon,
-  List,
-  ListOrdered,
-  Link2,
   Save,
   Sparkles,
   Loader2,
@@ -28,6 +18,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
+import { findRemovedOwnImages, type ContentImageUploaders } from "@/components/editor/content-image-sync";
 import { Lesson } from "@/modules/lesson/lesson.types";
 import { LearningItem, QuizQuestion, QuizSectionType } from "@/modules/practice/practice.types";
 import { LESSON_STATUS_LABELS, LESSON_STATUS_STYLES } from "@/modules/lesson/lesson.utils";
@@ -36,6 +28,8 @@ import {
   updateLessonMediaAction,
   clearLessonMediaAction,
   updateLessonStatusAction,
+  uploadLessonContentImageAction,
+  rehostLessonContentImageAction,
   deleteLessonContentImagesAction,
 } from "@/modules/lesson/lesson.actions";
 import {
@@ -47,7 +41,6 @@ import {
 } from "@/modules/practice/practice.actions";
 import { LearningItemDetailModal } from "./LearningItemDetailModal";
 import { QuizQuestionDetailModal } from "./QuizQuestionDetailModal";
-import { processContentImages, findRemovedOwnImages } from "./content-image-upload";
 
 interface LessonEditorProps {
   planId: string;
@@ -239,16 +232,9 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
 
   const audioInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const processedImageNodesRef = useRef<WeakSet<PMNode>>(new WeakSet());
-  // Ponte entre handlePaste e transformPastedHTML (ambos chamados de forma
-  // síncrona dentro do mesmo evento de colar): guarda os arquivos de imagem
-  // reais do clipboard (se houver) para o transformPastedHTML trocar cada
-  // referência quebrada "file://" no HTML colado pela imagem de verdade —
-  // ou por um aviso, quando nem o clipboard tem os bytes da imagem
-  // (limitação do navegador: uma página nunca consegue ler um caminho local
-  // "file://" diretamente, então sem os bytes no clipboard não há como
-  // recuperar essa imagem automaticamente).
-  const pendingPasteImageFilesRef = useRef<File[]>([]);
+  // Conteúdo atual do editor — a fonte de verdade pra salvar (`onSave`) é
+  // este state, não `lesson.content`, que só reflete o que já está no banco.
+  const [content, setContent] = useState(lesson.content || "<p></p>");
 
   const {
     register,
@@ -259,83 +245,27 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
     defaultValues: { title: lesson.title, level: lesson.level, transcript: lesson.transcript ?? "" },
   });
 
-  const editor = useEditor({
-    extensions: [StarterKit, ImageResize.configure({ minWidth: 80, maxWidth: 700 })],
-    content: lesson.content || "<p></p>",
-    immediatelyRender: false,
-    onUpdate: ({ editor }) => {
-      void processContentImages(editor, lesson.id, processedImageNodesRef.current, setImageUploadError);
-    },
-    editorProps: {
-      handlePaste: (view, event) => {
-        const items = event.clipboardData?.items;
-        const hasHtml = event.clipboardData?.types.includes("text/html");
-
-        const imageFiles = items
-          ? Array.from(items)
-              .filter((item) => item.type.startsWith("image/"))
-              .map((item) => item.getAsFile())
-              .filter((file): file is File => Boolean(file))
-          : [];
-
-        if (!hasHtml) {
-          if (imageFiles.length === 0) return false;
-          // Paste de imagem "pura" (ex: screenshot), sem HTML acompanhando.
-          event.preventDefault();
-          for (const file of imageFiles) {
-            const objectUrl = URL.createObjectURL(file);
-            const node = view.state.schema.nodes.imageResize.create({ src: objectUrl });
-            view.dispatch(view.state.tr.replaceSelectionWith(node));
-          }
-          return true;
+  const uploaders = useMemo<ContentImageUploaders>(
+    () => ({
+      uploadFile: async (file) => {
+        const formData = new FormData();
+        formData.append("image", file);
+        const result = await uploadLessonContentImageAction(lesson.id, formData);
+        if (!result.success || !result.data) {
+          throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
         }
-
-        // Deixa o HTML colar normalmente (retornando false); o
-        // transformPastedHTML abaixo cuida de qualquer referência "file://"
-        // quebrada usando os arquivos reais do clipboard, se houver.
-        pendingPasteImageFilesRef.current = imageFiles;
-        return false;
+        return result.data.url;
       },
-      transformPastedHTML: (html) => {
-        const files = pendingPasteImageFilesRef.current;
-        pendingPasteImageFilesRef.current = [];
-        if (!/file:\/\//i.test(html)) return html;
-
-        let index = 0;
-        return html.replace(/<img\b[^>]*\ssrc=(["'])file:\/\/.*?\1[^>]*>/gi, () => {
-          const file = files[index];
-          index += 1;
-          if (file) {
-            const objectUrl = URL.createObjectURL(file);
-            return `<img src="${objectUrl}">`;
-          }
-          // O clipboard não trouxe os bytes da imagem, só o caminho local
-          // (o navegador nunca consegue ler um "file://" de outra origem) —
-          // não há como recuperar essa imagem automaticamente.
-          return '<span data-pasted-image-unavailable="true" style="display:inline-block;padding:2px 8px;border:1px dashed #cbd5e1;border-radius:4px;color:#94a3b8;font-size:12px;">[imagem colada não pôde ser importada — copie a imagem sozinha ou arraste o arquivo aqui]</span>';
-        });
-      },
-      handleDrop: (view, event) => {
-        const files = event.dataTransfer?.files;
-        if (!files || files.length === 0) return false;
-        const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
-        if (imageFiles.length === 0) return false;
-
-        event.preventDefault();
-        const coords = { left: event.clientX, top: event.clientY };
-        const dropPos = view.posAtCoords(coords)?.pos ?? view.state.selection.to;
-
-        let tr = view.state.tr;
-        for (const file of imageFiles) {
-          const objectUrl = URL.createObjectURL(file);
-          const node = view.state.schema.nodes.imageResize.create({ src: objectUrl });
-          tr = tr.insert(dropPos, node);
+      rehostUrl: async (sourceUrl) => {
+        const result = await rehostLessonContentImageAction({ lessonId: lesson.id, sourceUrl });
+        if (!result.success || !result.data) {
+          throw new Error(!result.success ? result.error : "Falha ao enviar imagem.");
         }
-        view.dispatch(tr);
-        return true;
+        return result.data.url;
       },
-    },
-  });
+    }),
+    [lesson.id]
+  );
 
   const pendingCount = learningItems.filter((i) => i.reviewStatus === "PENDING").length;
   const pendingQuestionCount = quizQuestions.filter((q) => q.reviewStatus === "PENDING").length;
@@ -365,7 +295,6 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
 
   const onSave = (data: LessonFormInput) => {
     setSaveError(null);
-    const content = editor?.getHTML() ?? "";
     const removedImageUrls = findRemovedOwnImages(lesson.content, content);
 
     startSaveTransition(async () => {
@@ -481,40 +410,13 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
             {imageUploadError && (
               <p className="text-[11px] text-rose-600 mb-1.5">{imageUploadError}</p>
             )}
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-sm">
-              <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 flex flex-wrap items-center gap-1">
-                <button type="button" onClick={() => editor?.chain().focus().toggleBold().run()} className={`p-1.5 rounded transition-colors ${editor?.isActive("bold") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}>
-                  <Bold className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => editor?.chain().focus().toggleItalic().run()} className={`p-1.5 rounded transition-colors ${editor?.isActive("italic") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}>
-                  <Italic className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => editor?.chain().focus().toggleUnderline().run()} className={`p-1.5 rounded transition-colors ${editor?.isActive("underline") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}>
-                  <UnderlineIcon className="w-4 h-4" />
-                </button>
-                <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                <button type="button" onClick={() => editor?.chain().focus().toggleBulletList().run()} className={`p-1.5 rounded transition-colors ${editor?.isActive("bulletList") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}>
-                  <List className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => editor?.chain().focus().toggleOrderedList().run()} className={`p-1.5 rounded transition-colors ${editor?.isActive("orderedList") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}>
-                  <ListOrdered className="w-4 h-4" />
-                </button>
-                <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = window.prompt("URL do link:");
-                    if (url) editor?.chain().focus().setLink({ href: url }).run();
-                  }}
-                  className={`p-1.5 rounded transition-colors ${editor?.isActive("link") ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-200"}`}
-                >
-                  <Link2 className="w-4 h-4" />
-                </button>
-              </div>
-              {/* `lesson-prose` é a mesma classe do leitor do aluno — sem ela o
-                  preflight do Tailwind achata h1/ul/ol e o que o admin escreve
-                  não é o que o aluno vê. */}
-              <EditorContent editor={editor} className="lesson-prose min-h-[260px] p-4" />
+            <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-sm h-[420px]">
+              <SimpleEditor
+                content={lesson.content || "<p></p>"}
+                onChange={setContent}
+                uploaders={uploaders}
+                onImageUploadError={setImageUploadError}
+              />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
               Imagens coladas ou arrastadas no conteúdo são enviadas automaticamente para o servidor. Clique numa imagem para redimensioná-la ou movê-la. Se colar de um documento (Word/Docs) e a imagem não aparecer, tente copiar a imagem sozinha (clique direito nela → Copiar) ou arraste o arquivo direto para aqui.

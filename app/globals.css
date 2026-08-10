@@ -1,3 +1,6 @@
+@import '../styles/_variables.scss';
+@import '../styles/_keyframe-animations.scss';
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -192,8 +195,32 @@
   .lesson-prose h3 {
     @apply text-lg font-semibold mt-4 mb-2 text-slate-900 first:mt-0;
   }
+  .lesson-prose h4 {
+    @apply text-base font-semibold mt-3 mb-2 text-slate-900 first:mt-0;
+  }
   .lesson-prose p {
     @apply my-3;
+  }
+  .lesson-prose mark {
+    @apply rounded-sm px-0.5;
+  }
+  /* Alvo de `ul[data-type="taskList"]`: mesmo nó do TipTap TaskList/TaskItem,
+     não a lista com marcador (`.lesson-prose ul` acima) — sem isto, os itens
+     de checklist herdavam bolinha E checkbox ao mesmo tempo. */
+  .lesson-prose ul[data-type="taskList"] {
+    @apply list-none pl-0 my-3 space-y-1.5;
+  }
+  .lesson-prose ul[data-type="taskList"] li {
+    @apply flex items-start gap-2;
+  }
+  .lesson-prose ul[data-type="taskList"] li > label {
+    @apply mt-1 shrink-0;
+  }
+  .lesson-prose ul[data-type="taskList"] li > div {
+    @apply flex-1;
+  }
+  .lesson-prose ul[data-type="taskList"] li[data-checked="true"] > div {
+    @apply text-slate-400 line-through;
   }
   .lesson-prose strong {
     @apply font-semibold text-slate-900;
