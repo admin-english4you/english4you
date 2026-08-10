@@ -1,7 +1,19 @@
 "use client";
 
-import { ParticipantView, useCallStateHooks } from "@stream-io/video-react-sdk";
+import { ParticipantView, useCallStateHooks, type StreamVideoParticipant } from "@stream-io/video-react-sdk";
 import { hasScreenShare } from "@stream-io/video-client";
+
+interface ParticipantGridProps {
+  /**
+   * No MOBILE, mostra só um tile — o compartilhamento de tela em andamento
+   * (se houver) ou este usuário (o professor, no caso do aluno) — em vez da
+   * grade completa. Numa tela pequena, ver a si mesmo e os colegas junto do
+   * professor só atrapalha; o que importa é ver a aula. Sem este prop (ex:
+   * painel do professor), o mobile mostra a grade completa igual ao
+   * desktop, que continua sempre com a grade completa de qualquer forma.
+   */
+  mobileFocusUserId?: string;
+}
 
 /**
  * Grade de tiles com vídeo/áudio reais dos participantes conectados.
@@ -20,7 +32,7 @@ import { hasScreenShare } from "@stream-io/video-client";
  * pedido só acontece se a gente já tivesse decidido renderizar o tile, um
  * impasse que nunca se resolve sozinho. `hasScreenShare` quebra esse ciclo.
  */
-export function ParticipantGrid() {
+export function ParticipantGrid({ mobileFocusUserId }: ParticipantGridProps) {
   const { useParticipants } = useCallStateHooks();
   const participants = useParticipants();
 
@@ -34,23 +46,38 @@ export function ParticipantGrid() {
 
   const presenter = participants.find(hasScreenShare);
 
+  const mobileFocus: StreamVideoParticipant | null = mobileFocusUserId
+    ? (presenter ?? participants.find((p) => p.userId === mobileFocusUserId) ?? participants[0])
+    : null;
+
   return (
     <div className="flex h-full flex-col gap-2 p-2">
-      {presenter && (
-        <div className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-          <ParticipantView participant={presenter} trackType="screenShareTrack" />
+      {mobileFocus && (
+        <div className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-950 lg:hidden">
+          <ParticipantView
+            participant={mobileFocus}
+            trackType={mobileFocus === presenter ? "screenShareTrack" : "videoTrack"}
+          />
         </div>
       )}
 
-      <div className={presenter ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
-        {participants.map((participant) => (
-          <div
-            key={participant.sessionId}
-            className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
-          >
-            <ParticipantView participant={participant} />
+      <div className={mobileFocus ? "hidden lg:flex lg:flex-1 lg:flex-col lg:gap-2" : "flex flex-1 flex-col gap-2"}>
+        {presenter && (
+          <div className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+            <ParticipantView participant={presenter} trackType="screenShareTrack" />
           </div>
-        ))}
+        )}
+
+        <div className={presenter ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
+          {participants.map((participant) => (
+            <div
+              key={participant.sessionId}
+              className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
+            >
+              <ParticipantView participant={participant} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

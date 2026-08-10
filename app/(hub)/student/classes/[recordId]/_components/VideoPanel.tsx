@@ -21,6 +21,8 @@ interface VideoPanelProps {
   callEnded: boolean;
   recordingUrls: string[];
   teacherName: string | null;
+  /** Id do professor (mesmo `user_id` usado no Stream, ver `buildCallAccess`) — usado pra focar só nele no mobile dentro da call (ver `ParticipantGrid`). */
+  teacherUserId: string | null;
   participants: ClassmateSummary[];
   selfId: string;
   selfName: string;
@@ -52,6 +54,7 @@ export function VideoPanel({
   callEnded,
   recordingUrls,
   teacherName,
+  teacherUserId,
   participants,
   selfId,
   selfName,
@@ -179,7 +182,7 @@ export function VideoPanel({
             onLeft={handleLeft}
           >
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <ParticipantGrid />
+              <ParticipantGrid mobileFocusUserId={teacherUserId ?? undefined} />
             </div>
             <CallControlsBar showLeave />
           </CallRoom>

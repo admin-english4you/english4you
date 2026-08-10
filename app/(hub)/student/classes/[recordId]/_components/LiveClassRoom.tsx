@@ -87,7 +87,7 @@ export function LiveClassRoom({
         <aside
           className={cn(
             "order-1 min-h-0 border-slate-800 lg:order-2 lg:col-span-1 lg:block lg:h-full lg:border-l",
-            isCallActive ? "block h-auto border-b" : "hidden"
+            isCallActive ? "block border-b" : "hidden"
           )}
         >
           <button
@@ -111,7 +111,24 @@ export function LiveClassRoom({
             {videoOpenMobile ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
 
-          <div className={cn("h-full", videoOpenMobile ? "block" : "hidden lg:block")}>
+          {/*
+            `hidden`/`block` sozinhos não bastam aqui: o filho da VideoPanel
+            usa `h-full` (e por dentro, `flex-1`) esperando um ancestral com
+            altura DEFINIDA — mas no mobile este `<div>` não tinha altura
+            nenhuma declarada (só "block"), então a cadeia de porcentagens
+            resolvia como "auto" e o resultado virava imprevisível: às vezes
+            uma caixa vazia enorme mesmo recolhida, às vezes esticava além da
+            viewport e empurrava os controles da chamada pra fora da tela.
+            `h-0`/`h-[Xvh]` são alturas EXPLÍCITAS — resolvem a cadeia
+            corretamente nos dois estados, sem esse limbo. No desktop
+            (`lg:h-full`), nada muda: mesmo comportamento de sempre.
+          */}
+          <div
+            className={cn(
+              "overflow-hidden lg:h-full lg:overflow-visible",
+              videoOpenMobile ? "h-[65vh]" : "h-0"
+            )}
+          >
             <VideoPanel
               classRecordId={record.id}
               initialCallAccess={initialCallAccess}
@@ -119,6 +136,7 @@ export function LiveClassRoom({
               callEnded={record.completed}
               recordingUrls={record.recordingUrls}
               teacherName={record.effectiveTeacher?.name ?? null}
+              teacherUserId={record.effectiveTeacher?.id ?? null}
               participants={record.classmates}
               selfId={selfId}
               selfName={selfName}
