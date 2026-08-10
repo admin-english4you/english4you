@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "class-boards": {
+      "$recordId": {
+        "content": {
+          ".read": "auth != null && root.child('class-boards/' + $recordId + '/members/' + auth.uid).exists()",
+          ".write": "auth != null && root.child('class-boards/' + $recordId + '/members/' + auth.uid).exists()",
+          ".validate": "newData.isString() && newData.val().length < 200000"
+        },
+        "members": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    }
+  }
+}

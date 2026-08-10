@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toDayKey } from "@/lib/date";
 import type { StudentClassRecordDetail } from "@/modules/class/class.types";
 import type { CallAccess } from "@/lib/stream-server";
+import { subscribeToBoardContent } from "@/lib/realtime-board";
 import { ClassRoomTopBar } from "./ClassRoomTopBar";
 import { LessonReader } from "@/components/lesson/LessonReader";
 import { VideoPanel } from "./VideoPanel";
@@ -34,6 +35,18 @@ export function LiveClassRoom({
   const lesson = record.lesson;
   const isLive = toDayKey(record.date) === todayKey;
 
+  // Ponto de partida: o que já estava salvo (`boardContent`, ou o material
+  // canônico se o professor nunca editou nada ainda) — dali em diante, o
+  // canal ao vivo do RTDB assume (ver BoardEditor.tsx, que publica lá a cada
+  // edição do professor). Sem infra de realtime além disso: se o RTDB não
+  // estiver configurado, `subscribeToBoardContent` simplesmente não emite
+  // nada, e o aluno continua vendo este valor inicial normalmente.
+  const [liveContent, setLiveContent] = useState(record.boardContent || lesson?.content || "");
+
+  useEffect(() => {
+    return subscribeToBoardContent(record.id, setLiveContent);
+  }, [record.id]);
+
   return (
     <div className="flex h-screen flex-col">
       <ClassRoomTopBar
@@ -54,7 +67,7 @@ export function LiveClassRoom({
           <LessonReader
             title={lesson?.title ?? "Aula"}
             level={lesson?.level ?? record.classGroup.level}
-            html={lesson?.content ?? ""}
+            html={liveContent}
             audioUrl={lesson?.audioUrl ?? null}
             videoUrl={lesson?.videoUrl ?? null}
           />

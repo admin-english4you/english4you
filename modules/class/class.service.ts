@@ -33,6 +33,7 @@ import {
 } from '@/lib/stream-server';
 import { notificationService } from '@/modules/notification/notification.service';
 import { sendClassRecordingEmail } from '@/lib/resend';
+import { adminDb } from '@/lib/firebase-admin';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
 
@@ -193,6 +194,25 @@ async function closeIfExpired(record: ClassRecord): Promise<ClassRecord> {
   return await classRepository.updateRecordCompleted(record.id, true);
 }
 
+/**
+ * Espelha quem pode ler/escrever o board ao vivo desta aula no Realtime
+ * Database — só a lista de ids gravada aqui pelo servidor (via Admin SDK,
+ * que ignora as regras) é que as regras em database.rules.json aceitam como
+ * membro; o client nunca escreve este nó diretamente. Best-effort: refeito a
+ * cada leitura da aula (self-healing se um aluno for removido/adicionado
+ * depois), nunca lança se o RTDB não estiver configurado.
+ */
+async function syncBoardMembers(recordId: string, memberIds: string[]): Promise<void> {
+  if (!adminDb) return;
+  const members: Record<string, true> = {};
+  for (const id of memberIds) members[id] = true;
+  try {
+    await adminDb.ref(`class-boards/${recordId}/members`).set(members);
+  } catch {
+    // Best-effort — ver docblock acima.
+  }
+}
+
 /** Titular OU substituto: substituto (record.teacherId) tem precedência sobre o titular da turma. */
 function isTeacherOfRecord(teacherId: string, record: ClassRecord, classGroup: ClassGroup): boolean {
   return record.teacherId === teacherId || (!record.teacherId && classGroup.teacherId === teacherId);
@@ -307,6 +327,13 @@ export const classService = {
       hydrateRecords([record]),
       userService.getClassmatesForStudent(studentUserId),
       classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
+    ]);
+
+    const effectiveTeacherId = record.teacherId ?? classGroup.teacherId;
+    await syncBoardMembers(recordId, [
+      student.id,
+      ...classmates.map((c) => c.id),
+      ...(effectiveTeacherId ? [effectiveTeacherId] : []),
     ]);
 
     return {
@@ -453,6 +480,9 @@ export const classService = {
       userService.getStudentsByClassGroupIdForTeacher(classGroup.id),
       classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
     ]);
+
+    const effectiveTeacherId = record.teacherId ?? classGroup.teacherId ?? teacher.id;
+    await syncBoardMembers(recordId, [effectiveTeacherId, ...students.map((s) => s.id)]);
 
     return {
       ...hydrated,

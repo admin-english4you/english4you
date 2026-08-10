@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { ImageResize } from "tiptap-extension-resize-image";
@@ -26,6 +27,17 @@ export function LessonContentView({ html, className }: LessonContentViewProps) {
     editable: false,
     immediatelyRender: false, // obrigatório com o SSR do Next
   });
+
+  // `useEditor` só usa `content` na criação — sem isto, um `html` que muda
+  // depois (ex: board ao vivo da sala do professor via RTDB) nunca chegaria
+  // na tela até o componente ser desmontado/remontado.
+  useEffect(() => {
+    if (!editor) return;
+    const next = html || "<p></p>";
+    if (editor.getHTML() !== next) {
+      editor.commands.setContent(next, { emitUpdate: false });
+    }
+  }, [editor, html]);
 
   return <EditorContent editor={editor} className={cn("lesson-prose", className)} />;
 }

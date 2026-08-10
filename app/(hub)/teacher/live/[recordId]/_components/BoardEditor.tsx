@@ -7,6 +7,7 @@ import { ImageResize } from "tiptap-extension-resize-image";
 import { Bold, Check, Italic, List, ListOrdered, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { saveBoardContentAction } from "@/modules/class/class.actions";
+import { pushBoardContent } from "@/lib/realtime-board";
 
 interface BoardEditorProps {
   recordId: string;
@@ -22,6 +23,10 @@ interface BoardEditorProps {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DELAY_MS = 1500;
+// Bem mais curto que o autosave no Postgres: é o que dá a sensação de "ao
+// vivo" pros alunos — RTDB é cobrado por banda, não por operação, então dá
+// pra ser generoso aqui sem custo relevante nessa escala.
+const LIVE_PUSH_DELAY_MS = 300;
 
 /**
  * Único editor da sala de aula (não faz sentido mostrar o material original
@@ -33,6 +38,7 @@ const AUTOSAVE_DELAY_MS = 1500;
 export function BoardEditor({ recordId, initialContent }: BoardEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useEditor({
     extensions: [StarterKit, ImageResize.configure({ minWidth: 80, maxWidth: 700 })],
@@ -40,6 +46,12 @@ export function BoardEditor({ recordId, initialContent }: BoardEditorProps) {
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       setSaveState("saving");
+
+      if (liveTimerRef.current) clearTimeout(liveTimerRef.current);
+      liveTimerRef.current = setTimeout(() => {
+        pushBoardContent(recordId, editor.getHTML());
+      }, LIVE_PUSH_DELAY_MS);
+
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         void save(editor.getHTML());
@@ -55,6 +67,7 @@ export function BoardEditor({ recordId, initialContent }: BoardEditorProps) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (liveTimerRef.current) clearTimeout(liveTimerRef.current);
     };
   }, []);
 
