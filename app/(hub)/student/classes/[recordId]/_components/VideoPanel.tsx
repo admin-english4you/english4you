@@ -25,6 +25,13 @@ interface VideoPanelProps {
   selfId: string;
   selfName: string;
   selfAvatarUrl: string | null;
+  /**
+   * Avisa o pai (LiveClassRoom) toda vez que `callAccess` muda — é a fonte de
+   * verdade mais fresca de "há uma chamada pra entrar agora" (atualizada pelo
+   * poll abaixo), usada só pra decidir se a gaveta de vídeo do MOBILE deve
+   * aparecer. No desktop o painel sempre aparece, então isto é ignorado lá.
+   */
+  onCallActiveChange?: (active: boolean) => void;
 }
 
 const POLL_INTERVAL_MS = 5000;
@@ -49,6 +56,7 @@ export function VideoPanel({
   selfId,
   selfName,
   selfAvatarUrl,
+  onCallActiveChange,
 }: VideoPanelProps) {
   const [callAccess, setCallAccess] = useState<CallAccess | null>(initialCallAccess);
   const [wasEverConnected, setWasEverConnected] = useState(false);
@@ -56,6 +64,10 @@ export function VideoPanel({
   // estava ao vivo no carregamento da página — nunca entra sozinho ligando
   // câmera/mic sem o aluno saber.
   const [wantsToJoin, setWantsToJoin] = useState(false);
+
+  useEffect(() => {
+    onCallActiveChange?.(!!callAccess);
+  }, [callAccess, onCallActiveChange]);
 
   useEffect(() => {
     // Só para de revalidar depois que o aluno ENTROU de fato na chamada

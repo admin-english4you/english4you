@@ -31,6 +31,14 @@ export function LiveClassRoom({
   // No mobile a chamada vira uma gaveta recolhível no topo, para o conteúdo
   // da lição não ficar espremido em telas pequenas.
   const [videoOpenMobile, setVideoOpenMobile] = useState(false);
+  // Fonte de verdade pra "há uma chamada pra entrar agora" (reportada pelo
+  // poll do VideoPanel, não pelo `record.completed` estático do carregamento
+  // da página) — enquanto não há call ativa, a gaveta inteira some no
+  // mobile: sem isto, o aluno via uma caixa grande de "aguardando o
+  // professor"/"chamada encerrada" atravancando a leitura da lição mesmo
+  // fora de qualquer aula. No desktop o painel lateral sempre aparece
+  // (tem espaço de sobra), então isto não afeta nada lá.
+  const [isCallActive, setIsCallActive] = useState(false);
 
   const lesson = record.lesson;
   const isLive = toDayKey(record.date) === todayKey;
@@ -73,11 +81,13 @@ export function LiveClassRoom({
           />
         </section>
 
-        {/* Chamada de vídeo — 1/4 da largura, altura total */}
+        {/* Chamada de vídeo — 1/4 da largura, altura total. No mobile só
+            ocupa espaço quando `isCallActive` (ver comentário acima); no
+            desktop (`lg:block`) sempre aparece, independente disso. */}
         <aside
           className={cn(
-            "order-1 min-h-0 border-slate-800 lg:order-2 lg:col-span-1 lg:h-full lg:border-l",
-            videoOpenMobile ? "h-auto border-b lg:h-full" : "h-auto border-b lg:h-full"
+            "order-1 min-h-0 border-slate-800 lg:order-2 lg:col-span-1 lg:block lg:h-full lg:border-l",
+            isCallActive ? "block h-auto border-b" : "hidden"
           )}
         >
           <button
@@ -88,8 +98,14 @@ export function LiveClassRoom({
           >
             <span className="flex items-center gap-2">
               Chamada de vídeo
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                {record.completed ? "Encerrada" : "Ao vivo"}
+              {/* Sem `record.completed` aqui de propósito: é um snapshot
+                  estático do carregamento da página, e esta barra só existe
+                  quando `isCallActive` (fresco, via poll) já garante que há
+                  mesmo uma chamada ao vivo agora — usar o valor estático
+                  podia mostrar "Encerrada" com a call já reaberta. */}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+                Ao vivo
               </span>
             </span>
             {videoOpenMobile ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -107,6 +123,7 @@ export function LiveClassRoom({
               selfId={selfId}
               selfName={selfName}
               selfAvatarUrl={selfAvatarUrl}
+              onCallActiveChange={setIsCallActive}
             />
           </div>
         </aside>
