@@ -1,100 +1,200 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, Mic, PhoneOff, Users, Video } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { PhoneCall, Users, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CallRoom } from "@/components/video/CallRoom";
+import { ParticipantGrid } from "@/components/video/ParticipantGrid";
+import { CallControlsBar } from "@/components/video/CallControlsBar";
+import { RecordingsList } from "@/components/video/RecordingsList";
 import { getInitials } from "@/components/ui/avatar";
+import { getStudentCallAccessAction, markAttendanceAction } from "@/modules/class/class.actions";
 import type { ClassmateSummary } from "@/modules/class/class.types";
+import type { CallAccess } from "@/lib/stream-server";
 
 interface VideoPanelProps {
   classRecordId: string;
-  /** Id da chamada quando a integração existir. Hoje é sempre null. */
-  callId: string | null;
+  initialCallAccess: CallAccess | null;
+  /** `class_records.callStartedAt` já preenchido no carregamento da página. */
+  callStarted: boolean;
+  /** `class_records.completed` no carregamento — só usado pro texto, não trava o poll (o professor pode reabrir). */
+  callEnded: boolean;
+  recordingUrls: string[];
   teacherName: string | null;
   participants: ClassmateSummary[];
+  selfId: string;
   selfName: string;
+  selfAvatarUrl: string | null;
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 /**
- * Painel de vídeo da sala de aula — PLACEHOLDER.
+ * Chamada de vídeo real do aluno (Stream).
  *
- * Deliberadamente sem nenhum import de `@stream-io/video-react-sdk`: a
- * integração entra depois e não deve arrastar o bundle nem o layout agora.
- *
- * PONTO DE TROCA: quando a chamada for implementada, este componente passa a
- * receber um `callId` real e troca a grade de tiles estáticos por
- * `<StreamVideo>/<StreamCall>` + `useCallStateHooks()`. A interface de props
- * já é a definitiva; o layout ao redor não precisa mudar.
- *
- * Nota: os participantes listados aqui são o ROSTER da turma, não quem está
- * de fato conectado — `class_records.attendance` nunca é escrito. Presença
- * real virá do Stream quando a integração existir.
+ * Sem infra de realtime neste projeto: se a página já estava aberta quando o
+ * professor clicou "Iniciar chamada" (ou reabriu depois de uma queda), não
+ * há como saber sem consultar de novo — por isso o poll leve continua rodando
+ * sempre que não há uma call ativa, mesmo que a aula já tenha sido encerrada
+ * uma vez (o professor pode reabrir a qualquer momento).
  */
-export function VideoPanel({ callId, teacherName, participants, selfName }: VideoPanelProps) {
-  const [micOn, setMicOn] = useState(false);
-  const [camOn, setCamOn] = useState(false);
-  const isConnected = Boolean(callId);
+export function VideoPanel({
+  classRecordId,
+  initialCallAccess,
+  callStarted,
+  callEnded,
+  recordingUrls,
+  teacherName,
+  participants,
+  selfId,
+  selfName,
+  selfAvatarUrl,
+}: VideoPanelProps) {
+  const [callAccess, setCallAccess] = useState<CallAccess | null>(initialCallAccess);
+  const [wasEverConnected, setWasEverConnected] = useState(false);
+  // Ingressar é sempre uma ação explícita do aluno, mesmo se a chamada já
+  // estava ao vivo no carregamento da página — nunca entra sozinho ligando
+  // câmera/mic sem o aluno saber.
+  const [wantsToJoin, setWantsToJoin] = useState(false);
 
-  return (
-    <div className="flex h-full flex-col bg-slate-900">
-      <div className="hidden shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3 lg:flex">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Chamada de vídeo
-        </span>
-        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-          Em breve
-        </span>
-      </div>
+  useEffect(() => {
+    if (callAccess) return;
 
-      {/* Conteúdo do painel */}
-      <div className="flex flex-row items-center gap-3 p-3 min-h-0 overflow-y-auto lg:flex-col lg:items-stretch lg:space-y-4 lg:gap-0 lg:p-4">
-        {/* Tile do professor — Esquerda no Mobile, Topo no Desktop */}
-        <div className="flex-1 min-w-0">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hidden lg:block">
-            Professor
-          </p>
-          <div className="relative flex aspect-video max-h-36 sm:max-h-44 w-full items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-950/90 shadow-md lg:max-h-none">
-            <span className="text-xl font-bold text-slate-600 lg:text-3xl">
-              {teacherName ? getInitials(teacherName) : <Video className="h-6 w-6 lg:h-7 lg:w-7" />}
+    let cancelled = false;
+    const poll = () => {
+      getStudentCallAccessAction({ recordId: classRecordId }).then((result) => {
+        if (cancelled) return;
+        if (result.success && result.data) {
+          setCallAccess(result.data);
+        }
+      });
+    };
+
+    // Tenta na hora também, não só depois do primeiro intervalo — importante
+    // pra quem cai e reabre rápido (não faz sentido esperar até 5s à toa).
+    poll();
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [callAccess, classRecordId]);
+
+  const markedRef = useRef(false);
+  const handleJoined = () => {
+    setWasEverConnected(true);
+    if (markedRef.current) return;
+    markedRef.current = true;
+    void markAttendanceAction({ recordId: classRecordId });
+  };
+
+  // Conexão caiu (internet/energia), o aluno saiu ou o professor encerrou a
+  // call — volta pra tela de espera; o poll acima resume sozinho. Exige um
+  // novo clique em "Entrar na chamada" da próxima vez, mesmo que a call
+  // continue ao vivo (ex: o aluno mesmo saiu de propósito).
+  const handleLeft = () => {
+    setCallAccess(null);
+    setWantsToJoin(false);
+  };
+
+  if (callAccess && !wantsToJoin) {
+    return (
+      <div className="flex h-full flex-col bg-slate-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Chamada de vídeo
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+            Ao vivo
+          </span>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-4">
+          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900">
+            <span className="text-2xl font-bold text-slate-600">
+              {teacherName ? getInitials(teacherName) : <Video className="h-6 w-6" />}
             </span>
             {teacherName && (
-              <span className="absolute bottom-1.5 left-1.5 max-w-[80%] truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm lg:bottom-2 lg:left-2 lg:px-2 lg:text-[10px]">
+              <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-200">
                 {teacherName}
               </span>
             )}
           </div>
+          <p className="text-center text-xs text-slate-400">A aula já está ao vivo.</p>
+          <Button onClick={() => setWantsToJoin(true)} className="w-full bg-rose-600 font-bold hover:bg-rose-700">
+            <PhoneCall className="mr-2 h-4 w-4" />
+            Entrar na chamada
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (callAccess) {
+    return (
+      <div className="flex h-full flex-col bg-slate-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Chamada de vídeo
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+            Ao vivo
+          </span>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <CallRoom
+            apiKey={callAccess.apiKey}
+            token={callAccess.token}
+            callId={callAccess.callId}
+            userId={selfId}
+            userName={selfName}
+            userImage={selfAvatarUrl}
+            onJoined={handleJoined}
+            onLeft={handleLeft}
+          >
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ParticipantGrid />
+            </div>
+            <CallControlsBar showLeave />
+          </CallRoom>
+        </div>
+      </div>
+    );
+  }
+
+  const waitingLabel = wasEverConnected || callEnded ? "Aguardando o professor voltar" : callStarted ? "Conectando..." : "Aguardando o professor";
+
+  // Aguardando o professor (ainda não começou, ou caiu e ainda não voltou) —
+  // mesmo roster estático de antes, como placeholder.
+  return (
+    <div className="flex h-full flex-col bg-slate-900">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Chamada de vídeo
+        </span>
+        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+          {waitingLabel}
+        </span>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900">
+          <span className="text-2xl font-bold text-slate-600">
+            {teacherName ? getInitials(teacherName) : <Video className="h-6 w-6" />}
+          </span>
+          {teacherName && (
+            <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-200">
+              {teacherName}
+            </span>
+          )}
         </div>
 
-        {/* Controles no Mobile — Coluna Vertical no Lado Direito */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-2 lg:hidden">
-          <ControlButton
-            label="Microfone"
-            disabled={!isConnected}
-            active={micOn}
-            onClick={() => setMicOn((v) => !v)}
-            icon={<Mic className="h-4 w-4" />}
-          />
-          <ControlButton
-            label="Câmera"
-            disabled={!isConnected}
-            active={camOn}
-            onClick={() => setCamOn((v) => !v)}
-            icon={<Camera className="h-4 w-4" />}
-          />
-          <ControlButton
-            label="Sair da chamada"
-            disabled={!isConnected}
-            tone="danger"
-            icon={<PhoneOff className="h-4 w-4" />}
-          />
-        </div>
-
-        {/* Tiles dos colegas — Apenas no Desktop */}
-        <div className="hidden lg:block">
+        <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Colegas
-            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Colegas</p>
             <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
               <Users className="h-3 w-3" />
               {participants.length}
@@ -109,14 +209,7 @@ export function VideoPanel({ callId, teacherName, participants, selfName }: Vide
                   className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
                   title={person.name}
                 >
-                  <span className="text-xs font-bold text-slate-500">
-                    {getInitials(person.name)}
-                  </span>
-                  {person.name === selfName && (
-                    <span className="absolute bottom-1 left-1 rounded bg-slate-950/70 px-1 py-0.5 text-[9px] text-slate-400">
-                      Você
-                    </span>
-                  )}
+                  <span className="text-xs font-bold text-slate-500">{getInitials(person.name)}</span>
                 </div>
               ))}
             </div>
@@ -126,63 +219,9 @@ export function VideoPanel({ callId, teacherName, participants, selfName }: Vide
             </p>
           )}
         </div>
-      </div>
 
-      {/* Controles no Desktop — Barra Horizontal na Base */}
-      <div className="hidden shrink-0 items-center justify-center gap-3 border-t border-slate-800/80 p-3 bg-slate-900 lg:flex">
-        <ControlButton
-          label="Microfone"
-          disabled={!isConnected}
-          active={micOn}
-          onClick={() => setMicOn((v) => !v)}
-          icon={<Mic className="h-4 w-4" />}
-        />
-        <ControlButton
-          label="Câmera"
-          disabled={!isConnected}
-          active={camOn}
-          onClick={() => setCamOn((v) => !v)}
-          icon={<Camera className="h-4 w-4" />}
-        />
-        <ControlButton
-          label="Sair da chamada"
-          disabled={!isConnected}
-          tone="danger"
-          icon={<PhoneOff className="h-4 w-4" />}
-        />
+        <RecordingsList urls={recordingUrls} />
       </div>
     </div>
-  );
-}
-
-interface ControlButtonProps {
-  label: string;
-  icon: React.ReactNode;
-  disabled?: boolean;
-  active?: boolean;
-  tone?: "default" | "danger";
-  onClick?: () => void;
-}
-
-function ControlButton({ label, icon, disabled, active, tone = "default", onClick }: ControlButtonProps) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={disabled ? `${label} — disponível quando a chamada for liberada` : label}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        tone === "danger"
-          ? "bg-rose-500/15 text-rose-400 hover:bg-rose-500/25"
-          : active
-            ? "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30"
-            : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-      )}
-    >
-      {icon}
-    </button>
   );
 }

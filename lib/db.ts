@@ -6,6 +6,8 @@ import * as planSchema from '@/modules/plan/plan.schema';
 import * as classSchema from '@/modules/class/class.schema';
 import * as practiceSchema from '@/modules/practice/practice.schema';
 import * as progressSchema from '@/modules/progress/progress.schema';
+import * as notificationSchema from '@/modules/notification/notification.schema';
+import * as webhookEventSchema from '@/modules/webhook-event/webhook-event.schema';
 
 const databaseUrl = process.env.DATABASE_URL!;
 
@@ -22,5 +24,7 @@ export const db = drizzle(sql, {
     ...classSchema,
     ...practiceSchema,
     ...progressSchema,
+    ...notificationSchema,
+    ...webhookEventSchema,
   }
 });

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { classGroupsTable, classRecordsTable } from './class.schema';
-import { eq, desc, asc, and, ne, lt, gte } from 'drizzle-orm';
+import { eq, desc, asc, and, ne, lt, gte, or, isNull, sql } from 'drizzle-orm';
 import { ClassGroup, ClassRecord, NewClassGroup, NewClassRecord } from './class.types';
 
 export const classRepository = {
@@ -25,6 +25,14 @@ export const classRepository = {
     return await db.query.classGroupsTable.findMany({
       where: and(eq(classGroupsTable.status, 'ACTIVE'), ne(classGroupsTable.id, excludeClassGroupId)),
       orderBy: [asc(classGroupsTable.name)],
+    });
+  },
+
+  /** Turmas onde este professor é o titular. Usa o índice class_groups_teacher_idx. */
+  async findByTeacherId(teacherId: string): Promise<ClassGroup[]> {
+    return await db.query.classGroupsTable.findMany({
+      where: eq(classGroupsTable.teacherId, teacherId),
+      orderBy: [desc(classGroupsTable.createdAt)],
     });
   },
 
@@ -128,6 +136,32 @@ export const classRepository = {
     });
   },
 
+  /**
+   * Próximas aulas deste professor, titular OU substituto: `record.teacherId`
+   * (substituto) tem precedência; na ausência dele, cai pro titular da turma.
+   * Precisa do join porque o vínculo titular vive em classGroupsTable, não em
+   * class_records.
+   */
+  async findUpcomingRecordsForTeacher(teacherId: string, from: Date, limit = 3): Promise<ClassRecord[]> {
+    const rows = await db
+      .select({ record: classRecordsTable })
+      .from(classRecordsTable)
+      .innerJoin(classGroupsTable, eq(classRecordsTable.classGroupId, classGroupsTable.id))
+      .where(
+        and(
+          gte(classRecordsTable.date, from),
+          or(
+            eq(classRecordsTable.teacherId, teacherId),
+            and(isNull(classRecordsTable.teacherId), eq(classGroupsTable.teacherId, teacherId))
+          )
+        )
+      )
+      .orderBy(asc(classRecordsTable.date))
+      .limit(limit);
+
+    return rows.map((r) => r.record);
+  },
+
   async updateRecordTeacher(recordId: string, teacherId: string): Promise<ClassRecord> {
     const [record] = await db
       .update(classRecordsTable)
@@ -135,5 +169,68 @@ export const classRepository = {
       .where(eq(classRecordsTable.id, recordId))
       .returning();
     return record;
+  },
+
+  async updateRecordBoard(recordId: string, boardContent: string): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ boardContent })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
+  /**
+   * (Re)abre a chamada: sempre volta `completed` para `false` e carimba
+   * `callStartedAt` com AGORA — reabrir é permitido quantas vezes o professor
+   * precisar (internet/energia pode cair no meio da aula). `callStartedAt`
+   * sempre reflete o início da sessão AO VIVO atual (não o primeiro início
+   * histórico): é contra ele que o encerramento automático de 2h é medido
+   * (ver `CALL_MAX_DURATION_MS` em class.service.ts) — se preservasse o
+   * valor original, reabrir uma aula depois de mais de 2h fecharia ela de
+   * novo na leitura seguinte.
+   */
+  async reopenCall(recordId: string): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ completed: false, callStartedAt: new Date() })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
+  async updateRecordCompleted(recordId: string, completed: boolean): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ completed })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
+  /** Acrescenta um segmento de gravação — nunca sobrescreve os anteriores (ver doc da coluna). */
+  async appendRecordingUrl(recordId: string, url: string): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ recordingUrls: sql`array_append(${classRecordsTable.recordingUrls}, ${url})` })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
+  /**
+   * Adiciona o aluno à presença se ainda não estiver lá — idempotente sem
+   * precisar ler e reescrever o array manualmente (Drizzle não tem um
+   * "append se ausente" nativo pra colunas array). A cláusula WHERE faz
+   * chamadas repetidas virarem UPDATE de 0 linhas em vez de reescrever o
+   * array toda vez.
+   */
+  async appendAttendanceIfMissing(recordId: string, studentId: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE class_records
+      SET attendance = ARRAY(SELECT DISTINCT unnest(attendance || ARRAY[${studentId}::uuid]))
+      WHERE id = ${recordId}::uuid
+        AND NOT (${studentId}::uuid = ANY(attendance))
+    `);
   },
 };

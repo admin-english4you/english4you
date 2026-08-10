@@ -17,9 +17,22 @@ import {
   StudentClassOverview,
   StudentClassRecordDetail,
   StudentTaughtRecord,
+  TeacherClassGroupDetail,
+  TeacherClassRecordDetail,
+  TeacherOverview,
+  TeacherStudentDetail,
 } from './class.types';
 import { ScheduleSlot, WeekdayEnum } from './class.schema';
 import { addDaysToKey, todayKey, weekdayIndex, zonedWallClockToUtc } from '@/lib/date';
+import {
+  CallAccess,
+  endStreamCall,
+  ensureCallAndGenerateToken,
+  startCallRecording,
+  stopCallRecording,
+} from '@/lib/stream-server';
+import { notificationService } from '@/modules/notification/notification.service';
+import { sendClassRecordingEmail } from '@/lib/resend';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
 
@@ -161,6 +174,59 @@ async function hydrateRecords(records: ClassRecord[]): Promise<ClassRecordDetail
   }));
 }
 
+const CALL_MAX_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+/**
+ * Fecha sozinha uma chamada esquecida ao vivo — sem infra de cron neste
+ * projeto, a checagem é "preguiçosa": roda toda vez que o registro é lido
+ * (reload da página do professor, poll do aluno), não num timer real. Cobre
+ * o caso do professor perder internet/energia e nunca clicar em "Encerrar
+ * aula": sem isto, `callStartedAt` != null + `completed` = false ficaria
+ * válido pra sempre, e a sala pareceria "ao vivo" indefinidamente.
+ */
+async function closeIfExpired(record: ClassRecord): Promise<ClassRecord> {
+  if (!record.callStartedAt || record.completed) return record;
+  if (Date.now() - record.callStartedAt.getTime() < CALL_MAX_DURATION_MS) return record;
+
+  await stopCallRecording(record.id);
+  await endStreamCall(record.id);
+  return await classRepository.updateRecordCompleted(record.id, true);
+}
+
+/** Titular OU substituto: substituto (record.teacherId) tem precedência sobre o titular da turma. */
+function isTeacherOfRecord(teacherId: string, record: ClassRecord, classGroup: ClassGroup): boolean {
+  return record.teacherId === teacherId || (!record.teacherId && classGroup.teacherId === teacherId);
+}
+
+/** Monta o acesso à call (apiKey + token + callId), com o roster completo como membros. */
+async function buildCallAccess(
+  record: ClassRecord,
+  classGroup: ClassGroup,
+  requestingUserId: string
+): Promise<CallAccess | null> {
+  const [students, effectiveTeacher] = await Promise.all([
+    userService.getStudentsByClassGroupIdForTeacher(classGroup.id),
+    classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
+  ]);
+  const effectiveTeacherId = record.teacherId ?? classGroup.teacherId ?? requestingUserId;
+
+  const memberUserIds = Array.from(new Set([effectiveTeacherId, ...students.map((s) => s.id)]));
+
+  // Todo membro citado na call precisa existir do lado do Stream primeiro.
+  const users = [
+    { id: effectiveTeacherId, name: effectiveTeacher?.name, image: effectiveTeacher?.avatarUrl },
+    ...students.map((s) => ({ id: s.id, name: s.name, image: s.avatarUrl })),
+  ];
+
+  return await ensureCallAndGenerateToken({
+    recordId: record.id,
+    userId: requestingUserId,
+    memberUserIds,
+    createdByUserId: effectiveTeacherId,
+    users,
+  });
+}
+
 /**
  * Service do módulo de Turmas (Regras de Negócio e RBAC).
  */
@@ -230,8 +296,9 @@ export const classService = {
     const student = await userService.getStudentById(studentUserId);
     if (!student.classGroupId) return null;
 
-    const record = await classRepository.findRecordById(recordId);
-    if (!record || record.classGroupId !== student.classGroupId) return null;
+    const rawRecord = await classRepository.findRecordById(recordId);
+    if (!rawRecord || rawRecord.classGroupId !== student.classGroupId) return null;
+    const record = await closeIfExpired(rawRecord);
 
     const classGroup = await classRepository.findById(record.classGroupId);
     if (!classGroup) return null;
@@ -275,6 +342,331 @@ export const classService = {
     return records
       .map((record) => ({ record, lesson: lessonsById.get(record.lessonId) }))
       .filter((entry): entry is StudentTaughtRecord => entry.lesson?.status === 'ACTIVE');
+  },
+
+  // ---------------------------------------------------------------------------
+  // Leituras/escritas do PROFESSOR
+  //
+  // Mesmo contrato do bloco do aluno: recebem `teacherUserId`, nunca
+  // `actingRole`. Releem o professor fresco (userService.getTeacherById) e
+  // validam posse antes de qualquer leitura/escrita ligada a uma turma/aula.
+  // Devolvem `null`/`undefined` (não lançam) quando o recurso não existe ou
+  // não pertence a este professor, para a página chamar notFound().
+  // ---------------------------------------------------------------------------
+
+  /** Stats do professor: quantas turmas titulares + próximas 3 aulas (titular ou substituto). */
+  async getTeacherClassesOverview(teacherUserId: string): Promise<TeacherOverview> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+
+    const [titularClasses, upcomingRaw] = await Promise.all([
+      classRepository.findByTeacherId(teacher.id),
+      classRepository.findUpcomingRecordsForTeacher(teacher.id, new Date(), 3),
+    ]);
+
+    const studentCounts = await userService.countStudentsByClassGroupIds(
+      'TEACHER' as Role,
+      titularClasses.map((c) => c.id)
+    );
+    const studentCount = Object.values(studentCounts).reduce((sum, n) => sum + n, 0);
+
+    return {
+      classCount: titularClasses.length,
+      studentCount,
+      upcomingRecords: await hydrateRecords(upcomingRaw),
+    };
+  },
+
+  /** Lista de turmas titulares do professor, com contagem de alunos — cards de /teacher/classes. */
+  async getTeacherClasses(teacherUserId: string): Promise<ClassGroupListItem[]> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const classes = await classRepository.findByTeacherId(teacher.id);
+    if (classes.length === 0) return [];
+
+    const counts = await userService.countStudentsByClassGroupIds(
+      'TEACHER' as Role,
+      classes.map((c) => c.id)
+    );
+
+    return classes.map((c) => ({ ...c, enrolledCount: counts[c.id] ?? 0, teacher }));
+  },
+
+  /** Turma + roster + grade de aulas — só titular (substituição pontual não abre este detalhe). */
+  async getTeacherClassDetail(
+    teacherUserId: string,
+    classGroupId: string
+  ): Promise<TeacherClassGroupDetail | null> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const classGroup = await classRepository.findById(classGroupId);
+    if (!classGroup || classGroup.teacherId !== teacher.id) return null;
+
+    const [plan, students, records] = await Promise.all([
+      classGroup.planId ? planService.getPlanById(classGroup.planId) : Promise.resolve(undefined),
+      userService.getStudentsByClassGroupIdForTeacher(classGroupId),
+      classRepository.findRecordsByClassGroupId(classGroupId),
+    ]);
+
+    return {
+      classGroup,
+      plan: plan ?? null,
+      students,
+      records: await hydrateRecords(records),
+    };
+  },
+
+  /**
+   * Dados de PII de um aluno específico, buscados sob demanda ao abrir o
+   * modal — nunca pré-carregados na lista do roster (ver justificativa em
+   * getTeacherStudentDetailAction). Valida que o aluno pertence a uma turma
+   * TITULAR deste professor antes de expor e-mail/telefone.
+   */
+  async getTeacherClassStudentDetail(
+    teacherUserId: string,
+    classGroupId: string,
+    studentId: string
+  ): Promise<TeacherStudentDetail | null> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const classGroup = await classRepository.findById(classGroupId);
+    if (!classGroup || classGroup.teacherId !== teacher.id) return null;
+
+    const student = await userService.getUserById(studentId);
+    if (!student || student.classGroupId !== classGroupId) return null;
+
+    const { id, name, email, phone, avatarUrl } = student;
+    return { id, name, email, phone, avatarUrl };
+  },
+
+  /** Uma aula específica, aberta pelo professor titular OU substituto desta ocorrência. */
+  async getTeacherClassRecord(
+    teacherUserId: string,
+    recordId: string
+  ): Promise<TeacherClassRecordDetail | null> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const rawRecord = await classRepository.findRecordById(recordId);
+    if (!rawRecord) return null;
+    const record = await closeIfExpired(rawRecord);
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) return null;
+
+    const [[hydrated], students, headTeacher] = await Promise.all([
+      hydrateRecords([record]),
+      userService.getStudentsByClassGroupIdForTeacher(classGroup.id),
+      classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
+    ]);
+
+    return {
+      ...hydrated,
+      classGroup,
+      effectiveTeacher: hydrated.teacher ?? headTeacher ?? null,
+      students,
+    };
+  },
+
+  /** Acesso à call pro professor — `null` se a chamada ainda não foi iniciada. */
+  async getTeacherCallAccess(teacherUserId: string, recordId: string): Promise<CallAccess | null> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const rawRecord = await classRepository.findRecordById(recordId);
+    if (!rawRecord) return null;
+    const record = await closeIfExpired(rawRecord);
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) return null;
+    // `completed` também trava aqui, não só `callStartedAt`: a aula pode já
+    // ter sido iniciada e encerrada (ou estar aguardando reabertura depois de
+    // uma queda), e nesse meio-tempo não faz sentido devolver acesso a uma
+    // call que ninguém está ativamente usando.
+    if (!record.callStartedAt || record.completed) return null;
+
+    return await buildCallAccess(record, classGroup, teacher.id);
+  },
+
+  /** Acesso à call pro aluno — `null` se a aula não é da turma dele ou a chamada não está ao vivo agora. */
+  async getStudentCallAccess(studentUserId: string, recordId: string): Promise<CallAccess | null> {
+    const student = await userService.getStudentById(studentUserId);
+    if (!student.classGroupId) return null;
+
+    const rawRecord = await classRepository.findRecordById(recordId);
+    if (!rawRecord || rawRecord.classGroupId !== student.classGroupId) return null;
+    const record = await closeIfExpired(rawRecord);
+    if (!record.callStartedAt || record.completed) return null;
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup) return null;
+
+    return await buildCallAccess(record, classGroup, student.id);
+  },
+
+  /**
+   * (Re)inicia a chamada: provisiona a call no Stream (idempotente — mesma
+   * call determinística, `getOrCreate`) e volta `completed` para `false`.
+   *
+   * O professor pode chamar isto QUANTAS VEZES precisar para a mesma aula —
+   * internet ou energia podem cair no meio da aula, e reabrir precisa
+   * funcionar sem fricção. Como o `callId` é determinístico
+   * (`class-record-${recordId}`), reabrir sempre volta pra MESMA call no
+   * Stream: novas gravações se somam às anteriores (ver `appendRecordingUrl`),
+   * nunca substituem.
+   *
+   * NÃO liga a gravação aqui — `call.startRecording()` do Stream exige uma
+   * sessão ativa (alguém já conectado via WebRTC), e neste ponto ninguém
+   * entrou ainda. A gravação começa em `startCallRecordingForRecord`,
+   * chamado pelo client assim que o próprio professor efetivamente entra na
+   * chamada (mesmo raciocínio de `markStudentAttendance`: o gatilho real é o
+   * join, não o clique em "iniciar").
+   */
+  async startCall(teacherUserId: string, recordId: string): Promise<{ record: ClassRecord } & CallAccess> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para iniciar esta aula.');
+    }
+
+    const access = await buildCallAccess(record, classGroup, teacher.id);
+    if (!access) throw new AppError('Serviço de vídeo não configurado no servidor.');
+
+    const updated = await classRepository.reopenCall(recordId);
+
+    return { record: updated, ...access };
+  },
+
+  /**
+   * Liga a gravação — chamado pelo client (hooks/useStreamCall) assim que o
+   * PRÓPRIO professor entra de fato na call. Idempotente do lado do Stream
+   * (chamar de novo com uma gravação já ativa não duplica nada); erros são
+   * best-effort (ver `startCallRecording` em lib/stream-server.ts).
+   */
+  async startCallRecordingForRecord(teacherUserId: string, recordId: string): Promise<void> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para gravar esta aula.');
+    }
+
+    await startCallRecording(recordId);
+  },
+
+  /** Encerra a aula: desliga gravação e a call no Stream (best-effort) e marca concluída. */
+  async endCall(teacherUserId: string, recordId: string): Promise<ClassRecord> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para encerrar esta aula.');
+    }
+
+    await stopCallRecording(recordId);
+    await endStreamCall(recordId);
+
+    // Sem early-return se já completed: encerrar precisa ser sempre seguro de
+    // chamar de novo (ex: reabriu e encerrou de novo) — o update em si já é
+    // idempotente (setar true quando já é true não muda nada).
+    return await classRepository.updateRecordCompleted(recordId, true);
+  },
+
+  /** Salva as anotações desta ocorrência da aula — isolado de lessons.content. */
+  async updateRecordBoard(teacherUserId: string, recordId: string, boardContent: string): Promise<ClassRecord> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para editar esta aula.');
+    }
+
+    return await classRepository.updateRecordBoard(recordId, boardContent);
+  },
+
+  /** Marca presença automática do aluno ao entrar de fato na chamada. Idempotente. */
+  async markStudentAttendance(studentUserId: string, recordId: string): Promise<void> {
+    const student = await userService.getStudentById(studentUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record || record.classGroupId !== student.classGroupId) {
+      throw new AppError('Esta aula não está disponível para você.');
+    }
+
+    await classRepository.appendAttendanceIfMissing(recordId, student.id);
+  },
+
+  /**
+   * Ativa a lição desta aula manualmente, a pedido do professor — nunca
+   * automático ao encerrar a chamada (uma chamada que caiu não deve travar
+   * nada). A checagem de posse aqui é o único portão de "este professor pode
+   * ativar esta lição"; as travas de conteúdo em si vivem no lessonService.
+   */
+  async activateLessonForRecord(teacherUserId: string, recordId: string): Promise<Lesson> {
+    const teacher = await userService.getTeacherById(teacherUserId);
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup || !isTeacherOfRecord(teacher.id, record, classGroup)) {
+      throw new AppError('Você não tem permissão para ativar a lição desta aula.');
+    }
+
+    return await lessonService.activateLessonAsTeacher('TEACHER', record.lessonId);
+  },
+
+  /**
+   * Ponto de entrada do webhook — sem sessão/actingRole, chamado só pela rota
+   * app/api/webhooks/stream. Grava a URL da gravação e notifica a turma.
+   */
+  async handleRecordingReady(recordId: string, recordingUrl: string): Promise<void> {
+    // Acrescenta ao array — nunca sobrescreve. Uma aula pode ter sido aberta
+    // e fechada várias vezes (queda de conexão), cada sessão gera seu próprio
+    // segmento, e todos pertencem à mesma aula.
+    await classRepository.appendRecordingUrl(recordId, recordingUrl);
+
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) return;
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup) return;
+
+    const [lessons, studentSummaries] = await Promise.all([
+      lessonService.getLessonsByIds([record.lessonId]),
+      userService.getStudentsByClassGroupIdForTeacher(classGroup.id),
+    ]);
+    const lessonTitle = lessons[0]?.title ?? 'Aula';
+    const studentIds = studentSummaries.map((s) => s.id);
+    if (studentIds.length === 0) return;
+
+    const link = `/student/classes/${recordId}`;
+    await notificationService.notifyUsers(studentIds, {
+      type: 'CLASS_RECORDING_READY',
+      title: 'Gravação disponível',
+      body: `A gravação da aula "${lessonTitle}" (${classGroup.name}) já está disponível para assistir.`,
+      link,
+    });
+
+    const students = await userService.getUsersByIds(studentIds);
+    await Promise.all(
+      students
+        .filter((s) => s.email)
+        .map((s) =>
+          sendClassRecordingEmail({
+            email: s.email,
+            studentName: s.name,
+            className: classGroup.name,
+            lessonTitle,
+            recordingUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}${link}`,
+          })
+        )
+    );
+  },
+
+  /** Rede de segurança: se "Encerrar aula" falhou mas a call terminou mesmo assim, marca concluída. */
+  async handleCallEndedWebhook(recordId: string): Promise<void> {
+    const record = await classRepository.findRecordById(recordId);
+    if (!record || record.completed) return;
+    await classRepository.updateRecordCompleted(recordId, true);
   },
 
   async createClass(actingRole: Role, data: CreateClassGroupInput): Promise<ClassGroup> {

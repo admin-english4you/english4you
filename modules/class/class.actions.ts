@@ -14,6 +14,14 @@ import {
   ReactivateClassSchema,
   ArchiveClassSchema,
   AssignSubstituteTeacherSchema,
+  StartCallSchema,
+  StartCallRecordingSchema,
+  EndCallSchema,
+  SaveBoardContentSchema,
+  ActivateLessonSchema,
+  MarkAttendanceSchema,
+  GetTeacherStudentDetailSchema,
+  GetStudentCallAccessSchema,
 } from "./class.schema";
 import { classService } from "./class.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -219,6 +227,148 @@ export async function assignSubstituteTeacherAction(input: z.infer<typeof Assign
 
     const result = await classService.assignSubstituteTeacher(currentUser.role, data.classRecordId, data.teacherId);
     revalidatePath(`/admin/classes/${result.classGroupId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+// ---------------------------------------------------------------------------
+// Sala de aula do professor
+// ---------------------------------------------------------------------------
+
+/** Inicia a chamada: liga a gravação e carimba callStartedAt. Idempotente. */
+export async function startCallAction(input: z.infer<typeof StartCallSchema>) {
+  const safeAction = createSafeAction(StartCallSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.startCall(currentUser.id, data.recordId);
+    revalidatePath(`/teacher/live/${data.recordId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/** Liga a gravação — chamado pelo client assim que o professor entra de fato na call. */
+export async function startCallRecordingAction(input: z.infer<typeof StartCallRecordingSchema>) {
+  const safeAction = createSafeAction(StartCallRecordingSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await classService.startCallRecordingForRecord(currentUser.id, data.recordId);
+    return { recordId: data.recordId };
+  });
+
+  return safeAction(input);
+}
+
+/** Encerra a aula: desliga gravação/chamada no Stream e marca concluída. */
+export async function endCallAction(input: z.infer<typeof EndCallSchema>) {
+  const safeAction = createSafeAction(EndCallSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.endCall(currentUser.id, data.recordId);
+    revalidatePath(`/teacher/live/${data.recordId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/** Salva as anotações desta ocorrência da aula (class_records.boardContent). */
+export async function saveBoardContentAction(input: z.infer<typeof SaveBoardContentSchema>) {
+  const safeAction = createSafeAction(SaveBoardContentSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.updateRecordBoard(currentUser.id, data.recordId, data.boardContent);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/** Ativa manualmente a lição desta aula, a pedido do professor. */
+export async function activateLessonAction(input: z.infer<typeof ActivateLessonSchema>) {
+  const safeAction = createSafeAction(ActivateLessonSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.activateLessonForRecord(currentUser.id, data.recordId);
+    revalidatePath(`/teacher/live/${data.recordId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/** Marca presença automática do aluno ao entrar de fato na chamada. */
+export async function markAttendanceAction(input: z.infer<typeof MarkAttendanceSchema>) {
+  const safeAction = createSafeAction(MarkAttendanceSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await classService.markStudentAttendance(currentUser.id, data.recordId);
+    return { recordId: data.recordId };
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Poll leve do aluno pra saber se o professor já iniciou a chamada — sem
+ * isso, quem já estava com a página aberta quando a aula começou não teria
+ * como descobrir sem dar F5 (não há infra de realtime neste projeto).
+ * Devolve `data: null` (sucesso, sem erro) enquanto a chamada não começou.
+ */
+export async function getStudentCallAccessAction(input: z.infer<typeof GetStudentCallAccessSchema>) {
+  const safeAction = createSafeAction(GetStudentCallAccessSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    return await classService.getStudentCallAccess(currentUser.id, data.recordId);
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * PII de um aluno do roster, buscada sob demanda ao abrir o modal — nunca
+ * pré-carregada na lista (ver comentário no plano: props de um RSC vão
+ * inteiras no payload enviado ao browser, renderizadas ou não).
+ */
+export async function getTeacherStudentDetailAction(input: z.infer<typeof GetTeacherStudentDetailSchema>) {
+  const safeAction = createSafeAction(GetTeacherStudentDetailSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.getTeacherClassStudentDetail(
+      currentUser.id,
+      data.classGroupId,
+      data.studentId
+    );
+    if (!result) {
+      throw new AppError("Aluno não encontrado.");
+    }
     return result;
   });
 

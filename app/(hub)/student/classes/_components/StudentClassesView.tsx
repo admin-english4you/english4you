@@ -4,10 +4,10 @@ import { CalendarClock, History } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { StudentClassOverview } from "@/modules/class/class.types";
 import { ClassTeacherCard } from "./ClassTeacherCard";
 import { ClassRecordCard } from "./ClassRecordCard";
-import { EmptyClassState } from "./EmptyClassState";
 
 interface StudentClassesViewProps {
   overview: StudentClassOverview | null;
@@ -24,7 +24,7 @@ export function StudentClassesView({ overview, todayKey }: StudentClassesViewPro
           description="Acompanhe suas aulas e o material de cada encontro."
           className="mb-6"
         />
-        <EmptyClassState
+        <EmptyState
           title="Você ainda não está em uma turma"
           description="Assim que a coordenação te alocar em uma turma, suas aulas e materiais aparecem aqui."
         />

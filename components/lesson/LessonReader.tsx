@@ -15,7 +15,7 @@ export function LessonReader({ title, level, html, audioUrl, videoUrl }: LessonR
   const hasContent = html.trim().length > 0 && html.trim() !== "<p></p>";
 
   return (
-    <article className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
+    <article className="mx-auto max-w-3xl px-5 py-8 sm:px-8 scrollbar-hide">
       <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
         Material da aula · {level}
       </p>

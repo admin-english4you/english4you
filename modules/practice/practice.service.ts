@@ -26,6 +26,20 @@ function assertAdmin(actingRole: Role) {
   }
 }
 
+/**
+ * Usado só pelas 3 leituras de cobertura (`countPendingForLesson`,
+ * `countPendingQuizQuestions`, `getApprovedQuizCoverage`) — o professor
+ * precisa delas pra ativar uma lição ao encerrar a aula
+ * (lessonService.assertLessonContentReady). Autoria/curadoria de conteúdo
+ * (gerar, aprovar, remover itens/perguntas) continua só-admin via
+ * `assertAdmin` acima.
+ */
+function assertAdminOrTeacher(actingRole: Role) {
+  if (actingRole !== 'ADMIN' && actingRole !== 'TEACHER') {
+    throw new AppError('Apenas administradores ou professores podem consultar o status de prática desta lição.');
+  }
+}
+
 const VOCAB_CEILING = 40;
 const STRUCTURE_CEILING = 15;
 
@@ -171,7 +185,7 @@ export const practiceService = {
   },
 
   async countPendingForLesson(actingRole: Role, lessonId: string): Promise<number> {
-    assertAdmin(actingRole);
+    assertAdminOrTeacher(actingRole);
     return await practiceRepository.countPendingByLessonId(lessonId);
   },
 
@@ -181,12 +195,12 @@ export const practiceService = {
   },
 
   async countPendingQuizQuestions(actingRole: Role, lessonId: string): Promise<number> {
-    assertAdmin(actingRole);
+    assertAdminOrTeacher(actingRole);
     return await practiceRepository.countPendingQuizQuestions(lessonId);
   },
 
   async getApprovedQuizCoverage(actingRole: Role, lessonId: string): Promise<QuizCoverage> {
-    assertAdmin(actingRole);
+    assertAdminOrTeacher(actingRole);
     return await practiceRepository.countApprovedQuizQuestionsByModeAndSection(lessonId);
   },
 

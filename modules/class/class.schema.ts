@@ -53,10 +53,24 @@ export const classRecordsTable = pgTable('class_records', {
   // Quando null, a UI usa o professor titular da turma (classGroup.teacherId) como fallback.
   teacherId: uuid('teacher_id').references(() => usersTable.id),
   date: timestamp('date').notNull(),
-  streamVideoUrl: varchar('stream_video_url', { length: 500 }),
+  // Array, não uma URL só: o professor pode reabrir a chamada quantas vezes
+  // precisar (internet/energia pode cair no meio da aula) — cada reabertura
+  // gera um novo segmento de gravação no Stream, e todos ficam associados a
+  // esta mesma aula em vez de o último sobrescrever os anteriores.
+  recordingUrls: text('recording_urls').array().notNull().default([]),
+  // Ponto de partida do professor nesta ocorrência da aula — copiado de
+  // lessons.content na primeira vez que a sala é aberta (ver
+  // TeacherClassRoom), depois editado livremente. Isolado do material
+  // canônico: editar aqui nunca afeta lessons.content nem outras turmas que
+  // usam a mesma lição via o plano.
   boardContent: text('board_content'),
   completed: boolean('completed').notNull().default(false),
   attendance: uuid('attendance').array().notNull().default([]),
+  // Sinal de "chamada ao vivo", sem round-trip à API do Stream para renderizar
+  // o badge de status. NULL = não iniciada; NOT NULL + completed=false = ao
+  // vivo agora; completed=true = encerrada. Nunca é limpo ao encerrar (fica
+  // para exibir duração/histórico).
+  callStartedAt: timestamp('call_started_at'),
 }, (table) => [
   index('class_records_class_group_idx').on(table.classGroupId),
   index('class_records_date_idx').on(table.date),
@@ -133,4 +147,41 @@ export const ArchiveClassSchema = z.object({
 export const AssignSubstituteTeacherSchema = z.object({
   classRecordId: z.uuid(),
   teacherId: z.uuid(),
+});
+
+// Schemas do fluxo de sala de aula do professor
+export const StartCallSchema = z.object({
+  recordId: z.uuid(),
+});
+
+/** Liga a gravação — chamado pelo client assim que o professor entra de fato na call (ver Fase 7). */
+export const StartCallRecordingSchema = z.object({
+  recordId: z.uuid(),
+});
+
+export const EndCallSchema = z.object({
+  recordId: z.uuid(),
+});
+
+export const SaveBoardContentSchema = z.object({
+  recordId: z.uuid(),
+  boardContent: z.string(),
+});
+
+export const ActivateLessonSchema = z.object({
+  recordId: z.uuid(),
+});
+
+export const MarkAttendanceSchema = z.object({
+  recordId: z.uuid(),
+});
+
+export const GetTeacherStudentDetailSchema = z.object({
+  classGroupId: z.uuid(),
+  studentId: z.uuid(),
+});
+
+/** Usado pelo aluno pra saber (via poll leve) se o professor já iniciou a chamada. */
+export const GetStudentCallAccessSchema = z.object({
+  recordId: z.uuid(),
 });

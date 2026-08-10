@@ -5,17 +5,28 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toDayKey } from "@/lib/date";
 import type { StudentClassRecordDetail } from "@/modules/class/class.types";
+import type { CallAccess } from "@/lib/stream-server";
 import { ClassRoomTopBar } from "./ClassRoomTopBar";
-import { LessonReader } from "./LessonReader";
+import { LessonReader } from "@/components/lesson/LessonReader";
 import { VideoPanel } from "./VideoPanel";
 
 interface LiveClassRoomProps {
   record: StudentClassRecordDetail;
+  initialCallAccess: CallAccess | null;
+  selfId: string;
   selfName: string;
+  selfAvatarUrl: string | null;
   todayKey: string;
 }
 
-export function LiveClassRoom({ record, selfName, todayKey }: LiveClassRoomProps) {
+export function LiveClassRoom({
+  record,
+  initialCallAccess,
+  selfId,
+  selfName,
+  selfAvatarUrl,
+  todayKey,
+}: LiveClassRoomProps) {
   // No mobile a chamada vira uma gaveta recolhível no topo, para o conteúdo
   // da lição não ficar espremido em telas pequenas.
   const [videoOpenMobile, setVideoOpenMobile] = useState(false);
@@ -65,7 +76,7 @@ export function LiveClassRoom({ record, selfName, todayKey }: LiveClassRoomProps
             <span className="flex items-center gap-2">
               Chamada de vídeo
               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                Em breve
+                {record.completed ? "Encerrada" : "Ao vivo"}
               </span>
             </span>
             {videoOpenMobile ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -74,10 +85,15 @@ export function LiveClassRoom({ record, selfName, todayKey }: LiveClassRoomProps
           <div className={cn("h-full", videoOpenMobile ? "block" : "hidden lg:block")}>
             <VideoPanel
               classRecordId={record.id}
-              callId={null}
+              initialCallAccess={initialCallAccess}
+              callStarted={Boolean(record.callStartedAt)}
+              callEnded={record.completed}
+              recordingUrls={record.recordingUrls}
               teacherName={record.effectiveTeacher?.name ?? null}
               participants={record.classmates}
+              selfId={selfId}
               selfName={selfName}
+              selfAvatarUrl={selfAvatarUrl}
             />
           </div>
         </aside>

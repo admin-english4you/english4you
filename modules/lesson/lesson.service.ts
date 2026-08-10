@@ -71,6 +71,39 @@ const CONTENT_IMAGE_EXTENSION_MIME: Record<string, string> = {
 };
 
 /**
+ * Travas de conteúdo para DISABLED/IN_PROGRESS -> ACTIVE: bloqueia enquanto
+ * houver LearningItem/QuizQuestion PENDING, exige pelo menos 1 pergunta
+ * aprovada em cada uma das 4 seções de compreensão, e mais 1 de
+ * listening_choice se a lição tiver áudio/vídeo. Extraído para ser reusado
+ * por `updateLessonStatus` (admin) e `activateLessonAsTeacher` (professor) —
+ * as mesmas regras valem pros dois caminhos.
+ */
+async function assertLessonContentReady(actingRole: Role, lesson: Lesson): Promise<void> {
+  const pendingItems = await practiceService.countPendingForLesson(actingRole, lesson.id);
+  if (pendingItems > 0) {
+    throw new AppError('Revise (aprove ou remova) todos os itens de prática pendentes antes de ativar a lição.');
+  }
+
+  const pendingQuestions = await practiceService.countPendingQuizQuestions(actingRole, lesson.id);
+  if (pendingQuestions > 0) {
+    throw new AppError('Revise (aprove ou remova) todas as perguntas de compreensão pendentes antes de ativar a lição.');
+  }
+
+  const coverage = await practiceService.getApprovedQuizCoverage(actingRole, lesson.id);
+  const missingSection = (['vocabulary', 'grammar', 'context', 'comprehension'] as const).find(
+    (section) => coverage[section] === 0
+  );
+  if (missingSection) {
+    throw new AppError(`Gere e aprove ao menos uma pergunta da seção "${missingSection}" antes de ativar a lição.`);
+  }
+
+  const hasMedia = Boolean(lesson.audioUrl || lesson.videoUrl);
+  if (hasMedia && coverage.listening === 0) {
+    throw new AppError('Gere e aprove ao menos uma pergunta de compreensão auditiva antes de ativar a lição.');
+  }
+}
+
+/**
  * Service do módulo de Lições (Regras de Negócio e RBAC).
  */
 export const lessonService = {
@@ -231,46 +264,47 @@ export const lessonService = {
   async updateLessonStatus(actingRole: Role, lessonId: string, status: 'ACTIVE' | 'DISABLED'): Promise<Lesson> {
     assertAdmin(actingRole);
 
+    let lesson: Lesson | undefined;
     if (status === 'ACTIVE') {
-      const lesson = await lessonRepository.findById(lessonId);
+      lesson = await lessonRepository.findById(lessonId);
       if (!lesson) {
         throw new AppError('Lição não encontrada.');
       }
-
-      const pendingItems = await practiceService.countPendingForLesson(actingRole, lessonId);
-      if (pendingItems > 0) {
-        throw new AppError('Revise (aprove ou remova) todos os itens de prática pendentes antes de ativar a lição.');
-      }
-
-      const pendingQuestions = await practiceService.countPendingQuizQuestions(actingRole, lessonId);
-      if (pendingQuestions > 0) {
-        throw new AppError('Revise (aprove ou remova) todas as perguntas de compreensão pendentes antes de ativar a lição.');
-      }
-
-      const coverage = await practiceService.getApprovedQuizCoverage(actingRole, lessonId);
-      const missingSection = (['vocabulary', 'grammar', 'context', 'comprehension'] as const).find(
-        (section) => coverage[section] === 0
-      );
-      if (missingSection) {
-        throw new AppError(`Gere e aprove ao menos uma pergunta da seção "${missingSection}" antes de ativar a lição.`);
-      }
-
-      const hasMedia = Boolean(lesson.audioUrl || lesson.videoUrl);
-      if (hasMedia && coverage.listening === 0) {
-        throw new AppError('Gere e aprove ao menos uma pergunta de compreensão auditiva antes de ativar a lição.');
-      }
+      await assertLessonContentReady(actingRole, lesson);
     }
 
     // Carimba a PRIMEIRA ativação. É a partir dela (e não só da data da aula)
     // que o ciclo de prática do aluno começa — sem isso, ativar uma lição
     // atrasada geraria 6 dias já vencidos. Reativar depois de um DISABLE não
     // reinicia o carimbo, para não empurrar o ciclo de quem já começou.
-    let activatedAt: Date | undefined;
-    if (status === 'ACTIVE') {
-      const current = await lessonRepository.findById(lessonId);
-      if (current && !current.activatedAt) activatedAt = new Date();
-    }
+    const activatedAt = status === 'ACTIVE' && lesson && !lesson.activatedAt ? new Date() : undefined;
 
     return await lessonRepository.updateStatus(lessonId, status as LessonStatus, activatedAt);
+  },
+
+  /**
+   * Ativação disparada pelo PROFESSOR ao encerrar uma aula ao vivo — nunca
+   * desativa (professor só libera, nunca bloqueia) e é idempotente (se outra
+   * turma já ativou esta mesma lição, uma segunda chamada não falha, já que
+   * `status` é global e não por turma). A checagem de posse ("este professor
+   * pode ativar esta lição?") é responsabilidade de quem chama
+   * (classService.activateLessonForRecord) — aqui só valida o papel.
+   */
+  async activateLessonAsTeacher(actingRole: Role, lessonId: string): Promise<Lesson> {
+    if (actingRole !== 'TEACHER' && actingRole !== 'ADMIN') {
+      throw new AppError('Apenas professores podem ativar lições.');
+    }
+
+    const lesson = await lessonRepository.findById(lessonId);
+    if (!lesson) {
+      throw new AppError('Lição não encontrada.');
+    }
+    if (lesson.status === 'ACTIVE') {
+      return lesson;
+    }
+
+    await assertLessonContentReady(actingRole, lesson);
+    const activatedAt = lesson.activatedAt ?? new Date();
+    return await lessonRepository.updateStatus(lessonId, 'ACTIVE', activatedAt);
   },
 };

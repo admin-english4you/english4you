@@ -37,6 +37,8 @@ const adminNavItems: NavItem[] = [
 
 const teacherNavItems: NavItem[] = [
   { name: "Início", href: "/teacher", icon: LayoutDashboard },
+  { name: "Turmas", href: "/teacher/classes", icon: GraduationCap },
+  { name: "Lições", href: "/teacher/lessons", icon: BookOpen },
 ];
 
 const studentNavItems: NavItem[] = [

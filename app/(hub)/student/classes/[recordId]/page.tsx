@@ -22,5 +22,21 @@ export default async function StudentClassRoomPage({ params }: StudentClassRoomP
   // A lição bloqueada não deve ser lida, mesmo sendo da turma do aluno.
   if (!record.lesson || record.lesson.status === "DISABLED") notFound();
 
-  return <LiveClassRoom record={record} selfName={currentUser.name} todayKey={todayKey()} />;
+  // Só busca acesso à call se ela já estava ao vivo no momento da request —
+  // se o professor ainda não iniciou, o painel entra em modo de espera e faz
+  // poll leve (getStudentCallAccessAction) até a call aparecer.
+  const initialCallAccess = record.callStartedAt
+    ? await classService.getStudentCallAccess(currentUser.id, recordId)
+    : null;
+
+  return (
+    <LiveClassRoom
+      record={record}
+      initialCallAccess={initialCallAccess}
+      selfId={currentUser.id}
+      selfName={currentUser.name}
+      selfAvatarUrl={currentUser.avatarUrl}
+      todayKey={todayKey()}
+    />
+  );
 }

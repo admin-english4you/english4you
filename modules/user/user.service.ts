@@ -151,6 +151,34 @@ export const userService = {
   },
 
   /**
+   * Lê o professor FRESCO do banco — mesmo contrato de `getStudentById`, ponto
+   * de entrada de toda leitura da área do professor.
+   */
+  async getTeacherById(userId: string): Promise<User> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("Usuário não encontrado.");
+    }
+    if (user.role !== "TEACHER") {
+      throw new AppError("Esta área é exclusiva de professores.");
+    }
+    return user;
+  },
+
+  /**
+   * Alunos de uma turma, só com os campos exibíveis para o professor (sem
+   * e-mail/telefone — aquilo só sai via getTeacherClassStudentDetail, sob
+   * demanda, depois de validar posse). A posse da turma é validada por quem
+   * chama (classService), não aqui.
+   */
+  async getStudentsByClassGroupIdForTeacher(
+    classGroupId: string
+  ): Promise<Pick<User, "id" | "name" | "avatarUrl">[]> {
+    const students = await userRepository.findStudentsByClassGroupId(classGroupId);
+    return students.map(({ id, name, avatarUrl }) => ({ id, name, avatarUrl }));
+  },
+
+  /**
    * Atualiza o avatar do usuário (faz upload pro Firebase Admin Storage e atualiza no DB)
    */
   async updateAvatar(userId: string, file: File): Promise<User> {
@@ -248,14 +276,14 @@ export const userService = {
   },
 
   async countStudentsInClassGroup(actingRole: Role, classGroupId: string): Promise<number> {
-    if (actingRole !== "ADMIN") {
+    if (actingRole !== "ADMIN" && actingRole !== "TEACHER") {
       throw new AppError("Apenas administradores podem consultar a ocupação da turma.");
     }
     return await userRepository.countStudentsInClassGroup(classGroupId);
   },
 
   async countStudentsByClassGroupIds(actingRole: Role, classGroupIds: string[]): Promise<Record<string, number>> {
-    if (actingRole !== "ADMIN") {
+    if (actingRole !== "ADMIN" && actingRole !== "TEACHER") {
       throw new AppError("Apenas administradores podem consultar a ocupação das turmas.");
     }
     return await userRepository.countStudentsByClassGroupIds(classGroupIds);

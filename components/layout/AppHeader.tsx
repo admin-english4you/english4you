@@ -1,11 +1,12 @@
 "use client";
 
-import { Menu, Search, Bell, LogOut, Settings, User as UserIcon } from "lucide-react";
+import { Menu, Search, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getMeAction, logoutAction } from "@/modules/user/user.actions";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
 import { Avatar } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 type HeaderRole = "ADMIN" | "TEACHER" | "STUDENT";
 
@@ -92,13 +93,7 @@ export function AppHeader({
 
       {/* User Actions */}
       <div className="flex items-center gap-4">
-        <button 
-          className="relative text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors"
-          aria-label="Notificações"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-        </button>
+        <NotificationBell />
 
         <div className="h-8 w-px bg-slate-200"></div>
 

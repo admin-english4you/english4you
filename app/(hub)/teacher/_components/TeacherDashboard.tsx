@@ -1,83 +1,120 @@
 "use client";
 
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { GraduationCap, Users, Clock, PlayCircle, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Clock, GraduationCap, PlayCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { formatRelativeDayKey, formatTimeInZone, toDayKey } from "@/lib/date";
+import type { TeacherOverview } from "@/modules/class/class.types";
+import type { User } from "@/modules/user/user.types";
 
-export function TeacherDashboard() {
-  const upcomingClasses = [
-    { id: "1", title: "Business English B2", time: "Hoje • 18:00 - 19:00", studentsCount: 8, roomUrl: "#" },
-    { id: "2", title: "Beginner Conversation A1", time: "Amanhã • 09:00 - 10:00", studentsCount: 12, roomUrl: "#" },
-  ];
+interface TeacherDashboardProps {
+  user: User;
+  overview: TeacherOverview;
+  todayKey: string;
+}
+
+export function TeacherDashboard({ user, overview, todayKey }: TeacherDashboardProps) {
+  const firstName = user.name.split(" ")[0];
+  const nextRecord = overview.upcomingRecords[0] ?? null;
 
   return (
-    <AppLayout role="TEACHER" userName="Emma Thompson" userRoleTitle="Professora de Inglês" userAvatarText="ET">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Welcome Banner */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <AppLayout role="TEACHER" userName={user.name} userAvatarUrl={user.avatarUrl}>
+      <div className="mx-auto max-w-7xl space-y-8">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Portal do Professor</h1>
-            <p className="text-slate-500 text-sm mt-1">Bem-vinda, Emma! Confira suas próximas aulas e turmas ativas.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Olá, {firstName}!</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Confira suas turmas e as próximas aulas agendadas.
+            </p>
           </div>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white">
-            <PlayCircle className="w-4 h-4 mr-2" /> Iniciar Sala Virtual
-          </Button>
+          {nextRecord && (
+            <Button render={<Link href={`/teacher/live/${nextRecord.id}`} />} className="bg-amber-600 hover:bg-amber-700">
+              <PlayCircle className="mr-2 h-4 w-4" /> Ir para a próxima aula
+            </Button>
+          )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-semibold text-slate-500 uppercase">Minhas Turmas</span>
-            </div>
-            <div className="text-2xl font-bold text-slate-900">4 Turmas</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
-                <Users className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-semibold text-slate-500 uppercase">Total de Alunos</span>
-            </div>
-            <div className="text-2xl font-bold text-slate-900">38 Alunos</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-semibold text-slate-500 uppercase">Aulas Realizadas</span>
-            </div>
-            <div className="text-2xl font-bold text-slate-900">24 Aulas (Mês)</div>
-          </div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <StatCard
+            icon={<GraduationCap className="h-6 w-6" />}
+            tone="amber"
+            label="Minhas turmas"
+            value={`${overview.classCount} ${overview.classCount === 1 ? "turma" : "turmas"}`}
+          />
+          <StatCard
+            icon={<Users className="h-6 w-6" />}
+            tone="indigo"
+            label="Total de alunos"
+            value={`${overview.studentCount} ${overview.studentCount === 1 ? "aluno" : "alunos"}`}
+          />
         </div>
 
-        {/* Upcoming Classes */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h2 className="font-bold text-slate-900 text-base mb-4 pb-3 border-b border-slate-100">Próximas Aulas Agendadas</h2>
-          <div className="space-y-4">
-            {upcomingClasses.map((c) => (
-              <div key={c.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100/50 transition-colors gap-4">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">{c.title}</h3>
-                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" /> {c.time}</span>
-                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-slate-400" /> {c.studentsCount} Alunos</span>
-                  </div>
-                </div>
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs w-full sm:w-auto">
-                  Entrar na Aula
-                </Button>
-              </div>
-            ))}
+        <Card>
+          <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900">Próximas aulas</h2>
+            <Button render={<Link href="/teacher/classes" />} variant="outline" size="sm">
+              Ver minhas turmas <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
           </div>
-        </div>
+
+          {overview.upcomingRecords.length > 0 ? (
+            <div className="space-y-3">
+              {overview.upcomingRecords.map((record) => {
+                const dayKey = toDayKey(record.date);
+                return (
+                  <Link
+                    key={record.id}
+                    href={`/teacher/live/${record.id}`}
+                    className="group flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition-all hover:border-amber-200 hover:bg-amber-50/40 sm:flex-row sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-slate-800 transition-colors group-hover:text-amber-700">
+                        {record.lesson?.title ?? "Aula sem lição vinculada"}
+                      </h3>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                        <Clock className="h-3.5 w-3.5" />
+                        {formatRelativeDayKey(dayKey, todayKey)} · {formatTimeInZone(record.date)}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-amber-500" />
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-slate-500">Nenhuma aula agendada.</p>
+          )}
+        </Card>
       </div>
     </AppLayout>
+  );
+}
+
+const TONE_STYLES = {
+  amber: "bg-amber-50 text-amber-600 border-amber-100",
+  indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+} as const;
+
+function StatCard({
+  icon,
+  tone,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  tone: keyof typeof TONE_STYLES;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Card className="flex items-center gap-4 p-5">
+      <div className={`rounded-xl border p-3 ${TONE_STYLES[tone]}`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase text-slate-400">{label}</p>
+        <p className="truncate text-base font-bold text-slate-900">{value}</p>
+      </div>
+    </Card>
   );
 }

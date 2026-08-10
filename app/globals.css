@@ -253,3 +253,15 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+
+/* O SDK do Stream (@stream-io/video-react-sdk) estiliza .str-video__participant-view
+   com aspect-ratio 4/3 fixo e max-width 1280px — diferente do aspect-video (16/9)
+   dos nossos placeholders, então o tile de vídeo real aparecia com tamanho/proporção
+   diferente do placeholder que ele substitui. .e4y-video-tile força o tile do SDK a
+   preencher 100% do contêiner (que já tem aspect-video), igual ao placeholder. */
+.e4y-video-tile .str-video__participant-view {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+}

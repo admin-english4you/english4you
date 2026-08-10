@@ -67,3 +67,28 @@ export type StudentTaughtRecord = {
   record: ClassRecord;
   lesson: Lesson;
 };
+
+/** Stats + próximas aulas do professor — card do dashboard e do perfil. */
+export type TeacherOverview = {
+  classCount: number;
+  studentCount: number;
+  upcomingRecords: ClassRecordDetail[];
+};
+
+/** Turma sob a ótica do professor: roster completo + grade de aulas. Só titular. */
+export type TeacherClassGroupDetail = {
+  classGroup: ClassGroup;
+  plan: Plan | null;
+  students: ClassmateSummary[];
+  records: ClassRecordDetail[];
+};
+
+/** Dados de um aluno específico exibidos no modal do roster — buscado sob demanda. */
+export type TeacherStudentDetail = Pick<User, 'id' | 'name' | 'email' | 'phone' | 'avatarUrl'>;
+
+/** Uma aula aberta pelo professor (titular OU substituto), pronta pra sala de aula. */
+export type TeacherClassRecordDetail = ClassRecordDetail & {
+  classGroup: ClassGroup;
+  effectiveTeacher: User | null;
+  students: ClassmateSummary[];
+};
