@@ -1,49 +1,139 @@
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, pgEnum, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { usersTable, SigningIdentitySchema } from '@/modules/user/user.schema';
+import { packagesTable } from '@/modules/finance/finance.schema';
 
 /**
  * ContractStatusEnum (Status do Contrato)
  * Controla o vínculo legal e o pacote do usuário.
- * 
+ *
  * PENDING_SIGNATURE: O usuário entrou na plataforma, mas ainda não assinou o termo.
  * ACTIVE: Contrato assinado e vigente. O aluno está estudando / Professor está lecionando.
  * CANCELED: O usuário desistiu ou foi removido.
  * COMPLETED: O período do contrato acabou. O acesso é encerrado até renovação.
  */
-export const ContractStatusEnum = z.enum(['PENDING_SIGNATURE', 'ACTIVE', 'CANCELED', 'COMPLETED']);
+export const contractStatusEnumDb = pgEnum('contract_status', [
+  'PENDING_SIGNATURE',
+  'ACTIVE',
+  'CANCELED',
+  'COMPLETED',
+]);
 
 /**
- * ContractTemplateSchema
- * Permite que admins criem templates de contrato com variáveis que serão preenchidas.
- * Cada vez que for modificado, o template antigo ganha isActive = false e um novo vira ativo,
- * garantindo que contratos passados continuem referenciando o template que originou suas cláusulas.
+ * Quem pode assinar um modelo. Deliberadamente NÃO reusa `user_role`, que
+ * admitiria um `ADMIN` sem significado aqui — admin não assina contrato.
  */
-export const ContractTemplateSchema = z.object({
-  id: z.uuid(),
-  name: z.string().min(3, 'Nome do template é obrigatório'),
-  content: z.string().min(10, 'O conteúdo do contrato é obrigatório'), // Texto com placeholders como {{nome}}, {{cpf}}, etc.
-  isActive: z.boolean().default(true),
-  targetRole: z.enum(['STUDENT', 'TEACHER']), // Define quem pode assinar
-  version: z.number().int().positive().default(1),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+export const contractTargetRoleEnumDb = pgEnum('contract_target_role', ['STUDENT', 'TEACHER']);
+
+/**
+ * Modelo de contrato escrito pelo admin, com variáveis (`{{nome}}`,
+ * `{{documento}}`, ...) resolvidas na hora da assinatura — ver contract.utils.ts.
+ *
+ * Só existe UM modelo ativo por papel (índice único parcial abaixo): é ele que
+ * gera os contratos dos novos usuários daquele papel.
+ */
+export const contractTemplatesTable = pgTable('contract_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  // HTML do TipTap, com os placeholders ainda crus.
+  content: text('content').notNull(),
+  targetRole: contractTargetRoleEnumDb('target_role').notNull(),
+  isActive: boolean('is_active').notNull().default(false),
+  // Rótulo para humanos ("Contrato do Aluno — v3"). Monotônico por papel.
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => [
+  index('contract_templates_target_role_idx').on(table.targetRole),
+  // Um só modelo ativo por papel, garantido no banco e não apenas no service.
+  uniqueIndex('contract_templates_active_target_uq')
+    .on(table.targetRole)
+    .where(sql`${table.isActive}`),
+]);
+
+/**
+ * O contrato efetivo de um aluno ou professor.
+ *
+ * `contentSnapshot` é null enquanto `PENDING_SIGNATURE` (o texto é renderizado
+ * ao vivo a partir do modelo) e passa a guardar o HTML final, já com os dados
+ * do usuário substituídos, no instante da assinatura. É ele que vale
+ * juridicamente: editar o modelo depois nunca altera um contrato assinado.
+ *
+ * FKs com `restrict`: um contrato assinado jamais pode perder o modelo ou o
+ * pacote que o originou.
+ */
+export const contractsTable = pgTable('contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  templateId: uuid('template_id').notNull().references(() => contractTemplatesTable.id, { onDelete: 'restrict' }),
+  userId: uuid('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  // Nullable: professor assina contrato sem pacote.
+  packageId: uuid('package_id').references(() => packagesTable.id, { onDelete: 'restrict' }),
+  status: contractStatusEnumDb('status').notNull().default('PENDING_SIGNATURE'),
+  contentSnapshot: text('content_snapshot'),
+  startDate: timestamp('start_date').notNull(),
+  // Derivado de `startDate + package.durationInMonths` na criação. Guardado em
+  // coluna para que "este contrato venceu?" e a futura geração de parcelas
+  // sejam query pura, sem recalcular a partir do pacote.
+  endDate: timestamp('end_date'),
+  signedAt: timestamp('signed_at'),
+  // O nome digitado na assinatura é o artefato de auditoria (equivalente à
+  // rubrica); fica em coluna própria para ser consultável, e não só
+  // recuperável parseando o snapshot.
+  signedName: varchar('signed_name', { length: 255 }),
+  // 45 = comprimento máximo textual de um IPv6.
+  signedByIp: varchar('signed_by_ip', { length: 45 }),
+  // PDF gerado — fora de escopo por enquanto, sempre null.
+  documentUrl: varchar('document_url', { length: 500 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => [
+  index('contracts_user_id_idx').on(table.userId),
+  index('contracts_status_idx').on(table.status),
+]);
+
+export const ContractStatusEnum = z.enum(contractStatusEnumDb.enumValues);
+export const ContractTargetRoleEnum = z.enum(contractTargetRoleEnumDb.enumValues);
+
+export const ContractTemplateSchema = createSelectSchema(contractTemplatesTable);
+export const InsertContractTemplateSchema = createInsertSchema(contractTemplatesTable);
+export const ContractSchema = createSelectSchema(contractsTable);
+export const InsertContractSchema = createInsertSchema(contractsTable);
+
+export const CreateContractTemplateSchema = z.object({
+  name: z.string().min(3, 'Nome do modelo é obrigatório'),
+  targetRole: ContractTargetRoleEnum,
 });
 
-/**
- * ContractSchema
- * O contrato efetivo assinado por um aluno ou professor.
- * Guarda o snapshot do texto no exato momento da assinatura para evitar disputas se o template mudar.
- */
-export const ContractSchema = z.object({
-  id: z.uuid(),
+export const UpdateContractTemplateSchema = z.object({
   templateId: z.uuid(),
-  userId: z.uuid(), // Refere-se tanto a alunos quanto a professores
-  packageId: z.uuid().optional(), // Professores não têm pacotes, alunos têm.
-  status: ContractStatusEnum.default('PENDING_SIGNATURE'),
-  contentSnapshot: z.string().optional(), // O HTML/Texto final já com os dados do usuário preenchidos.
-  startDate: z.date(),
-  signedAt: z.date().nullable().optional(),
-  signedByIp: z.string().optional(), // Útil para auditoria de assinatura digital
-  documentUrl: z.url().optional(), // PDF gerado e hospedado no S3/Firebase
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  name: z.string().min(3, 'Nome do modelo é obrigatório').optional(),
+  content: z.string().min(10, 'O conteúdo do contrato é obrigatório').optional(),
 });
+
+export const SetContractTemplateActiveSchema = z.object({
+  templateId: z.uuid(),
+});
+
+export const CancelContractSchema = z.object({
+  contractId: z.uuid(),
+});
+
+/** Emite manualmente um contrato para um usuário (ex: professor, ou aluno sem contrato). */
+export const CreateContractForUserSchema = z.object({
+  userId: z.uuid(),
+  packageId: z.uuid().optional(),
+});
+
+/**
+ * Assinatura: o aluno digita o próprio nome e marca o aceite. O nome é
+ * conferido contra `users.name` no service; o IP é capturado na action.
+ */
+export const SignContractSchema = z.object({
+  contractId: z.uuid(),
+  signedName: z.string().min(3, 'Digite seu nome completo'),
+  acceptedTerms: z.literal(true, { message: 'É preciso aceitar os termos para assinar' }),
+});
+
+export { SigningIdentitySchema };

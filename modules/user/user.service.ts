@@ -1,4 +1,4 @@
-import { User, Role } from "./user.types";
+import { User, Role, SigningIdentityInput } from "./user.types";
 import { userRepository } from "./user.repository";
 import { adminAuth, adminStorage } from "@/lib/firebase-admin";
 import { sendUserInviteEmail } from "@/lib/resend";
@@ -7,15 +7,26 @@ import crypto from "crypto";
 
 /**
  * Service do módulo de Usuários (Regras de Negócio e RBAC).
+ *
+ * Este módulo é deliberadamente uma FOLHA na árvore de dependências: ele não
+ * importa nenhum outro service. Quem precisa compor "criar usuário + algo
+ * mais" (ex: gerar o contrato do aluno) orquestra de fora — ver
+ * `contractService.registerUserWithContract`.
  */
 export const userService = {
   /**
    * Permite que administradores convidem/cadastrem novos usuários informando apenas nome, email e role.
    * O sistema dispara um fluxo de envio de e-mail para definição de senha.
+   *
+   * `skipInvite` adia o e-mail para quem precisa concluir outros passos antes
+   * (o contrato do aluno): sem isso, uma falha posterior deixaria o aluno com
+   * um convite para uma conta pela metade. Quem passa `skipInvite` fica
+   * responsável por chamar `sendInviteForUser` no fim do fluxo.
    */
   async createUserByAdmin(
     creatorRole: Role,
-    data: { name: string; email: string; role: Role; packageId?: string }
+    data: { name: string; email: string; role: Role },
+    options?: { skipInvite?: boolean }
   ): Promise<{ user: User; inviteToken: string }> {
     // 1. RBAC Check: Apenas admins podem criar usuários
     if (creatorRole !== "ADMIN") {
@@ -59,19 +70,71 @@ export const userService = {
 
     const inviteToken = `setup_${crypto.randomUUID()}`;
 
-    if (data.role === 'STUDENT' && data.packageId) {
-      // TODO: Implementar criação de contrato no módulo financeiro (associando studentId e packageId)
-      console.log(`[Finance] Pacote ${data.packageId} selecionado para o novo aluno ${userId}. Criação de contrato pendente.`);
+    // 5. Disparar e-mail de onboarding via Resend (a menos que quem chamou
+    //    ainda tenha passos pendentes — ver docblock).
+    if (!options?.skipInvite) {
+      await sendUserInviteEmail({
+        email: data.email,
+        name: data.name,
+        resetLink,
+      });
     }
 
-    // 5. Disparar e-mail de onboarding via Resend
-    await sendUserInviteEmail({
-      email: data.email,
-      name: data.name,
-      resetLink,
-    });
-
     return { user: newUser, inviteToken };
+  },
+
+  /**
+   * (Re)envia o e-mail de definição de senha. Idempotente — o link do Firebase
+   * é gerado na hora, então chamar de novo simplesmente manda um link novo.
+   * Usado ao final do cadastro com `skipInvite` e, futuramente, por um botão
+   * "Reenviar convite" no painel do admin.
+   */
+  async sendInviteForUser(actingRole: Role, userId: string): Promise<void> {
+    if (actingRole !== "ADMIN") {
+      throw new AppError("Apenas administradores podem enviar convites.");
+    }
+
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("Usuário não encontrado.");
+    }
+
+    let resetLink: string | undefined;
+    if (adminAuth) {
+      try {
+        resetLink = await adminAuth.generatePasswordResetLink(user.email);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn("[Firebase Auth] Aviso ao gerar link de senha:", message);
+      }
+    }
+
+    await sendUserInviteEmail({ email: user.email, name: user.name, resetLink });
+  },
+
+  /**
+   * Grava os dados de identidade que o PRÓPRIO usuário preencheu antes de
+   * assinar o contrato (CPF e endereço).
+   *
+   * Sem `actingRole`: o `userId` sempre vem de `getCurrentUser()` na action,
+   * nunca do corpo da requisição — mesmo contrato de `updateAvatar`.
+   */
+  async updateSigningIdentity(userId: string, data: SigningIdentityInput): Promise<User> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("Usuário não encontrado.");
+    }
+
+    return await userRepository.updateUser(userId, {
+      document: data.document,
+      addressStreet: data.addressStreet,
+      addressNumber: data.addressNumber,
+      addressComplement: data.addressComplement ?? null,
+      addressDistrict: data.addressDistrict,
+      addressCity: data.addressCity,
+      addressState: data.addressState,
+      addressZipCode: data.addressZipCode,
+    });
   },
 
   /**

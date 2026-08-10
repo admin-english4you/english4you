@@ -5,11 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { LoginSchema, CreateUserByAdminSchema } from "./user.schema";
 import { userService } from "./user.service";
+import { contractService } from "@/modules/contract/contract.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getHomeRouteForRole } from "@/lib/rbac";
 import { createSafeAction, ActionResult } from "@/lib/safe-action";
 import { AppError } from "@/lib/errors";
 import { User } from "./user.types";
+import { toSessionUser } from "./user.session";
 import { z } from "zod";
 
 /**
@@ -19,10 +21,13 @@ export async function loginAction(input: z.infer<typeof LoginSchema>) {
   const safeAction = createSafeAction(LoginSchema, async (data) => {
     const user = await userService.authenticateUser(data);
 
-    // Gravar cookie de sessão HTTP-only
+    // Gravar cookie de sessão HTTP-only.
+    // `toSessionUser` remove CPF/endereço: o cookie é httpOnly mas NÃO é
+    // assinado nem criptografado, e não há motivo para dado pessoal
+    // regulado trafegar nele — nada que lê a sessão usa esses campos.
     const cookieStore = await cookies();
     const sessionData = {
-      user,
+      user: toSessionUser(user),
       token: `token_${user.id}`,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
@@ -44,6 +49,11 @@ export async function loginAction(input: z.infer<typeof LoginSchema>) {
 
 /**
  * Server Action para administradores convidarem um novo usuário (nome, email, role).
+ *
+ * Delega ao `contractService`, e não ao `userService`, porque cadastrar um
+ * ALUNO é "criar usuário + emitir contrato do pacote escolhido" — uma
+ * operação só. A orquestração vive lá para manter o módulo `user` como folha
+ * na árvore de dependências (ver docblock de `registerUserWithContract`).
  */
 export async function createUserByAdminAction(input: z.infer<typeof CreateUserByAdminSchema>) {
   const safeAction = createSafeAction(CreateUserByAdminSchema, async (data) => {
@@ -52,8 +62,9 @@ export async function createUserByAdminAction(input: z.infer<typeof CreateUserBy
       throw new AppError("Acesso negado. Apenas administradores podem executar esta ação.");
     }
 
-    const result = await userService.createUserByAdmin(currentUser.role, data);
+    const result = await contractService.registerUserWithContract(currentUser.role, data);
     revalidatePath("/admin/users");
+    revalidatePath("/admin/finance");
     return result.user;
   });
 
@@ -106,7 +117,8 @@ export async function updateAvatarAction(formData: FormData): Promise<ActionResu
     if (sessionCookie && sessionCookie.value) {
       try {
         const sessionData = JSON.parse(sessionCookie.value);
-        sessionData.user = updatedUser;
+        // Mesma regra do login: identidade (CPF/endereço) não entra no cookie.
+        sessionData.user = toSessionUser(updatedUser);
         cookieStore.set("e4y_session", JSON.stringify(sessionData), {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",

@@ -1,19 +1,17 @@
 "use client";
 
-import { AppLayout } from "@/components/layout/AppLayout";
-import { 
-  DollarSign, 
-  CreditCard, 
-  Download, 
-  FileText, 
-  TrendingUp, 
+import {
+  DollarSign,
+  CreditCard,
+  Download,
+  FileText,
+  TrendingUp,
   TrendingDown,
   Clock,
   AlertCircle,
   ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
 import { PaymentStatus } from "@/modules/finance/finance.types";
 
 interface Transaction {
@@ -39,19 +37,22 @@ export function FinancialOverview() {
   ];
 
   return (
-    <AppLayout role="ADMIN">
       <div className="mx-auto space-y-6">
-        <PageHeader 
-          title="Visão Geral Financeira" 
-          description="Monitore receitas, mensalidades do Mercado Pago e repsasse a professores."
-        >
-          <Button variant="outline" className="flex-1 sm:flex-none">
-            <Download className="w-4 h-4 mr-2" /> Exportar CSV
-          </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 flex-1 sm:flex-none">
-            <FileText className="w-4 h-4 mr-2" /> Nova Fatura
-          </Button>
-        </PageHeader>
+        {/* O AppLayout e o cabeçalho da página vivem no FinanceShell, que é
+            compartilhado pelas quatro abas. Aqui fica só o conteúdo da aba. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            Receitas, mensalidades do Mercado Pago e repasse a professores.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1 sm:flex-none">
+              <Download className="w-4 h-4 mr-2" /> Exportar CSV
+            </Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 flex-1 sm:flex-none">
+              <FileText className="w-4 h-4 mr-2" /> Nova Fatura
+            </Button>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -167,6 +168,5 @@ export function FinancialOverview() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

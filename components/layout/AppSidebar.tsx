@@ -8,6 +8,7 @@ import {
   BookOpen,
   GraduationCap,
   DollarSign,
+  FileText,
   Home,
   Sparkles,
   X
@@ -45,6 +46,8 @@ const studentNavItems: NavItem[] = [
   { name: "Início", href: "/student", icon: Home },
   { name: "Turma", href: "/student/classes", icon: GraduationCap },
   { name: "Prática", href: "/student/practice", icon: Sparkles },
+  // Por último: é administrativo, não de uso diário.
+  { name: "Documentos", href: "/student/documents", icon: FileText },
 ];
 
 const NAV_BY_ROLE: Record<SidebarRole, NavItem[]> = {

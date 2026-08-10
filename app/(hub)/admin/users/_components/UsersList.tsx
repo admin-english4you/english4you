@@ -12,14 +12,19 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Role } from "@/modules/user/user.types";
 import { createUserByAdminAction } from "@/modules/user/user.actions";
 import Image from "next/image";
+import Link from "next/link";
 
 import { User } from "@/modules/user/user.types";
+import type { Package } from "@/modules/finance/finance.types";
+import { formatCents } from "@/modules/finance/finance.utils";
 
 interface UsersListProps {
   initialUsers: User[];
+  /** Pacotes ativos — o contrato do aluno é gerado a partir do escolhido aqui. */
+  packages: Package[];
 }
 
-export function UsersList({ initialUsers }: UsersListProps) {
+export function UsersList({ initialUsers, packages }: UsersListProps) {
   const [filterRole, setFilterRole] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,21 +80,10 @@ export function UsersList({ initialUsers }: UsersListProps) {
     if (result.success && result.data) {
       const createdUser = result.data;
       
-      setUsersList((prev) => [
-        {
-          id: createdUser.id,
-          name: createdUser.name,
-          email: createdUser.email,
-          role: createdUser.role,
-          status: "Active",
-          avatarUrl: null,
-          phone: null,
-          classGroupId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        ...prev,
-      ]);
+      // Espalha o usuário que voltou do servidor em vez de remontar o objeto
+      // campo a campo: um literal completo quebra o build a cada coluna nova
+      // em `users` (foi o que aconteceu ao adicionar CPF/endereço).
+      setUsersList((prev) => [createdUser, ...prev]);
 
       setFormSuccessMessage(`Usuário ${createdUser.name} cadastrado com sucesso! Um e-mail de definição de senha foi enviado.`);
       setNewUserName("");
@@ -301,7 +295,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                       <div>
                         <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Pacote de Aulas</span>
                         <span className="text-sm font-semibold text-slate-800">
-                          {newUserPackage === "11111111-1111-1111-1111-111111111111" ? "Pacote Básico (6 meses - R$ 150/mês)" : "Pacote Pro (12 meses - R$ 120/mês)"}
+                          {packages.find((p) => p.id === newUserPackage)?.name ?? "—"}
                         </span>
                       </div>
                     )}
@@ -384,18 +378,30 @@ export function UsersList({ initialUsers }: UsersListProps) {
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Pacote de Aulas
                       </label>
-                      <Select
-                        value={newUserPackage}
-                        onChange={(val) => setNewUserPackage(val)}
-                        placeholder="Selecione um pacote..."
-                        options={[
-                          { value: "11111111-1111-1111-1111-111111111111", label: "Pacote Básico (6 meses - R$ 150/mês)" },
-                          { value: "22222222-2222-2222-2222-222222222222", label: "Pacote Pro (12 meses - R$ 120/mês)" }
-                        ]}
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        O contrato do aluno será criado automaticamente com base neste pacote.
-                      </p>
+                      {packages.length === 0 ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
+                          Nenhum pacote ativo cadastrado. Crie um em{" "}
+                          <Link href="/admin/finance?tab=pacotes" className="font-semibold underline">
+                            Financeiro → Pacotes
+                          </Link>{" "}
+                          antes de matricular alunos.
+                        </div>
+                      ) : (
+                        <>
+                          <Select
+                            value={newUserPackage}
+                            onChange={(val) => setNewUserPackage(val)}
+                            placeholder="Selecione um pacote..."
+                            options={packages.map((p) => ({
+                              value: p.id,
+                              label: `${p.name} (${p.durationInMonths} meses · ${p.classesPerWeek}x/sem · ${formatCents(p.installmentValueCents)}/mês)`,
+                            }))}
+                          />
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            O contrato do aluno é criado automaticamente com base neste pacote.
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
 
