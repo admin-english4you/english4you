@@ -46,7 +46,8 @@ const studentNavItems: NavItem[] = [
   { name: "Início", href: "/student", icon: Home },
   { name: "Turma", href: "/student/classes", icon: GraduationCap },
   { name: "Prática", href: "/student/practice", icon: Sparkles },
-  // Por último: é administrativo, não de uso diário.
+  // Por último: são administrativos, não de uso diário.
+  { name: "Pagamentos", href: "/student/payments", icon: DollarSign },
   { name: "Documentos", href: "/student/documents", icon: FileText },
 ];
 

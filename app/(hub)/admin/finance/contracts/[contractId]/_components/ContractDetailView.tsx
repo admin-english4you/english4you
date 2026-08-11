@@ -3,19 +3,23 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Fingerprint } from "lucide-react";
+import { ArrowLeft, Ban, Fingerprint, Repeat } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { LessonContentView } from "@/components/lesson/LessonContentView";
 import { cn } from "@/lib/utils";
 import { cancelContractAction } from "@/modules/contract/contract.actions";
+import { changeStudentPackageAction } from "@/modules/payment/payment.actions";
 import { CONTRACT_STATUS_LABELS, CONTRACT_STATUS_STYLES } from "@/modules/contract/contract.utils";
 import { formatCents } from "@/modules/finance/finance.utils";
 import type { ContractDetail } from "@/modules/contract/contract.types";
+import type { Package } from "@/modules/finance/finance.types";
 
 interface ContractDetailViewProps {
   contract: ContractDetail;
+  packages: Package[];
 }
 
 function formatDateTime(value: Date | null): string {
@@ -23,22 +27,55 @@ function formatDateTime(value: Date | null): string {
   return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-export function ContractDetailView({ contract }: ContractDetailViewProps) {
+export function ContractDetailView({ contract, packages }: ContractDetailViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [changingPackage, setChangingPackage] = useState(false);
+  const [newPackageId, setNewPackageId] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleCancel = () => {
+    setError(null);
     startTransition(async () => {
       const result = await cancelContractAction({ contractId: contract.id });
       if (result.success) {
         setConfirmingCancel(false);
         router.refresh();
+      } else {
+        setError(result.error);
       }
     });
   };
 
-  const canCancel = contract.status === "PENDING_SIGNATURE" || contract.status === "ACTIVE";
+  const handleChangePackage = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await changeStudentPackageAction({
+        userId: contract.userId,
+        packageId: newPackageId,
+      });
+      if (result.success && result.data) {
+        setChangingPackage(false);
+        // O contrato antigo virou CANCELED e um novo foi emitido: quem manda na
+        // navegação é o id novo, não este.
+        router.push(`/admin/finance/contracts/${result.data.id}`);
+      } else if (!result.success) {
+        setError(result.error);
+      }
+    });
+  };
+
+  const isLive = contract.status === "PENDING_SIGNATURE" || contract.status === "ACTIVE";
+  const canCancel = isLive;
+  // Só contrato de aluno tem pacote — professor assina sem nenhum.
+  const canChangePackage = isLive && contract.pkg !== null;
+  const packageOptions = packages
+    .filter((pkg) => pkg.id !== contract.packageId)
+    .map((pkg) => ({
+      value: pkg.id,
+      label: `${pkg.name} — ${formatCents(pkg.installmentValueCents)}/mês · ${pkg.durationInMonths} meses`,
+    }));
 
   return (
     <AppLayout role="ADMIN">
@@ -69,6 +106,18 @@ export function ContractDetailView({ contract }: ContractDetailViewProps) {
             >
               {CONTRACT_STATUS_LABELS[contract.status]}
             </span>
+            {canChangePackage && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNewPackageId("");
+                  setChangingPackage(true);
+                }}
+                disabled={isPending}
+              >
+                <Repeat className="mr-2 h-4 w-4" /> Trocar pacote
+              </Button>
+            )}
             {canCancel && (
               <Button variant="outline" onClick={() => setConfirmingCancel(true)} disabled={isPending}>
                 <Ban className="mr-2 h-4 w-4" /> Cancelar
@@ -76,6 +125,12 @@ export function ContractDetailView({ contract }: ContractDetailViewProps) {
             )}
           </div>
         </div>
+
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <aside className="space-y-4 lg:col-span-1">
@@ -126,11 +181,52 @@ export function ContractDetailView({ contract }: ContractDetailViewProps) {
         </div>
       </div>
 
+      <Modal isOpen={changingPackage} onClose={() => setChangingPackage(false)} title="Trocar pacote">
+        <div className="space-y-4 p-6">
+          <p className="text-sm text-slate-600">
+            A assinatura atual é cancelada no Mercado Pago (nenhuma cobrança futura é gerada), este
+            contrato passa a constar como cancelado e um novo é emitido com o pacote escolhido.
+          </p>
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            O aluno precisará assinar o novo contrato e cadastrar o cartão de novo — ele cai
+            automaticamente no fluxo de matrícula no próximo acesso.
+          </p>
+
+          <div>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">
+              Novo pacote
+            </label>
+            <Select
+              value={newPackageId}
+              onChange={setNewPackageId}
+              options={packageOptions}
+              placeholder="Selecione o pacote"
+              disabled={isPending}
+            />
+          </div>
+
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setChangingPackage(false)} disabled={isPending}>
+              Voltar
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={handleChangePackage}
+              disabled={!newPackageId}
+              loading={isPending}
+            >
+              Trocar pacote
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
       <Modal isOpen={confirmingCancel} onClose={() => setConfirmingCancel(false)} title="Cancelar contrato?">
         <div className="p-6">
           <p className="text-sm text-slate-600">
-            O contrato passa a constar como cancelado. O histórico e o texto assinado continuam
-            guardados — nada é apagado.
+            O contrato passa a constar como cancelado e a assinatura recorrente é cancelada no
+            Mercado Pago — nenhuma cobrança futura é gerada. O histórico e o texto assinado
+            continuam guardados; nada é apagado.
           </p>
           <ModalFooter>
             <Button variant="outline" onClick={() => setConfirmingCancel(false)} disabled={isPending}>

@@ -13,6 +13,7 @@ import {
   UpdateContractTemplateSchema,
 } from "./contract.schema";
 import { contractService } from "./contract.service";
+import { paymentService } from "@/modules/payment/payment.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { createSafeAction } from "@/lib/safe-action";
 import { AppError } from "@/lib/errors";
@@ -92,6 +93,14 @@ export async function createContractForUserAction(input: z.infer<typeof CreateCo
   return safeAction(input);
 }
 
+/**
+ * Delega ao `paymentService`, e não ao `contractService`: cancelar um contrato
+ * precisa derrubar junto a assinatura recorrente no Mercado Pago, senão o aluno
+ * segue sendo cobrado por um curso que não tem mais. A orquestração mora no
+ * módulo de pagamento porque é ele que já depende de `contract` — o contrário
+ * fecharia um ciclo de imports. Esta é a ÚNICA porta de cancelamento exposta à
+ * UI, para que não exista caminho que cancele um sem o outro.
+ */
 export async function cancelContractAction(input: z.infer<typeof CancelContractSchema>) {
   const safeAction = createSafeAction(CancelContractSchema, async (data) => {
     const currentUser = await getCurrentUser();
@@ -99,7 +108,10 @@ export async function cancelContractAction(input: z.infer<typeof CancelContractS
       throw new AppError("Usuário não autenticado.");
     }
 
-    const result = await contractService.cancelContract(currentUser.role, data.contractId);
+    const result = await paymentService.cancelContractAndSubscription(
+      currentUser.role,
+      data.contractId
+    );
     revalidatePath("/admin/finance");
     revalidatePath(`/admin/finance/contracts/${data.contractId}`);
     return result;

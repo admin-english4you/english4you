@@ -7,6 +7,11 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/admin": ["ADMIN"],
   "/teacher": ["TEACHER", "ADMIN"],
   "/student": ["STUDENT", "TEACHER", "ADMIN"],
+  // Telas de cobrança (grupo `(billing)`): só o aluno tem pacote e assinatura.
+  // Precisam estar listadas explicitamente — `hasRouteAccess` LIBERA qualquer
+  // prefixo que não esteja neste mapa.
+  "/onboarding": ["STUDENT"],
+  "/fix-payment": ["STUDENT"],
 };
 
 /**

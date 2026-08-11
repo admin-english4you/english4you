@@ -33,6 +33,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...exceto o template, que só tem NOMES de variáveis e é a documentação de
+# quais chaves o projeto precisa (Mercado Pago, Firebase, Stream, Resend).
+!.env.example
 
 # vercel
 .vercel

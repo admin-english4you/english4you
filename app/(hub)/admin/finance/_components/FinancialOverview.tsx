@@ -12,7 +12,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PaymentStatus } from "@/modules/finance/finance.types";
+import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES } from "@/modules/payment/payment.utils";
+import type { PaymentStatus } from "@/modules/payment/payment.types";
 
 interface Transaction {
   id: string;
@@ -30,7 +31,7 @@ export function FinancialOverview() {
     { id: "TRX-9381", student: "Olivia Chen", type: "Taxa de Material", amount: 150.00, date: "2026-02-24", status: "PAID", method: "Cartão de Crédito" },
     { id: "TRX-9380", student: "Lucas Silva", type: "Mensalidade (Fev)", amount: 450.00, date: "2026-02-23", status: "PENDING", method: "Boleto Bancário" },
     { id: "TRX-9379", student: "Liam Garcia", type: "Aulas Particulares (5h)", amount: 350.00, date: "2026-02-21", status: "PAID", method: "Cartão de Crédito" },
-    { id: "TRX-9378", student: "Mia Wong", type: "Mensalidade (Fev)", amount: 450.00, date: "2026-02-20", status: "OVERDUE", method: "Em Atraso" },
+    { id: "TRX-9378", student: "Mia Wong", type: "Mensalidade (Fev)", amount: 450.00, date: "2026-02-20", status: "FAILED", method: "Em Atraso" },
     { id: "TRX-9377", student: "Emma Thompson", type: "Repasse de Horas (Teacher)", amount: -2800.00, date: "2026-02-15", status: "PAID", method: "Transferência" },
     { id: "TRX-9376", student: "Sophia Kim", type: "Repasse de Horas (Teacher)", amount: -2500.00, date: "2026-02-15", status: "PAID", method: "Transferência" },
     { id: "TRX-9375", student: "Robert James", type: "Repasse de Horas (Teacher)", amount: -3100.00, date: "2026-02-15", status: "FAILED", method: "Cartão Recusado" },
@@ -87,7 +88,7 @@ export function FinancialOverview() {
               <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 font-bold">
                 <AlertCircle className="w-5 h-5" />
               </div>
-              <h3 className="font-semibold text-slate-600 text-sm">Inadimplentes (OVERDUE)</h3>
+              <h3 className="font-semibold text-slate-600 text-sm">Inadimplentes</h3>
             </div>
             <div className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">R$ 850,00</div>
             <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600">
@@ -120,7 +121,7 @@ export function FinancialOverview() {
                   <th className="px-6 py-3.5">Valor</th>
                   <th className="px-6 py-3.5">Data</th>
                   <th className="px-6 py-3.5">Método</th>
-                  <th className="px-6 py-3.5">Status (PaymentStatusEnum)</th>
+                  <th className="px-6 py-3.5">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -145,13 +146,8 @@ export function FinancialOverview() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold border ${
-                          trx.status === 'PAID' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          trx.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          trx.status === 'OVERDUE' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                          'bg-slate-100 text-slate-700 border-slate-200'
-                        }`}>
-                          {trx.status}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold border ${PAYMENT_STATUS_STYLES[trx.status]}`}>
+                          {PAYMENT_STATUS_LABELS[trx.status]}
                         </span>
                       </td>
                     </tr>

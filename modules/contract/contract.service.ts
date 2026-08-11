@@ -367,6 +367,21 @@ export const contractService = {
   // Área do usuário (aluno/professor)
   // ---------------------------------------------------------------------------
 
+  /**
+   * O contrato vigente do usuário — o mais recente que está `ACTIVE` ou
+   * `PENDING_SIGNATURE`. É o que o módulo de pagamento consulta para saber qual
+   * pacote cobrar, sem precisar renderizar o HTML de `getMyContracts`.
+   *
+   * Sem RBAC: quem chama já resolveu de quem é o `userId` (o próprio aluno, via
+   * sessão, ou um admin que passou pelo `assertAdmin` do seu próprio fluxo).
+   */
+  async getCurrentContractForUser(userId: string): Promise<Contract | null> {
+    const contracts = await contractRepository.findContractsByUserId(userId);
+    return (
+      contracts.find((c) => c.status === 'ACTIVE' || c.status === 'PENDING_SIGNATURE') ?? null
+    );
+  },
+
   /** Contratos do próprio usuário, com o texto já pronto para leitura. */
   async getMyContracts(userId: string): Promise<StudentContractView[]> {
     const user = await userService.getUserById(userId);

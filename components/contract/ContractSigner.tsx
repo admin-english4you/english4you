@@ -20,6 +20,15 @@ interface ContractSignerProps {
   user: User;
 }
 
+/**
+ * Assinatura de contrato em 3 passos (dados pessoais → leitura → assinatura).
+ *
+ * Mora em `components/` e não num `_components/` de rota porque é usado por dois
+ * lugares: `/student/documents` (renovação, contrato avulso) e `/onboarding`
+ * (matrícula, onde é o passo 1 do wizard). Depois de assinar ele só chama
+ * `router.refresh()` — quem decide o que vem a seguir é o RSC que o renderizou.
+ */
+
 /** `z.input` e não `z.infer`: o schema tem `.transform()`, então a entrada do form é string crua. */
 type IdentityFormInput = {
   document: string;

@@ -3,17 +3,6 @@ import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
 /**
- * PaymentStatusEnum (Status do Pagamento)
- * Crucial para a integração com os Webhooks do Mercado Pago.
- *
- * PENDING: O pagamento foi gerado, mas ainda não foi pago.
- * PAID: O webhook do Mercado Pago confirmou o pagamento. O acesso está liberado.
- * FAILED: O cartão foi recusado (ex: sem limite).
- * OVERDUE: A data de vencimento passou e o aluno não pagou (inadimplente). O sistema pode bloquear o acesso.
- */
-export const PaymentStatusEnum = z.enum(['PENDING', 'PAID', 'FAILED', 'OVERDUE']);
-
-/**
  * Pacote comercial: o que o aluno compra na matrícula. Define a duração do
  * contrato, quantas aulas por semana ele tem direito e o valor da mensalidade.
  * É escolhido pelo admin ao cadastrar o aluno e vira a base do Contract.
@@ -60,22 +49,6 @@ export const ArchivePackageSchema = z.object({
   packageId: z.uuid(),
 });
 
-/**
- * Parcelas geradas a partir do contrato. Ainda não persistido — a integração
- * com o Mercado Pago é a próxima etapa; mantido como contrato de tipos.
- */
-export const PaymentSchema = z.object({
-  id: z.uuid(),
-  studentId: z.uuid(),
-  contractId: z.uuid(),
-  amount: z.number().positive(),
-  installmentNumber: z.number().int().positive(),
-  totalInstallments: z.number().int().positive(),
-  dueDate: z.date(),
-  paidAt: z.date().nullable().optional(),
-  status: PaymentStatusEnum.default('PENDING'),
-  mercadoPagoPaymentId: z.string().optional(),
-  mercadoPagoPreferenceId: z.string().optional(),
-  invoiceUrl: z.url().optional(),
-  createdAt: z.date(),
-});
+// Cobranças e assinaturas moraram aqui como contrato de tipos até a integração
+// com o Mercado Pago existir. Agora são tabelas de verdade em
+// `modules/payment/payment.schema.ts` — `finance` cuida só de pacotes.

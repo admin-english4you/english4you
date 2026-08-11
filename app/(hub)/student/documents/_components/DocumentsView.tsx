@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { StudentContractView } from "@/modules/contract/contract.types";
 import type { User } from "@/modules/user/user.types";
-import { ContractSigner } from "./ContractSigner";
+import { ContractSigner } from "@/components/contract/ContractSigner";
 import { SignedContractCard } from "./SignedContractCard";
 
 interface DocumentsViewProps {
