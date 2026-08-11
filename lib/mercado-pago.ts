@@ -39,12 +39,66 @@ export const invoiceClient = mpConfig ? new Invoice(mpConfig) : null;
 export const paymentClient = mpConfig ? new Payment(mpConfig) : null;
 
 /**
- * URL pública da aplicação — o `back_url` do preapproval precisa ser acessível
- * pelo Mercado Pago, então em dev isso exige um túnel (ngrok/cloudflared) com
- * `NEXT_PUBLIC_APP_URL` apontando pra ele.
+ * URL pública da aplicação, sem barra no fim.
+ *
+ * Ordem de resolução:
+ * 1. `NEXT_PUBLIC_APP_URL` — o domínio próprio, quando existir. Em dev, aponte
+ *    para um túnel (cloudflared/ngrok); localhost não serve como `back_url`.
+ * 2. `VERCEL_PROJECT_PRODUCTION_URL` — injetada pela Vercel, é o domínio
+ *    ESTÁVEL de produção. Existe para que um deploy sem a variável do passo 1
+ *    ainda funcione, em vez de cair silenciosamente em localhost e o Mercado
+ *    Pago devolver "Invalid value for back_url" 400 requisições depois.
+ * 3. `VERCEL_URL` — domínio efêmero daquele deploy específico (preview).
+ * 4. localhost, para desenvolvimento local.
+ *
+ * As duas variáveis da Vercel vêm sem protocolo (`meu-app.vercel.app`), por
+ * isso o `https://` é acrescentado aqui.
  */
 export function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit) return stripTrailingSlash(explicit);
+
+  const vercelHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
+  if (vercelHost) return `https://${stripTrailingSlash(vercelHost)}`;
+
+  return "http://localhost:3000";
+}
+
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+/**
+ * O Mercado Pago só aceita como `back_url` uma URL https pública: localhost e
+ * http puro voltam como 400 "Invalid value for back_url". Checar antes de
+ * chamar a API transforma um erro remoto genérico numa mensagem que diz qual
+ * variável de ambiente está faltando.
+ *
+ * Devolve `null` quando a URL serve, ou o motivo quando não serve.
+ */
+export function describeUnusableBackUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return `"${url}" não é uma URL válida.`;
+  }
+
+  // O host vem ANTES do protocolo de propósito: `http://localhost:3000` viola
+  // as duas regras, e "aponta para a própria máquina" é o diagnóstico que leva
+  // a pessoa a definir NEXT_PUBLIC_APP_URL — "exige https" faria ela só trocar
+  // o protocolo e falhar de novo.
+  const host = parsed.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) {
+    return `"${url}" aponta para a própria máquina e o Mercado Pago não consegue alcançá-la.`;
+  }
+
+  if (parsed.protocol !== "https:") {
+    return `o Mercado Pago exige https, e a URL configurada é "${url}".`;
+  }
+
+  return null;
 }
 
 /** Janela de tolerância do timestamp assinado, em milissegundos (anti-replay). */

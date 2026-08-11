@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildSignatureManifest } from './mercado-pago';
+import { buildSignatureManifest, describeUnusableBackUrl } from './mercado-pago';
 
 const SECRET = 'segredo-de-teste';
 const TS = '1704908010000';
@@ -44,6 +44,77 @@ describe('buildSignatureManifest', () => {
   it('omite as partes ausentes em vez de deixá-las vazias', () => {
     expect(buildSignatureManifest({ dataId: null, requestId: null, ts: '123' })).toBe('ts:123;');
     expect(buildSignatureManifest({ dataId: 'abc', requestId: null, ts: '123' })).toBe('id:abc;ts:123;');
+  });
+});
+
+describe('getAppUrl', () => {
+  async function importGetAppUrl() {
+    vi.resetModules();
+    const mod = await import('./mercado-pago');
+    return mod.getAppUrl;
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('usa NEXT_PUBLIC_APP_URL quando existe', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.english4you.com.br');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('https://app.english4you.com.br');
+  });
+
+  it('remove a barra final (senão o back_url viria com barra dupla)', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.english4you.com.br/');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('https://app.english4you.com.br');
+  });
+
+  it('cai no domínio estável da Vercel quando a variável explícita não foi definida', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
+    const getAppUrl = await importGetAppUrl();
+    // A Vercel injeta sem protocolo.
+    expect(getAppUrl()).toBe('https://meu-app.vercel.app');
+  });
+
+  it('prefere o domínio de produção ao domínio efêmero do deploy', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
+    vi.stubEnv('VERCEL_URL', 'meu-app-git-abc123.vercel.app');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('https://meu-app.vercel.app');
+  });
+
+  it('só cai em localhost fora da Vercel', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', '');
+    vi.stubEnv('VERCEL_URL', '');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('http://localhost:3000');
+  });
+});
+
+describe('describeUnusableBackUrl', () => {
+  it('aceita uma URL https pública', () => {
+    expect(describeUnusableBackUrl('https://meu-app.vercel.app/onboarding/retorno')).toBeNull();
+  });
+
+  it('rejeita localhost — foi exatamente o 400 que o Mercado Pago devolveu em produção', () => {
+    expect(describeUnusableBackUrl('http://localhost:3000/onboarding/retorno')).toContain(
+      'própria máquina'
+    );
+    expect(describeUnusableBackUrl('https://127.0.0.1/onboarding/retorno')).toContain(
+      'própria máquina'
+    );
+  });
+
+  it('rejeita http puro', () => {
+    expect(describeUnusableBackUrl('http://meu-app.com/x')).toContain('https');
+  });
+
+  it('rejeita string que nem é URL', () => {
+    expect(describeUnusableBackUrl('meu-app.vercel.app/x')).toContain('não é uma URL válida');
   });
 });
 

@@ -3,7 +3,13 @@ import { contractService } from '@/modules/contract/contract.service';
 import { financeService } from '@/modules/finance/finance.service';
 import { userService } from '@/modules/user/user.service';
 import { AppError } from '@/lib/errors';
-import { getAppUrl, invoiceClient, paymentClient, preApprovalClient } from '@/lib/mercado-pago';
+import {
+  describeUnusableBackUrl,
+  getAppUrl,
+  invoiceClient,
+  paymentClient,
+  preApprovalClient,
+} from '@/lib/mercado-pago';
 import {
   amountToCents,
   centsToAmount,
@@ -50,9 +56,27 @@ function assertMercadoPagoConfigured() {
   }
 }
 
-/** Erro do SDK do MP → mensagem que o aluno pode ler, com o original no log. */
+/**
+ * Erro do SDK do MP → mensagem que o aluno pode ler, com o original no log.
+ *
+ * Separa os dois casos porque a orientação ao aluno é oposta: um 5xx ou queda de
+ * rede passa sozinho e vale tentar de novo; um 4xx é payload ou credencial
+ * errada do NOSSO lado, e mandar o aluno "tentar em alguns minutos" faz ele
+ * insistir para sempre num erro que só um humano conserta.
+ */
 function throwMercadoPagoError(operation: string, error: unknown): never {
   console.error(`[MercadoPago] Falha em ${operation}:`, error);
+
+  const status = (error as { status?: number })?.status;
+  const isOurFault = typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
+
+  if (isOurFault) {
+    const detail = (error as { message?: string })?.message;
+    throw new AppError(
+      `A integração de pagamentos está mal configurada${detail ? `: ${detail}` : '.'} Avise a secretaria da escola.`
+    );
+  }
+
   throw new AppError(
     'Não conseguimos falar com o Mercado Pago agora. Tente novamente em alguns minutos.'
   );
@@ -321,6 +345,17 @@ export const paymentService = {
 
     const { subscription, payerEmail, packageName, startDate } = input;
 
+    // Checado ANTES da chamada: sem isso, uma env var faltando vira um 400
+    // genérico do Mercado Pago que não diz o que consertar.
+    const backUrl = `${getAppUrl()}/onboarding/retorno`;
+    const unusable = describeUnusableBackUrl(backUrl);
+    if (unusable) {
+      console.error(`[MercadoPago] back_url inutilizável — ${unusable}`);
+      throw new AppError(
+        'A integração de pagamentos está sem a URL pública da aplicação (NEXT_PUBLIC_APP_URL). Avise a secretaria da escola.'
+      );
+    }
+
     let response;
     try {
       response = await preApprovalClient.create({
@@ -328,7 +363,7 @@ export const paymentService = {
           reason: `English4You — ${packageName}`,
           external_reference: subscription.id,
           payer_email: payerEmail,
-          back_url: `${getAppUrl()}/onboarding/retorno`,
+          back_url: backUrl,
           // "pending" = o aluno ainda vai autorizar no checkout. Enviar
           // "authorized" exigiria um card_token_id, que só existe no fluxo com
           // formulário de cartão próprio.
