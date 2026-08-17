@@ -71,9 +71,12 @@ function throwMercadoPagoError(operation: string, error: unknown): never {
   const isOurFault = typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
 
   if (isOurFault) {
-    const detail = (error as { message?: string })?.message;
+    const detail = (error as { message?: string })?.message?.trim();
+    // O texto do MP vem sem pontuação final; sem o ponto, a frase emenda na
+    // seguinte ("...same user Avise a secretaria").
+    const suffix = detail ? `: ${detail.replace(/\.?$/, '.')}` : '.';
     throw new AppError(
-      `A integração de pagamentos está mal configurada${detail ? `: ${detail}` : '.'} Avise a secretaria da escola.`
+      `A integração de pagamentos está mal configurada${suffix} Avise a secretaria da escola.`
     );
   }
 

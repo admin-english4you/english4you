@@ -23,7 +23,8 @@
     "firestore:deploy:prod": "npx -y firebase-tools@latest deploy --only firestore --project INSERIR_NOME_AQUI_PROD",
     "database:deploy:prod": "npx -y firebase-tools@latest deploy --only database --project INSERIR_NOME_AQUI_PROD",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:reset": "npx tsx --env-file=.env.local scripts/reset-and-seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
