@@ -104,8 +104,26 @@ export function describeUnusableBackUrl(url: string): string | null {
 /** Janela de tolerância do timestamp assinado, em milissegundos (anti-replay). */
 const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
 
+/**
+ * Converte o `ts` da assinatura para milissegundos.
+ *
+ * O Mercado Pago envia o timestamp em SEGUNDOS (`ts=1704908010`), não em
+ * milissegundos. Tratar segundos como ms colocava a notificação em 1970 e a
+ * checagem de replay rejeitava TODA notificação real com 401 — enquanto
+ * qualquer teste nosso passava, porque gerávamos o `ts` com `Date.now()`.
+ *
+ * A normalização é por magnitude, e não por um formato fixo, porque o mesmo
+ * instante tem ordens de grandeza inconfundíveis: em segundos, um epoch atual
+ * tem ~10 dígitos (1e9); em milissegundos, ~13 (1e12). O corte em 1e11
+ * equivale ao ano 5138 em segundos e a março de 1973 em milissegundos — não há
+ * data plausível que caia no lado errado.
+ */
+function toMillis(ts: number): number {
+  return ts < 1e11 ? ts * 1000 : ts;
+}
+
 interface VerifySignatureParams {
-  /** Header `x-signature`, no formato `ts=<millis>,v1=<hex>`. */
+  /** Header `x-signature`, no formato `ts=<epoch>,v1=<hex>` — o MP usa segundos. */
   signature: string | null;
   /** Header `x-request-id`. */
   requestId: string | null;
@@ -150,8 +168,9 @@ export function verifyMercadoPagoSignature({
 
   // Replay: o MP reenvia a mesma notificação em caso de falha, mas sempre com
   // `ts` novo. Um `ts` velho indica reprodução de uma requisição capturada.
-  const tsMillis = Number(ts);
-  if (!Number.isFinite(tsMillis) || Math.abs(now - tsMillis) > SIGNATURE_MAX_AGE_MS) {
+  const tsNumber = Number(ts);
+  if (!Number.isFinite(tsNumber)) return false;
+  if (Math.abs(now - toMillis(tsNumber)) > SIGNATURE_MAX_AGE_MS) {
     return false;
   }
 

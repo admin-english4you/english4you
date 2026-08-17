@@ -161,6 +161,34 @@ describe('verifyMercadoPagoSignature', () => {
     ).toBe(false);
   });
 
+  /**
+   * O bug que derrubou toda notificação real em produção: o MP manda `ts` em
+   * SEGUNDOS (`ts=1704908010`), e tratá-lo como milissegundos jogava a
+   * notificação para 1970, estourando a janela de replay. Os testes não pegaram
+   * porque geravam o `ts` com `Date.now()`, que é em milissegundos.
+   */
+  it('aceita ts em segundos, que é o formato que o Mercado Pago realmente envia', async () => {
+    const verify = await importVerifier();
+    const tsSegundos = '1704908010';
+    const agora = Number(tsSegundos) * 1000;
+    const signature = `ts=${tsSegundos},v1=${sign(
+      buildSignatureManifest({ dataId: DATA_ID, requestId: REQUEST_ID, ts: tsSegundos })
+    )}`;
+    expect(verify({ signature, requestId: REQUEST_ID, dataId: DATA_ID, now: agora })).toBe(true);
+  });
+
+  it('ainda rejeita replay quando o ts vem em segundos', async () => {
+    const verify = await importVerifier();
+    const tsSegundos = '1704908010';
+    const seisMinutosDepois = Number(tsSegundos) * 1000 + 6 * 60 * 1000;
+    const signature = `ts=${tsSegundos},v1=${sign(
+      buildSignatureManifest({ dataId: DATA_ID, requestId: REQUEST_ID, ts: tsSegundos })
+    )}`;
+    expect(verify({ signature, requestId: REQUEST_ID, dataId: DATA_ID, now: seisMinutosDepois })).toBe(
+      false
+    );
+  });
+
   it('rejeita quando o request-id não bate com o assinado', async () => {
     const verify = await importVerifier();
     expect(
