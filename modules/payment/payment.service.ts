@@ -229,10 +229,12 @@ export const paymentService = {
     const pkg = await financeService.getPackageById(contract.packageId);
     if (!pkg) throw new AppError('Pacote não encontrado.');
 
-    // Retoma um checkout interrompido em vez de criar um preapproval duplicado.
+    // Retoma um checkout interrompido em vez de criar um preapproval duplicado —
+    // mas só se o link ainda estiver vivo. Ver `resumableInitPoint`.
     const existing = subscriptions.find((s) => s.status === 'PENDING');
-    if (existing?.initPoint) {
-      return { initPoint: existing.initPoint };
+    const retomavel = existing ? await this.resumableInitPoint(existing) : null;
+    if (retomavel) {
+      return { initPoint: retomavel };
     }
 
     const subscription =
@@ -290,12 +292,14 @@ export const paymentService = {
       throw new AppError('Nenhuma assinatura ativa para trocar o cartão.');
     }
 
-    // Já existe uma troca em andamento: manda pro mesmo checkout.
+    // Já existe uma troca em andamento: manda pro mesmo checkout, se ele
+    // ainda estiver aberto no MP.
     const inFlight = subscriptions.find(
       (s) => s.status === 'PENDING' && s.replacesSubscriptionId === current.id
     );
-    if (inFlight?.initPoint) {
-      return { initPoint: inFlight.initPoint };
+    const retomavel = inFlight ? await this.resumableInitPoint(inFlight) : null;
+    if (retomavel) {
+      return { initPoint: retomavel };
     }
 
     const pkg = await financeService.getPackageById(current.packageId);
@@ -328,6 +332,46 @@ export const paymentService = {
     });
 
     return { initPoint };
+  },
+
+  /**
+   * Devolve o `init_point` da linha se o checkout dela ainda puder ser
+   * concluído; senão limpa a linha para que um preapproval NOVO seja criado.
+   *
+   * Existe porque reaproveitar o link cegamente prende o aluno num laço: se o
+   * cartão foi recusado, o MP recusa a mesma cobrança de novo e acaba
+   * cancelando o preapproval — e mandá-lo de volta ao mesmo link só reproduz a
+   * recusa, sem nenhuma saída pela interface. Só `pending` do lado do MP
+   * significa "dá para terminar este checkout".
+   *
+   * Limpa `mpPreapprovalId`/`initPoint` em vez de cancelar a linha: o aluno
+   * segue sem pagar (`PENDING` continua sendo o estado correto), e a linha é
+   * reusada, sem acumular assinatura morta a cada tentativa.
+   */
+  async resumableInitPoint(subscription: StudentSubscription): Promise<string | null> {
+    if (!subscription.initPoint || !subscription.mpPreapprovalId) return null;
+    if (!preApprovalClient) return null;
+
+    let status: string | undefined;
+    try {
+      status = (await preApprovalClient.get({ id: subscription.mpPreapprovalId })).status;
+    } catch (error) {
+      console.error(
+        `[MercadoPago] Não foi possível checar o preapproval ${subscription.mpPreapprovalId}:`,
+        error
+      );
+      // Na dúvida, gera um checkout novo: repetir um link possivelmente morto é
+      // pior do que criar um preapproval a mais.
+      status = undefined;
+    }
+
+    if (status === 'pending') return subscription.initPoint;
+
+    await paymentRepository.updateSubscription(subscription.id, {
+      mpPreapprovalId: null,
+      initPoint: null,
+    });
+    return null;
   },
 
   /**
