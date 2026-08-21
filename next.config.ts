@@ -17,6 +17,22 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "150mb",
     },
   },
+  async headers() {
+    return [
+      {
+        // Sem isso, navegadores podem cachear o service worker por até 24h
+        // mesmo com a checagem de atualização automática do browser — uma
+        // correção nele (ver public/sw.js) demoraria pra chegar nos clientes.
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

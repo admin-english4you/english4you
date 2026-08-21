@@ -54,11 +54,14 @@ export const RoleEnum = z.enum(['ADMIN', 'TEACHER', 'STUDENT']);
 
 /**
  * LoginSchema
- * Validação de dados para entrada no sistema via email e senha.
+ *
+ * A senha é conferida no CLIENTE via Firebase Auth (`signInWithEmailAndPassword`)
+ * — o servidor nunca a vê. O que chega aqui é o ID token emitido pelo Firebase
+ * após esse login, que o servidor verifica com `adminAuth.verifyIdToken`
+ * antes de emitir a sessão (ver `userService.authenticateUser`).
  */
 export const LoginSchema = z.object({
-  email: z.email('Insira um e-mail válido'),
-  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+  idToken: z.string().min(1, 'Sessão de autenticação ausente.'),
   portal: z.enum(['STUDENT', 'STAFF']).optional(),
 });
 

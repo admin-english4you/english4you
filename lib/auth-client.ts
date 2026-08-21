@@ -14,20 +14,31 @@ export type AuthResult<T = unknown> =
 export const authClient = {
   /**
    * Realiza login no cliente via Firebase SDK e sincroniza a sessão via Server Action.
+   *
+   * A senha é conferida AQUI, pelo próprio Firebase — o servidor nunca a
+   * recebe. Só o ID token resultante desse login vai pra Server Action, que
+   * o verifica (`adminAuth.verifyIdToken`) antes de emitir a sessão. Por
+   * isso, ao contrário de antes, uma falha do Firebase Auth INTERROMPE o
+   * login aqui — não faz mais sentido seguir pro passo 2 sem um token válido
+   * pra mandar.
    */
   async signIn(email: string, password: string, portal?: "STUDENT" | "STAFF"): Promise<AuthResult<{ user: User; redirectUrl: string }>> {
     try {
-      // 1. Tentar autenticar no Firebase Client SDK se configurado
+      let idToken: string;
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        idToken = await credential.user.getIdToken();
       } catch (err: unknown) {
-        // Se as credenciais no Firebase falharem ou o Firebase Auth ainda não estiver ativado no Console
         const message = err instanceof Error ? err.message : String(err);
-        console.warn("[AuthClient] Firebase Auth client signIn fallback:", message);
+        console.warn("[AuthClient] Firebase Auth signIn falhou:", message);
+        return {
+          success: false,
+          error: "E-mail ou senha inválidos.",
+        };
       }
 
-      // 2. Chamar a Server Action para criar o cookie HTTP-only da sessão e buscar usuário no Neon DB
-      const result = await loginAction({ email, password, portal });
+      // Chamar a Server Action para verificar o token e criar o cookie HTTP-only da sessão
+      const result = await loginAction({ idToken, portal });
 
       if (!result.success) {
         return {

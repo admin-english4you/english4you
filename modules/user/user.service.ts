@@ -138,16 +138,31 @@ export const userService = {
   },
 
   /**
-   * Valida as credenciais do usuário para login com e-mail e senha.
+   * Valida a sessão de login: a senha já foi conferida pelo Firebase Auth no
+   * CLIENTE (`signInWithEmailAndPassword`) — aqui só verificamos o ID token
+   * resultante, que é o que prova que aquele login realmente aconteceu.
+   *
+   * `adminAuth.verifyIdToken` é uma verificação de assinatura offline (JWT do
+   * Firebase), não uma nova tentativa de autenticação — não há como um token
+   * inválido/expirado passar sem lançar. `decoded.uid` é o mesmo id usado como
+   * `uid` no `adminAuth.createUser` (ver `createUserByAdmin`), então dá pra
+   * buscar o usuário direto por ele, sem precisar do e-mail digitado.
    */
-  async authenticateUser(credentials: { email: string; password: string; portal?: "STUDENT" | "STAFF" }): Promise<User> {
-    const { email, password, portal } = credentials;
+  async authenticateUser(credentials: { idToken: string; portal?: "STUDENT" | "STAFF" }): Promise<User> {
+    const { idToken, portal } = credentials;
 
-    if (!email || !password) {
-      throw new AppError("E-mail e senha são obrigatórios.");
+    if (!adminAuth) {
+      throw new AppError("Autenticação indisponível no momento. Tente novamente mais tarde.");
     }
 
-    const user = await userRepository.findByEmail(email);
+    let decoded;
+    try {
+      decoded = await adminAuth.verifyIdToken(idToken);
+    } catch {
+      throw new AppError("Sessão de autenticação inválida ou expirada. Faça login novamente.");
+    }
+
+    const user = await userRepository.findById(decoded.uid);
 
     if (!user) {
       throw new AppError("Usuário não encontrado ou credenciais inválidas.");
