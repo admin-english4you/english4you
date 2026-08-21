@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Headphones } from "lucide-react";
 import type { TeacherClassRecordDetail } from "@/modules/class/class.types";
 import type { CallAccess } from "@/lib/stream-server";
 import { TeacherClassRoomTopBar } from "./TeacherClassRoomTopBar";
@@ -59,8 +60,21 @@ export function TeacherClassRoom({
       {/* `min-h-0` no grid E nos filhos é obrigatório: sem ele o overflow-y-auto
           não rola dentro da linha do grid e a página estoura a viewport. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-4">
-        <section className="min-h-0 lg:col-span-3">
-          <BoardEditor recordId={record.id} initialContent={initialBoardContent} />
+        <section className="flex min-h-0 flex-col lg:col-span-3">
+          {/* O LessonReader do aluno mostra o áudio da lição, mas o professor só
+              via o board (texto) — nunca tinha como ouvir o próprio áudio aqui. */}
+          {lesson?.audioUrl && (
+            <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
+              <Headphones className="h-4 w-4 shrink-0 text-slate-500" />
+              <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Áudio da aula
+              </span>
+              <audio src={lesson.audioUrl} controls preload="metadata" className="h-8 max-w-md flex-1" />
+            </div>
+          )}
+          <div className="min-h-0 flex-1">
+            <BoardEditor recordId={record.id} initialContent={initialBoardContent} />
+          </div>
         </section>
 
         <aside className="min-h-0 border-t border-slate-800 lg:col-span-1 lg:border-t-0 lg:border-l">

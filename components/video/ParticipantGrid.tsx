@@ -16,6 +16,25 @@ interface ParticipantGridProps {
 }
 
 /**
+ * Alguns navegadores mobile (Chrome/Safari no iOS) bloqueiam silenciosamente
+ * o autoplay de um `<video>` remoto sem `muted`/`playsInline`: o elemento
+ * fica na tela, mas o `.play()` interno do SDK nunca "pega", e o aluno vê um
+ * tile vazio mesmo com a câmera do professor ligada — no desktop os
+ * navegadores são mais permissivos e o mesmo código funciona sem isso.
+ * `refs.setVideoElement` é o gancho que o SDK expõe pra alcançar o elemento
+ * de vídeo real (ver `ParticipantView`). Marcar como `muted` aqui não afeta
+ * o áudio da chamada: o SDK reproduz o áudio de cada participante num
+ * `<audio>` completamente separado (ver `Audio.tsx` do SDK).
+ */
+const videoRefs = {
+  setVideoElement: (element: HTMLVideoElement | null) => {
+    if (!element) return;
+    element.muted = true;
+    element.playsInline = true;
+  },
+};
+
+/**
  * Grade de tiles com vídeo/áudio reais dos participantes conectados.
  *
  * `ParticipantView` sem `trackType` renderiza só a câmera (`videoTrack`, o
@@ -57,6 +76,7 @@ export function ParticipantGrid({ mobileFocusUserId }: ParticipantGridProps) {
           <ParticipantView
             participant={mobileFocus}
             trackType={mobileFocus === presenter ? "screenShareTrack" : "videoTrack"}
+            refs={videoRefs}
           />
         </div>
       )}
@@ -64,7 +84,7 @@ export function ParticipantGrid({ mobileFocusUserId }: ParticipantGridProps) {
       <div className={mobileFocus ? "hidden lg:flex lg:flex-1 lg:flex-col lg:gap-2" : "flex flex-1 flex-col gap-2"}>
         {presenter && (
           <div className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-            <ParticipantView participant={presenter} trackType="screenShareTrack" />
+            <ParticipantView participant={presenter} trackType="screenShareTrack" refs={videoRefs} />
           </div>
         )}
 
@@ -74,7 +94,7 @@ export function ParticipantGrid({ mobileFocusUserId }: ParticipantGridProps) {
               key={participant.sessionId}
               className="e4y-video-tile relative aspect-video overflow-hidden rounded-lg border border-slate-800 bg-slate-800/60"
             >
-              <ParticipantView participant={participant} />
+              <ParticipantView participant={participant} refs={videoRefs} />
             </div>
           ))}
         </div>
