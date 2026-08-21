@@ -46,11 +46,17 @@ export async function POST(request: Request) {
   // de eventos do Stream tem 170+ variantes e inclui um coringa (`type: '*'`
   // & CustomEvent com índice aberto) que impede o TS de estreitar com segurança
   // via checagem de propriedade genérica.
-  const genericEvent = event as { call_cid?: string; created_at?: Date };
+  // `created_at` é tipado como `Date` pelo SDK, mas `verifyAndParseWebhook`
+  // só faz `JSON.parse` (sem reviver) — em runtime é uma string ISO, não uma
+  // instância de Date. `.toISOString()" direto quebrava com TypeError em
+  // QUALQUER evento fora de `call.recording_ready` que trouxesse esse campo
+  // (ou seja, quase todo evento real do Stream). `new Date(...)` aceita tanto
+  // a string quanto uma Date de verdade, então cobre os dois casos.
+  const genericEvent = event as { call_cid?: string; created_at?: Date | string };
   const eventId =
     event.type === "call.recording_ready"
       ? `${event.type}:${event.call_cid}:${event.egress_id}`
-      : `${event.type}:${genericEvent.call_cid ?? "unknown"}:${genericEvent.created_at?.toISOString() ?? Date.now()}`;
+      : `${event.type}:${genericEvent.call_cid ?? "unknown"}:${genericEvent.created_at ? new Date(genericEvent.created_at).toISOString() : Date.now()}`;
 
   const isNew = await webhookEventService.recordIfNew("stream", eventId, event.type);
   if (!isNew) {
