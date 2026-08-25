@@ -87,6 +87,29 @@ function renderForUser(input: {
  */
 export const contractService = {
   // ---------------------------------------------------------------------------
+  // Dashboard (admin)
+  // ---------------------------------------------------------------------------
+
+  async countByStatus(actingRole: Role): Promise<Record<ContractStatus, number>> {
+    assertAdmin(actingRole);
+
+    const rows = await contractRepository.countByStatus();
+    const totals: Record<ContractStatus, number> = {
+      PENDING_SIGNATURE: 0,
+      ACTIVE: 0,
+      CANCELED: 0,
+      COMPLETED: 0,
+    };
+    for (const row of rows) totals[row.status] = row.count;
+    return totals;
+  },
+
+  async getRecentSignedContracts(actingRole: Role, limit: number): Promise<Contract[]> {
+    assertAdmin(actingRole);
+    return await contractRepository.findRecentSignedContracts(limit);
+  },
+
+  // ---------------------------------------------------------------------------
   // Modelos (admin)
   // ---------------------------------------------------------------------------
 

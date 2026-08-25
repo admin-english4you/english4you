@@ -192,3 +192,31 @@ export function formatTimeInZone(date: Date, tz: string = APP_TIMEZONE): string 
     hourCycle: 'h23',
   }).format(date);
 }
+
+/**
+ * "Agora mesmo", "Há 15 min", "Há 3 horas", "Ontem", "Há 4 dias", "12/08/2026".
+ *
+ * `now` é injetado, e não lido de `Date.now()` aqui dentro, para que a string
+ * seja calculada UMA vez no servidor e chegue pronta ao cliente: se o
+ * componente recalculasse na hidratação, o relógio do navegador daria um valor
+ * diferente do render do servidor e o React acusaria mismatch.
+ */
+export function formatRelativeTime(date: Date, now: Date): string {
+  const diffMs = now.getTime() - date.getTime();
+
+  // Datas no futuro (fuso do usuário adiantado, relógio do servidor atrás)
+  // não devem virar "Há -3 min".
+  if (diffMs < 60_000) return 'Agora mesmo';
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `Há ${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Há ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Ontem';
+  if (days < 7) return `Há ${days} dias`;
+
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: APP_TIMEZONE }).format(date);
+}

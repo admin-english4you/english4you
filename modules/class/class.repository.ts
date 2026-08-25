@@ -15,6 +15,25 @@ export const classRepository = {
     });
   },
 
+  /** Quantas turmas por status — card "Turmas ativas" do dashboard. */
+  async countByStatus(): Promise<{ status: ClassGroup['status']; count: number }[]> {
+    return await db
+      .select({
+        status: classGroupsTable.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(classGroupsTable)
+      .groupBy(classGroupsTable.status);
+  },
+
+  /** Turmas criadas mais recentemente — feed de atividades do dashboard. */
+  async findRecentClassGroups(limit: number): Promise<ClassGroup[]> {
+    return await db.query.classGroupsTable.findMany({
+      orderBy: [desc(classGroupsTable.createdAt)],
+      limit,
+    });
+  },
+
   async findById(id: string): Promise<ClassGroup | undefined> {
     return await db.query.classGroupsTable.findFirst({
       where: eq(classGroupsTable.id, id),

@@ -1,157 +1,249 @@
-"use client";
-
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/page-header";
-import { 
-  Users, 
-  GraduationCap, 
-  DollarSign, 
-  FileSignature, 
-  TrendingUp, 
+import {
+  Users,
+  GraduationCap,
+  DollarSign,
+  FileSignature,
   ArrowRight,
   UserPlus,
   PlusCircle,
   Clock,
-  BookOpen
+  BookOpen,
+  Inbox,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatCents } from "@/modules/finance/finance.utils";
+import type { ActivityKind, AdminDashboard } from "@/modules/dashboard/dashboard.types";
 
-export function DashboardOverview() {
-  const stats = [
-    { title: "Receita Mensal", value: "R$ 24.500,00", change: "+12,5%", icon: DollarSign, color: "emerald", href: "/admin/finance" },
-    { title: "Alunos Ativos", value: "128 Alunos", change: "+8 este mês", icon: Users, color: "indigo", href: "/admin/users" },
-    { title: "Turmas Ativas", value: "14 Turmas", change: "100% capacidade", icon: GraduationCap, color: "amber", href: "/admin/classes" },
-    { title: "Contratos Pendentes", value: "5 Assinaturas", change: "Ação necessária", icon: FileSignature, color: "rose", href: "/admin/finance" },
-  ];
+interface DashboardOverviewProps {
+  dashboard: AdminDashboard;
+  adminName: string;
+}
 
-  const recentActivities = [
-    { id: 1, text: "Novo aluno matriculado: Noah Patel", time: "Há 15 min", badge: "Matrícula", color: "bg-emerald-50 text-emerald-700" },
-    { id: 2, text: "Contrato assinado por Sofia Kim (Teacher)", time: "Há 1 hora", badge: "Contrato", color: "bg-indigo-50 text-indigo-700" },
-    { id: 3, text: "Pagamento confirmado de Lucas Silva", time: "Há 3 horas", badge: "Financeiro", color: "bg-amber-50 text-amber-700" },
-    { id: 4, text: "Nova turma criada: Business English B2", time: "Ontem", badge: "Turmas", color: "bg-purple-50 text-purple-700" },
+const ACTIVITY_BADGES: Record<ActivityKind, { label: string; className: string }> = {
+  ENROLLMENT: { label: "Cadastro", className: "bg-emerald-50 text-emerald-700" },
+  CONTRACT: { label: "Contrato", className: "bg-indigo-50 text-indigo-700" },
+  PAYMENT: { label: "Financeiro", className: "bg-amber-50 text-amber-700" },
+  CLASS: { label: "Turmas", className: "bg-purple-50 text-purple-700" },
+};
+
+/**
+ * Componente de SERVIDOR (sem "use client"): só renderiza os dados que a
+ * página busca e não tem nenhuma interação própria — todo o estado que existia
+ * aqui era mock. Os textos de tempo ("Há 15 min") já chegam formatados do
+ * Service, justamente para não precisarem de relógio no cliente.
+ */
+export function DashboardOverview({ dashboard, adminName }: DashboardOverviewProps) {
+  const { stats, activities, monthLabel } = dashboard;
+
+  const cards = [
+    {
+      title: "Entradas do mês",
+      value: formatCents(stats.monthIncomeCents),
+      detail: `Saldo de ${formatCents(stats.monthNetCents)} em ${monthLabel}`,
+      icon: DollarSign,
+      color: "emerald" as const,
+      href: "/admin/finance",
+    },
+    {
+      title: "Alunos ativos",
+      value: `${stats.activeStudents} ${stats.activeStudents === 1 ? "aluno" : "alunos"}`,
+      detail: `${stats.activeTeachers} ${stats.activeTeachers === 1 ? "professor" : "professores"} na equipe`,
+      icon: Users,
+      color: "indigo" as const,
+      href: "/admin/users",
+    },
+    {
+      title: "Turmas ativas",
+      value: `${stats.activeClasses} ${stats.activeClasses === 1 ? "turma" : "turmas"}`,
+      detail:
+        stats.activeClasses === 0
+          ? "Nenhuma turma em funcionamento"
+          : `Até ${stats.activeClasses * 12} alunos de capacidade`,
+      icon: GraduationCap,
+      color: "amber" as const,
+      href: "/admin/classes",
+    },
+    {
+      title: "Contratos pendentes",
+      value: `${stats.pendingContracts} ${stats.pendingContracts === 1 ? "assinatura" : "assinaturas"}`,
+      detail: stats.pendingContracts > 0 ? "Aguardando o aluno assinar" : "Nenhum contrato aguardando",
+      icon: FileSignature,
+      color: "rose" as const,
+      href: "/admin/finance?tab=contratos",
+    },
   ];
 
   return (
     <AppLayout role="ADMIN">
       <div className="mx-auto space-y-8">
-        <PageHeader 
-          title="Painel do Administrador" 
-          description="Bem-vinda de volta, Sarah! Aqui está o resumo das operações da English4You hoje."
+        <PageHeader
+          title="Painel do Administrador"
+          description={`Bem-vindo de volta, ${adminName}! Aqui está o resumo das operações da English4You hoje.`}
         >
           <Link href="/admin/users" className={cn(buttonVariants({ variant: "outline" }), "flex-1 sm:flex-initial")}>
-            <UserPlus className="w-4 h-4 mr-2" /> Novo Usuário
+            <UserPlus className="mr-2 h-4 w-4" /> Novo Usuário
           </Link>
-          <Link href="/admin/classes" className={cn(buttonVariants({ variant: "default" }), "flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white")}>
-            <PlusCircle className="w-4 h-4 mr-2" /> Criar Turma
+          <Link
+            href="/admin/classes"
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "flex-1 bg-indigo-600 text-white hover:bg-indigo-700 sm:flex-initial"
+            )}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> Criar Turma
           </Link>
         </PageHeader>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat, idx) => {
-            const Icon = stat.icon;
+        {/* Cards */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {cards.map((card) => {
+            const Icon = card.icon;
             return (
               <Link
-                key={idx}
-                href={stat.href}
-                className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
+                key={card.title}
+                href={card.href}
+                className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.title}</span>
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center border
-                    ${stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                      stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                      stat.color === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                      'bg-rose-50 text-rose-600 border-rose-100'}`}
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {card.title}
+                  </span>
+                  <div
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg border",
+                      card.color === "emerald" && "border-emerald-100 bg-emerald-50 text-emerald-600",
+                      card.color === "indigo" && "border-indigo-100 bg-indigo-50 text-indigo-600",
+                      card.color === "amber" && "border-amber-100 bg-amber-50 text-amber-600",
+                      card.color === "rose" && "border-rose-100 bg-rose-50 text-rose-600"
+                    )}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="h-4 w-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-bold text-slate-900 mb-1">{stat.value}</div>
-                <div className="flex items-center text-xs font-medium text-slate-500">
-                  <TrendingUp className="w-3.5 h-3.5 mr-1 text-emerald-500" />
-                  <span className="text-slate-600">{stat.change}</span>
-                </div>
+                <div className="mb-1 text-2xl font-bold text-slate-900">{card.value}</div>
+                <div className="text-xs font-medium text-slate-500">{card.detail}</div>
               </Link>
             );
           })}
         </div>
 
-        {/* Two Column Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Activity */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Atividades */}
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <div>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <h2 className="font-bold text-slate-900 text-base">Atividades Recentes</h2>
-                <span className="text-xs text-slate-400">Atualizado em tempo real</span>
+              <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-base font-bold text-slate-900">Atividades Recentes</h2>
+                <span className="text-xs text-slate-400">Cadastros, contratos, turmas e pagamentos</span>
               </div>
-              <div className="space-y-4">
-                {recentActivities.map((act) => (
-                  <div key={act.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${act.color}`}>
-                        {act.badge}
-                      </span>
-                      <span className="text-sm font-medium text-slate-700">{act.text}</span>
-                    </div>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {act.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
+
+              {activities.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-200 px-4 py-10 text-center">
+                  <Inbox className="h-6 w-6 text-slate-300" />
+                  <p className="text-sm font-medium text-slate-500">Nenhuma atividade ainda</p>
+                  <p className="max-w-sm text-xs text-slate-400">
+                    Cadastre um usuário ou crie uma turma — os acontecimentos da escola aparecem aqui
+                    automaticamente.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {activities.map((activity) => {
+                    const badge = ACTIVITY_BADGES[activity.kind];
+                    return (
+                      <Link
+                        key={activity.id}
+                        href={activity.href}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span
+                            className={cn(
+                              "shrink-0 rounded px-2 py-0.5 text-[11px] font-bold",
+                              badge.className
+                            )}
+                          >
+                            {badge.label}
+                          </span>
+                          <span className="truncate text-sm font-medium text-slate-700">
+                            {activity.text}
+                          </span>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 text-xs text-slate-400">
+                          <Clock className="h-3 w-3" /> {activity.relative}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 text-right">
-              <Link href="/admin/users" className="text-indigo-600 text-sm font-semibold hover:underline inline-flex items-center gap-1">
-                Ver todos os logs <ArrowRight className="w-4 h-4" />
+
+            <div className="mt-6 border-t border-slate-100 pt-4 text-right">
+              <Link
+                href="/admin/users"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline"
+              >
+                Ver todos os usuários <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
 
-          {/* Quick Modules */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="font-bold text-slate-900 text-base mb-4 pb-3 border-b border-slate-100">Atalhos dos Módulos</h2>
+          {/* Atalhos */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 border-b border-slate-100 pb-3 text-base font-bold text-slate-900">
+              Atalhos dos Módulos
+            </h2>
             <div className="space-y-3">
-              <Link href="/admin/plans" className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group">
+              <Link
+                href="/admin/plans"
+                className="group flex items-center justify-between rounded-lg border border-slate-100 p-3 transition-all hover:border-indigo-200 hover:bg-indigo-50/50"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <BookOpen className="w-4 h-4" />
+                  <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+                    <BookOpen className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-sm">Planos de Ensino</p>
+                    <p className="text-sm font-semibold text-slate-800">Planos de Ensino</p>
                     <p className="text-xs text-slate-400">Criar lições e materiais</p>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-indigo-600" />
               </Link>
 
-              <Link href="/admin/finance" className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all group">
+              <Link
+                href="/admin/finance"
+                className="group flex items-center justify-between rounded-lg border border-slate-100 p-3 transition-all hover:border-emerald-200 hover:bg-emerald-50/50"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <DollarSign className="w-4 h-4" />
+                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                    <DollarSign className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-sm">Financeiro & Contratos</p>
-                    <p className="text-xs text-slate-400">Pagamentos Mercado Pago</p>
+                    <p className="text-sm font-semibold text-slate-800">Financeiro &amp; Contratos</p>
+                    <p className="text-xs text-slate-400">Livro-caixa e Mercado Pago</p>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-emerald-600" />
               </Link>
 
-              <Link href="/admin/classes" className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50/50 transition-all group">
+              <Link
+                href="/admin/classes"
+                className="group flex items-center justify-between rounded-lg border border-slate-100 p-3 transition-all hover:border-amber-200 hover:bg-amber-50/50"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                    <GraduationCap className="w-4 h-4" />
+                  <div className="rounded-lg bg-amber-50 p-2 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
+                    <GraduationCap className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-sm">Turmas & Aulas</p>
-                    <p className="text-xs text-slate-400">Capacidade max 12 alunos</p>
+                    <p className="text-sm font-semibold text-slate-800">Turmas &amp; Aulas</p>
+                    <p className="text-xs text-slate-400">Capacidade máx. 12 alunos</p>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-amber-600" />
               </Link>
             </div>
           </div>

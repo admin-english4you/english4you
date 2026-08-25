@@ -9,6 +9,13 @@
  * futuro, na borda da API do Mercado Pago.
  */
 
+import { toDayKey } from '@/lib/date';
+import type {
+  EntryStatus,
+  FinancialEntryCategory,
+  FinancialEntryType,
+} from './finance.types';
+
 const BRL_FORMATTER = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -45,4 +52,65 @@ export function parseBRLToCents(input: string): number | null {
 /** `15000` -> `"150,00"` — para preencher o input de edição sem o símbolo. */
 export function centsToInputValue(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',');
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos manuais (livro-caixa)
+// ---------------------------------------------------------------------------
+
+export const ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
+  INCOME: 'Entrada',
+  EXPENSE: 'Saída',
+};
+
+export const ENTRY_CATEGORY_LABELS: Record<FinancialEntryCategory, string> = {
+  TUITION: 'Mensalidade',
+  ENROLLMENT: 'Matrícula',
+  MATERIAL: 'Material didático',
+  OTHER_INCOME: 'Outra entrada',
+  TEACHER_PAYOUT: 'Repasse a professor',
+  RENT: 'Aluguel e contas',
+  SOFTWARE: 'Ferramentas e software',
+  MARKETING: 'Marketing',
+  TAX: 'Impostos e taxas',
+  OTHER_EXPENSE: 'Outra saída',
+};
+
+/** Quais categorias o formulário oferece para cada tipo. */
+export const CATEGORIES_BY_TYPE: Record<FinancialEntryType, FinancialEntryCategory[]> = {
+  INCOME: ['TUITION', 'ENROLLMENT', 'MATERIAL', 'OTHER_INCOME'],
+  EXPENSE: ['TEACHER_PAYOUT', 'RENT', 'SOFTWARE', 'MARKETING', 'TAX', 'OTHER_EXPENSE'],
+};
+
+export const ENTRY_STATUS_LABELS: Record<EntryStatus, string> = {
+  PAID: 'Liquidado',
+  PENDING: 'Em aberto',
+  OVERDUE: 'Vencido',
+};
+
+export const ENTRY_STATUS_STYLES: Record<EntryStatus, string> = {
+  PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+  OVERDUE: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+/**
+ * Situação de um lançamento a partir das duas únicas colunas que a definem.
+ *
+ * `todayKey` é injetado (e não lido de `new Date()` aqui dentro) para que
+ * servidor e cliente cheguem ao MESMO resultado: sem isso, um lançamento que
+ * vence hoje pode ser "vencido" no relógio do navegador do admin e "em aberto"
+ * no servidor, e o React acusa erro de hidratação.
+ */
+export function deriveEntryStatus(
+  entry: { dueDate: Date; paidAt: Date | null },
+  todayKey: string
+): EntryStatus {
+  if (entry.paidAt) return 'PAID';
+  return toDayKey(entry.dueDate) < todayKey ? 'OVERDUE' : 'PENDING';
+}
+
+/** `+R$ 150,00` / `-R$ 150,00` — o sinal vem do tipo, o valor é sempre positivo. */
+export function formatSignedCents(type: FinancialEntryType, cents: number): string {
+  return `${type === 'EXPENSE' ? '-' : '+'}${formatCents(cents)}`;
 }

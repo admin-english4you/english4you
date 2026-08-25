@@ -24,6 +24,7 @@ import type {
   BillingView,
   CancelReason,
   OnboardingState,
+  Payment,
   StudentSubscription,
   SubscriptionStatus,
 } from './payment.types';
@@ -467,6 +468,21 @@ export const paymentService = {
   // ---------------------------------------------------------------------------
   // Administração
   // ---------------------------------------------------------------------------
+
+  /**
+   * As cobranças mais recentes da escola inteira, para o extrato de
+   * /admin/finance. Somente leitura: quem escreve nesta tabela é o webhook.
+   */
+  async getRecentPayments(actingRole: Role, limit: number): Promise<Payment[]> {
+    assertAdmin(actingRole);
+    return await paymentRepository.findRecentPayments(limit);
+  },
+
+  /** Total recebido via Mercado Pago na janela — entra na receita do mês. */
+  async sumPaidInRange(actingRole: Role, from: Date, to: Date): Promise<number> {
+    assertAdmin(actingRole);
+    return await paymentRepository.sumPaidInRange(from, to);
+  },
 
   /**
    * Cancela o contrato E a cobrança, nesta ordem. Mora aqui (e não em

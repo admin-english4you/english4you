@@ -10,6 +10,32 @@ export const userRepository = {
     });
   },
 
+  /**
+   * Quantos usuários ATIVOS existem por papel — os cards do dashboard.
+   *
+   * `count` no banco em vez de `getAllUsers().filter(...)`: a listagem traz
+   * todas as colunas de todas as linhas só para descartar quase tudo, e cresce
+   * com a escola.
+   */
+  async countActiveByRole(): Promise<{ role: User['role']; count: number }[]> {
+    return await db
+      .select({
+        role: usersTable.role,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.status, 'Active'))
+      .groupBy(usersTable.role);
+  },
+
+  /** Últimos cadastros — alimenta o feed de atividades do dashboard. */
+  async findRecentUsers(limit: number): Promise<User[]> {
+    return await db.query.usersTable.findMany({
+      orderBy: [desc(usersTable.createdAt)],
+      limit,
+    });
+  },
+
   async findByIds(ids: string[]): Promise<User[]> {
     if (ids.length === 0) return [];
     return await db.query.usersTable.findMany({

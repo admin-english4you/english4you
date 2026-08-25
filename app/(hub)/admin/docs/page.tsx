@@ -114,13 +114,39 @@ export default function AdminDocsPage() {
 
             <DocSection id="dashboard" title="Dashboard" icon={LayoutDashboard}>
               <p>
-                Página inicial (<code>/admin</code>) com um resumo rápido da operação: receita do mês, alunos ativos,
-                turmas ativas, contratos pendentes, atividades recentes e atalhos para os outros módulos.
+                Página inicial (<code>/admin</code>) com um resumo da operação. Todos os números vêm do banco de
+                dados em tempo real — nada aqui é fixo. Clicar em qualquer card leva à página correspondente.
               </p>
-              <InDevelopmentNotice>
-                Em desenvolvimento: os números e atividades desta página são dados de demonstração fixos — ainda não
-                refletem os dados reais do banco. Os cards de estatística já linkam para as páginas correspondentes.
-              </InDevelopmentNotice>
+
+              <h3>Os quatro cards</h3>
+              <ul>
+                <li>
+                  <strong>Entradas do mês</strong> — tudo que ENTROU no caixa no mês corrente: os lançamentos de
+                  entrada que você marcou como recebidos em{" "}
+                  <Link href="/admin/finance" className="text-indigo-600 hover:underline">Financeiro</Link> mais as
+                  mensalidades efetivamente pagas via Mercado Pago. Abaixo dele, o <strong>saldo</strong> (entradas
+                  menos saídas do mês), que fica vermelho quando negativo.
+                </li>
+                <li>
+                  <strong>Alunos ativos</strong> — contas de aluno com status Ativo, com o número de professores da
+                  equipe logo abaixo.
+                </li>
+                <li>
+                  <strong>Turmas ativas</strong> — turmas com status Ativa (não conta Inativas nem Arquivadas).
+                </li>
+                <li>
+                  <strong>Contratos pendentes</strong> — contratos emitidos que o aluno ainda não assinou. Leva
+                  direto para a aba Contratos do Financeiro.
+                </li>
+              </ul>
+
+              <h3>Atividades recentes</h3>
+              <p>
+                Feed com os últimos acontecimentos reais da escola, do mais novo para o mais antigo: novos cadastros
+                (aluno, professor ou administrador), contratos assinados, pagamentos confirmados e turmas criadas.
+                Cada item leva à página onde aquilo aconteceu. Se ainda não houve movimento nenhum, o quadro aparece
+                vazio — é o comportamento esperado numa escola recém-configurada.
+              </p>
             </DocSection>
 
             <DocSection id="usuarios" title="Usuários" icon={Users}>
@@ -143,10 +169,15 @@ export default function AdminDocsPage() {
                 Use os filtros no topo da lista (<strong>Todos / Alunos / Professores / Admins</strong>) e a busca por
                 nome ou e-mail para localizar um usuário rapidamente.
               </p>
-              <InDevelopmentNotice>
-                A vinculação automática do pacote escolhido a um contrato financeiro ainda não foi implementada — por
-                enquanto o pacote é apenas registrado no cadastro do aluno.
-              </InDevelopmentNotice>
+              <p>
+                Ao cadastrar um <strong>aluno</strong>, o pacote escolhido é obrigatório: é dele que sai o contrato,
+                gerado e enviado automaticamente para assinatura. Por isso é preciso ter pelo menos um{" "}
+                <strong>modelo de contrato de aluno ativo</strong> em{" "}
+                <Link href="/admin/finance?tab=modelos" className="text-indigo-600 hover:underline">
+                  Financeiro → Modelos
+                </Link>{" "}
+                antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
+              </p>
             </DocSection>
 
             <DocSection id="turmas" title="Turmas" icon={GraduationCap}>
@@ -299,14 +330,106 @@ export default function AdminDocsPage() {
 
             <DocSection id="financeiro" title="Financeiro" icon={DollarSign}>
               <p>
-                Em <code>/admin/finance</code> fica a visão de receitas, mensalidades e repasses a professores,
-                integrada aos pagamentos via Mercado Pago.
+                Em <code>/admin/finance</code> fica todo o dinheiro da escola, dividido em quatro abas:{" "}
+                <strong>Visão Geral</strong> (o livro-caixa), <strong>Contratos</strong>, <strong>Modelos</strong> e{" "}
+                <strong>Pacotes</strong>.
               </p>
-              <InDevelopmentNotice>
-                Em desenvolvimento: esta tela ainda exibe dados de demonstração fixos. A geração de contratos a partir
-                do pacote escolhido no cadastro do aluno e a integração de pagamentos com o Mercado Pago ainda estão
-                sendo implementadas.
-              </InDevelopmentNotice>
+
+              <h3>Visão Geral: o livro-caixa</h3>
+              <p>
+                Esta aba junta as <strong>duas</strong> origens de dinheiro da escola numa lista só:
+              </p>
+              <ul>
+                <li>
+                  <strong>O que você lança à mão</strong> — mensalidade paga em PIX ou dinheiro, taxa de matrícula,
+                  venda de material, repasse ao professor, aluguel, impostos, ferramentas. Editável e removível.
+                </li>
+                <li>
+                  <strong>O que o Mercado Pago cobra sozinho</strong> — as mensalidades das assinaturas dos alunos.
+                  Aparecem marcadas como <strong>Automático</strong> e não podem ser editadas: quem as atualiza é o
+                  próprio Mercado Pago, então qualquer alteração manual seria desfeita na próxima cobrança.
+                </li>
+              </ul>
+
+              <h3>Lançando uma entrada ou saída</h3>
+              <p>
+                Clique em <strong>&quot;Novo Lançamento&quot;</strong> e escolha o tipo:
+              </p>
+              <ul>
+                <li>
+                  <strong>Entrada</strong> — dinheiro que a escola recebeu ou tem a receber (mensalidade, matrícula,
+                  material).
+                </li>
+                <li>
+                  <strong>Saída</strong> — dinheiro que a escola pagou ou deve pagar (repasse a professor, aluguel,
+                  software, marketing, impostos).
+                </li>
+              </ul>
+              <p>
+                Preencha descrição, categoria e valor. A <strong>contraparte</strong> (nome do aluno, do professor ou
+                do fornecedor) e a <strong>forma</strong> de pagamento são opcionais — a contraparte é texto livre
+                justamente porque nem sempre é alguém cadastrado na plataforma.
+              </p>
+
+              <h3>Dívidas e valores a receber</h3>
+              <p>
+                A caixa <strong>&quot;Já pago&quot; / &quot;Já recebido&quot;</strong> é o que separa um lançamento
+                quitado de uma dívida:
+              </p>
+              <ul>
+                <li>
+                  <strong>Marcada</strong> — informe a data da liquidação. O lançamento entra nos totais do mês
+                  (Entradas ou Saídas) e aparece como <strong>Liquidado</strong>.
+                </li>
+                <li>
+                  <strong>Desmarcada</strong> — o lançamento fica <strong>Em aberto</strong>: uma saída vira uma{" "}
+                  <strong>dívida a pagar</strong>, uma entrada vira um <strong>valor a receber</strong>. Passada a
+                  data de vencimento, ele muda sozinho para <strong>Vencido</strong> (em vermelho).
+                </li>
+              </ul>
+              <p>
+                Na lista, o botão de <strong>✓</strong> marca um lançamento em aberto como liquidado na data de hoje
+                (e o botão de desfazer o reabre) sem precisar abrir o formulário — é a operação do dia a dia
+                (&quot;essa conta eu já paguei&quot;).
+              </p>
+
+              <h3>Como os totais são calculados</h3>
+              <ul>
+                <li>
+                  <strong>Entradas / Saídas do mês</strong> contam pela <strong>data de liquidação</strong>, não pelo
+                  vencimento. Uma conta que venceu em julho e foi paga em agosto entra no caixa de agosto — é o mês
+                  em que o dinheiro de fato se moveu.
+                </li>
+                <li>
+                  <strong>Em aberto</strong> soma tudo que ainda não foi liquidado, independente do mês, separando a
+                  parte a receber da parte a pagar e destacando quantos itens já venceram.
+                </li>
+              </ul>
+
+              <h3>Filtros e exclusão</h3>
+              <p>
+                Os botões <strong>Todos / Entradas / Saídas / Em aberto</strong> filtram a lista. Excluir um
+                lançamento manual o apaga definitivamente (há uma confirmação antes) — use quando digitou algo
+                errado; para um lançamento legítimo que foi cancelado, prefira deixá-lo registrado.
+              </p>
+
+              <h3>Contratos, Modelos e Pacotes</h3>
+              <ul>
+                <li>
+                  <strong>Pacotes</strong> — a base comercial: duração em meses, aulas por semana e valor da
+                  mensalidade. É o pacote escolhido no cadastro do aluno que define o contrato e o valor cobrado pelo
+                  Mercado Pago. Pacotes são <strong>arquivados</strong>, nunca excluídos, porque podem estar
+                  vinculados a contratos antigos.
+                </li>
+                <li>
+                  <strong>Modelos</strong> — os textos de contrato (um para aluno, um para professor). Cada alteração
+                  gera uma nova versão; contratos já assinados guardam uma cópia congelada do texto vigente na época.
+                </li>
+                <li>
+                  <strong>Contratos</strong> — a lista de contratos emitidos, filtrável por status (aguardando
+                  assinatura, ativo, cancelado, concluído).
+                </li>
+              </ul>
             </DocSection>
 
             <DocSection id="perfil" title="Meu Perfil" icon={UserCircle}>

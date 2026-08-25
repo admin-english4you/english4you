@@ -787,6 +787,20 @@ export const classService = {
     await classRepository.updateRecordCompleted(recordId, true);
   },
 
+  async countByStatus(actingRole: Role): Promise<Record<ClassGroup['status'], number>> {
+    assertAdmin(actingRole);
+
+    const rows = await classRepository.countByStatus();
+    const totals: Record<ClassGroup['status'], number> = { ACTIVE: 0, INACTIVE: 0, COMPLETED: 0 };
+    for (const row of rows) totals[row.status] = row.count;
+    return totals;
+  },
+
+  async getRecentClassGroups(actingRole: Role, limit: number): Promise<ClassGroup[]> {
+    assertAdmin(actingRole);
+    return await classRepository.findRecentClassGroups(limit);
+  },
+
   async createClass(actingRole: Role, data: CreateClassGroupInput): Promise<ClassGroup> {
     assertAdmin(actingRole);
     return await classRepository.create({

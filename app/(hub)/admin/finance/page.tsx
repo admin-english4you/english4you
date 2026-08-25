@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth-server";
 import { financeService } from "@/modules/finance/finance.service";
+import { financeOverviewService } from "@/modules/finance/finance.overview.service";
 import { contractService } from "@/modules/contract/contract.service";
 import { ContractStatusEnum } from "@/modules/contract/contract.schema";
 import { FinanceShell, type FinanceTab } from "./_components/FinanceShell";
@@ -43,7 +44,9 @@ export default async function AdminFinancePage({ searchParams }: AdminFinancePag
 
   return (
     <FinanceShell activeTab={tab}>
-      {tab === "visao-geral" && <FinancialOverview />}
+      {tab === "visao-geral" && (
+        <FinancialOverview overview={await financeOverviewService.getOverview(currentUser.role)} />
+      )}
 
       {tab === "pacotes" && (
         <PackagesTab packages={await financeService.getAllPackages(currentUser.role)} />

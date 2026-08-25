@@ -186,6 +186,19 @@ export const userService = {
     return await userRepository.getAllUsers();
   },
 
+  /** Total de usuários ativos por papel — cards do dashboard admin. */
+  async countActiveByRole(): Promise<Record<Role, number>> {
+    const rows = await userRepository.countActiveByRole();
+    const totals: Record<Role, number> = { ADMIN: 0, TEACHER: 0, STUDENT: 0 };
+    for (const row of rows) totals[row.role] = row.count;
+    return totals;
+  },
+
+  /** Cadastros mais recentes — feed de atividades do dashboard. */
+  async getRecentUsers(limit: number): Promise<User[]> {
+    return await userRepository.findRecentUsers(limit);
+  },
+
   /**
    * Busca usuário por ID
    */

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { contractsTable, contractTemplatesTable } from './contract.schema';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import {
   Contract,
   ContractStatus,
@@ -106,6 +106,30 @@ export const contractRepository = {
     return await db.query.contractsTable.findMany({
       where: filters?.status ? eq(contractsTable.status, filters.status) : undefined,
       orderBy: [desc(contractsTable.createdAt)],
+    });
+  },
+
+  /** Contratos por status — card "Contratos pendentes" do dashboard. */
+  async countByStatus(): Promise<{ status: ContractStatus; count: number }[]> {
+    return await db
+      .select({
+        status: contractsTable.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(contractsTable)
+      .groupBy(contractsTable.status);
+  },
+
+  /**
+   * Contratos assinados mais recentemente — feed de atividades do dashboard.
+   * Ordena por `signedAt` (e não `createdAt`): o que interessa é quando o
+   * aluno assinou, não quando o admin emitiu.
+   */
+  async findRecentSignedContracts(limit: number): Promise<Contract[]> {
+    return await db.query.contractsTable.findMany({
+      where: isNotNull(contractsTable.signedAt),
+      orderBy: [desc(contractsTable.signedAt)],
+      limit,
     });
   },
 

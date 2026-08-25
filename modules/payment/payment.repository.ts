@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, gte, lt, isNotNull, sql } from 'drizzle-orm';
 import { paymentsTable, studentSubscriptionsTable } from './payment.schema';
 import type {
   NewPayment,
@@ -105,6 +105,41 @@ export const paymentRepository = {
     return await db.query.paymentsTable.findFirst({
       where: eq(paymentsTable.mpAuthorizedPaymentId, mpAuthorizedPaymentId),
     });
+  },
+
+  /**
+   * As N cobranças mais recentes da escola inteira — alimenta o extrato de
+   * /admin/finance, onde elas aparecem lado a lado com os lançamentos manuais.
+   */
+  async findRecentPayments(limit: number): Promise<Payment[]> {
+    return await db.query.paymentsTable.findMany({
+      orderBy: [desc(paymentsTable.dueDate)],
+      limit,
+    });
+  },
+
+  /**
+   * Total efetivamente RECEBIDO via Mercado Pago na janela.
+   *
+   * Filtra por `paidAt` (e não por `dueDate`) pelo mesmo motivo do livro-caixa
+   * manual: receita do mês é o dinheiro que entrou no mês, não o que venceu nele.
+   */
+  async sumPaidInRange(from: Date, to: Date): Promise<number> {
+    const [row] = await db
+      .select({
+        totalCents: sql<number>`coalesce(sum(${paymentsTable.amountCents}), 0)::int`,
+      })
+      .from(paymentsTable)
+      .where(
+        and(
+          eq(paymentsTable.status, 'PAID'),
+          isNotNull(paymentsTable.paidAt),
+          gte(paymentsTable.paidAt, from),
+          lt(paymentsTable.paidAt, to)
+        )
+      );
+
+    return row?.totalCents ?? 0;
   },
 
   /** A recusa mais recente do aluno — é o que a tela /fix-payment explica. */

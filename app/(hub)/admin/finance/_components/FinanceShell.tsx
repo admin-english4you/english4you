@@ -33,7 +33,7 @@ export function FinanceShell({ activeTab, children }: FinanceShellProps) {
       <div className="mx-auto space-y-6">
         <PageHeader
           title="Financeiro"
-          description="Pacotes, contratos e modelos da escola."
+          description="Livro-caixa, pacotes, contratos e modelos da escola."
         />
 
         <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
