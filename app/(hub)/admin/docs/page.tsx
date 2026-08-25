@@ -11,6 +11,8 @@ import {
   UserCircle,
   AlertTriangle,
   Info,
+  BellRing,
+  Download,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -25,6 +27,8 @@ const sections = [
   { id: "turmas", label: "Turmas", icon: GraduationCap },
   { id: "planos", label: "Planos de Ensino", icon: BookOpen },
   { id: "financeiro", label: "Financeiro", icon: DollarSign },
+  { id: "notificacoes", label: "Lembretes de Estudo", icon: BellRing },
+  { id: "instalar-app", label: "Instalar o App", icon: Download },
   { id: "perfil", label: "Meu Perfil", icon: UserCircle },
 ];
 
@@ -162,12 +166,18 @@ export default function AdminDocsPage() {
                 <li>Confirme os dados na tela de revisão e clique em <strong>&quot;Confirmar e Criar&quot;</strong>.</li>
               </ol>
               <p>
-                Ao confirmar, a plataforma cria a conta e envia automaticamente um e-mail para o novo usuário definir
-                sua senha de acesso — não é necessário definir uma senha manualmente.
+                Ao confirmar, a plataforma cria a conta e envia automaticamente um e-mail (com o visual padrão da
+                English4You) para o novo usuário definir sua senha de acesso — não é necessário definir uma senha
+                manualmente.
               </p>
               <p>
                 Use os filtros no topo da lista (<strong>Todos / Alunos / Professores / Admins</strong>) e a busca por
-                nome ou e-mail para localizar um usuário rapidamente.
+                nome ou e-mail para localizar um usuário rapidamente. O botão <strong>&quot;Link do App&quot;</strong>{" "}
+                copia o link da página de instalação do aplicativo (veja a seção{" "}
+                <Link href="#instalar-app" className="text-indigo-600 hover:underline">
+                  Instalar o App
+                </Link>{" "}
+                mais abaixo) — útil pra mandar por WhatsApp ou e-mail pro aluno.
               </p>
               <p>
                 Ao cadastrar um <strong>aluno</strong>, o pacote escolhido é obrigatório: é dele que sai o contrato,
@@ -178,6 +188,64 @@ export default function AdminDocsPage() {
                 </Link>{" "}
                 antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
               </p>
+
+              <h3>Ficha do usuário</h3>
+              <p>
+                Clique em qualquer linha da lista (ou no botão <strong>&quot;Ver ficha&quot;</strong>) para abrir a
+                página de detalhes do usuário, com quatro blocos:
+              </p>
+              <ul>
+                <li>
+                  <strong>Dados pessoais</strong> — CPF, telefone e endereço aparecem mascarados por padrão. Clicar em{" "}
+                  <strong>&quot;Ver dados&quot;</strong> pede a <strong>sua própria senha</strong> de administrador
+                  antes de exibi-los: a senha é conferida direto pelo Firebase, nunca chega ao nosso servidor, e a
+                  liberação vale só até você recarregar a página. Se o usuário ainda não preencheu CPF/endereço (ele
+                  faz isso na hora de assinar o contrato), a ficha mostra isso claramente em vez do botão.
+                </li>
+                <li>
+                  <strong>Contratos</strong> — todos os contratos do usuário, com status e data. O botão{" "}
+                  <strong>&quot;Baixar&quot;</strong> abre uma versão de impressão do contrato numa aba nova, que já
+                  dispara o diálogo de impressão do navegador — escolha <strong>&quot;Salvar como PDF&quot;</strong>{" "}
+                  como destino para gerar o arquivo.
+                </li>
+                <li>
+                  <strong>Situação financeira</strong> (só para alunos) — mostra se a mensalidade{" "}
+                  <strong>do mês corrente</strong> já foi paga, os dados da assinatura ativa (valor, próxima
+                  cobrança, cartão), e o histórico de cobranças pagas e em aberto do Mercado Pago.
+                </li>
+                <li>
+                  <strong>Ativar/Desativar conta</strong> — desativar um <strong>aluno</strong> bloqueia o acesso dele
+                  à plataforma, <strong>cancela a assinatura no Mercado Pago</strong> e cancela as cobranças ainda não
+                  processadas (as já pagas continuam no histórico, nada é apagado). O usuário recebe um e-mail
+                  avisando que a conta foi desativada. Reativar devolve o acesso (sem e-mail de aviso), mas{" "}
+                  <strong>não recria a assinatura</strong> — o Mercado Pago não reabre uma cobrança cancelada, então
+                  o aluno precisa contratar de novo pelo fluxo normal de matrícula. Você não consegue desativar a
+                  própria conta.
+                </li>
+              </ul>
+
+              <h3>E-mails automáticos</h3>
+              <p>
+                Três situações disparam um e-mail com o <strong>mesmo visual padronizado</strong> (cabeçalho com a
+                marca, botão de destaque, rodapé) — antes cada um tinha um estilo próprio, digitado à parte:
+              </p>
+              <ul>
+                <li><strong>Cadastro de usuário</strong> — link para definir a senha (visto acima).</li>
+                <li>
+                  <strong>Esqueci minha senha</strong> — o aluno/professor pede em{" "}
+                  <code>/forgot-password</code> (fora do painel, na tela de login) e recebe um link de redefinição.
+                  Por segurança, a tela sempre mostra a mesma mensagem de sucesso, exista ou não aquele e-mail
+                  cadastrado — ninguém consegue usar essa tela pra descobrir se um e-mail tem conta na plataforma.
+                </li>
+                <li><strong>Conta desativada</strong> — visto acima.</li>
+              </ul>
+              <InDevelopmentNotice>
+                Atenção: o envio de e-mail usa a conta de testes (&quot;sandbox&quot;) do Resend, que só entrega pro
+                próprio e-mail do dono da conta. Para os alunos/professores receberem esses e-mails de verdade, é
+                preciso verificar um domínio próprio em resend.com/domains e trocar o remetente em{" "}
+                <code>lib/resend.ts</code> — sem isso, os envios falham silenciosamente (só aparecem no log do
+                servidor).
+              </InDevelopmentNotice>
             </DocSection>
 
             <DocSection id="turmas" title="Turmas" icon={GraduationCap}>
@@ -430,6 +498,80 @@ export default function AdminDocsPage() {
                   assinatura, ativo, cancelado, concluído).
                 </li>
               </ul>
+            </DocSection>
+
+            <DocSection id="notificacoes" title="Lembretes de Estudo" icon={BellRing}>
+              <p>
+                Não é uma página do painel — é um recurso automático que empurra o aluno de volta a estudar, direto
+                no aparelho dele (notificação push, mesmo com o navegador fechado).
+              </p>
+
+              <h3>Como funciona</h3>
+              <p>
+                Todo dia, <strong>3 vezes</strong> (9h, 15h e 20h, horário de Brasília), o sistema verifica quais
+                alunos <strong>ainda não praticaram no dia</strong> e manda uma notificação puxando pra prática — o
+                texto varia a cada envio (várias frases diferentes por horário, pra não parecer robótico). Quem já
+                praticou naquele dia <strong>não recebe</strong> o lembrete daquele horário — não faz sentido cutucar
+                quem já estudou.
+              </p>
+
+              <h3>Como o aluno ativa</h3>
+              <p>
+                Em <code>/student/profile</code>, o aluno tem um cartão <strong>&quot;Lembretes de estudo&quot;</strong>{" "}
+                com um botão pra ativar — o navegador pede permissão de notificação, e a partir daí ele passa a
+                receber. Pode desativar a qualquer momento no mesmo lugar. Só <strong>alunos</strong> têm essa opção;
+                professores e administradores não recebem.
+              </p>
+
+              <h3>O que precisa estar configurado no servidor</h3>
+              <p>
+                Isso não depende de nenhuma ação do admin no dia a dia, mas para o recurso funcionar em produção é
+                preciso, no ambiente de deploy (Vercel):
+              </p>
+              <ul>
+                <li>
+                  As variáveis de ambiente <code>NEXT_PUBLIC_VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code>{" "}
+                  (identidade do envio de notificações) e <code>CRON_SECRET</code> (protege a rota que dispara os
+                  envios contra chamadas de fora) cadastradas no painel da Vercel.
+                </li>
+                <li>
+                  O arquivo <code>vercel.json</code> do projeto, que registra os 3 horários de disparo — sem ele os
+                  lembretes nunca são enviados, mesmo com tudo o mais configurado.
+                </li>
+              </ul>
+            </DocSection>
+
+            <DocSection id="instalar-app" title="Instalar o App" icon={Download}>
+              <p>
+                <code>/instalar</code> é uma página <strong>pública</strong> (não exige login) pensada pra você
+                mandar direto pro aluno — por WhatsApp, e-mail, ou onde for mais fácil — pra ele instalar a
+                English4You como um aplicativo, sem precisar entender o que é um &quot;PWA&quot;.
+              </p>
+
+              <h3>Como enviar</h3>
+              <p>
+                Em <code>/admin/users</code>, o botão <strong>&quot;Link do App&quot;</strong> copia o endereço
+                completo da página pra você colar onde quiser mandar. A própria página também detecta o
+                aparelho/navegador de quem abriu e mostra o passo a passo certo:
+              </p>
+              <ul>
+                <li>
+                  <strong>Android/Chrome/Edge</strong> — aparece um botão <strong>&quot;Instalar agora&quot;</strong>{" "}
+                  que abre a instalação nativa direto, sem passos manuais.
+                </li>
+                <li>
+                  <strong>iPhone/iPad (Safari)</strong> — o iOS não permite instalar com um clique só; a página
+                  mostra o passo a passo (Compartilhar → Adicionar à Tela de Início).
+                </li>
+                <li>
+                  <strong>Computador (Chrome/Edge)</strong> — mostra onde fica o ícone de instalação na barra de
+                  endereço.
+                </li>
+              </ul>
+              <p>
+                Se o aparelho já tiver o app instalado, a página percebe sozinha e mostra uma confirmação em vez do
+                passo a passo, com um atalho direto pro login.
+              </p>
             </DocSection>
 
             <DocSection id="perfil" title="Meu Perfil" icon={UserCircle}>

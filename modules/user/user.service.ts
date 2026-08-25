@@ -1,9 +1,15 @@
 import { User, Role, SigningIdentityInput } from "./user.types";
 import { userRepository } from "./user.repository";
 import { adminAuth, adminStorage } from "@/lib/firebase-admin";
-import { sendUserInviteEmail } from "@/lib/resend";
+import { sendUserInviteEmail, sendPasswordResetRequestEmail, sendAccountDeactivatedEmail } from "@/lib/resend";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
+
+/**
+ * Janela de validade da reautenticação do admin, em segundos. Curta de
+ * propósito: é uma confirmação pontual ("sou eu, agora"), não uma sessão.
+ */
+const REAUTH_MAX_AGE_SECONDS = 5 * 60;
 
 /**
  * Service do módulo de Usuários (Regras de Negócio e RBAC).
@@ -333,6 +339,142 @@ export const userService = {
 
     // Atualiza o Drizzle (Neon)
     return await userRepository.updateUser(userId, { avatarUrl });
+  },
+
+  /**
+   * Ativa/desativa uma conta. Só mexe na coluna `status` — desativar um ALUNO
+   * envolve também encerrar assinatura e cobranças, e essa orquestração mora em
+   * `paymentService.deactivateStudent` (o módulo que depende deste, nunca o
+   * contrário).
+   */
+  async setUserStatus(
+    actingRole: Role,
+    userId: string,
+    status: 'Active' | 'Inactive'
+  ): Promise<User> {
+    if (actingRole !== 'ADMIN') {
+      throw new AppError('Apenas administradores podem ativar ou desativar contas.');
+    }
+
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+
+    const updated = await userRepository.updateUser(userId, { status });
+
+    // Best-effort — o e-mail nunca deve travar a desativação em si.
+    if (status === 'Inactive' && user.status !== 'Inactive') {
+      await sendAccountDeactivatedEmail({ email: user.email, name: user.name });
+    }
+
+    return updated;
+  },
+
+  /**
+   * Fluxo público de "esqueci minha senha" — chamado sem sessão, por
+   * qualquer visitante. NUNCA revela se o e-mail existe: tanto para um
+   * e-mail cadastrado quanto para um desconhecido, o retorno é o mesmo
+   * sucesso genérico (só o console loga a diferença), senão a própria
+   * resposta da Action vira um oráculo de "quais e-mails são de alunos".
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await userRepository.findByEmail(email);
+    if (!user) {
+      console.warn(`[Auth] Redefinição de senha pedida para e-mail não cadastrado: ${email}`);
+      return;
+    }
+
+    if (!adminAuth) {
+      console.warn('[Auth] Firebase Admin não configurado — não foi possível gerar o link de redefinição.');
+      return;
+    }
+
+    try {
+      const resetLink = await adminAuth.generatePasswordResetLink(email);
+      await sendPasswordResetRequestEmail({ email: user.email, name: user.name, resetLink });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Auth] Falha ao gerar/enviar link de redefinição de senha:', message);
+    }
+  },
+
+  /**
+   * Dados pessoais regulados (CPF e endereço) de um usuário, para o admin.
+   *
+   * SEPARADO de `getUserById` de propósito: a página de detalhes renderiza sem
+   * eles, e eles só saem do servidor depois que o admin reprova a própria
+   * senha (ver `assertAdminReauth`). Assim o CPF não trafega nem fica no HTML
+   * de quem apenas abriu a tela — só de quem pediu explicitamente para ver.
+   */
+  async getUserIdentityForAdmin(
+    actingRole: Role,
+    adminUserId: string,
+    idToken: string,
+    targetUserId: string
+  ): Promise<{
+    document: string | null;
+    addressStreet: string | null;
+    addressNumber: string | null;
+    addressComplement: string | null;
+    addressDistrict: string | null;
+    addressCity: string | null;
+    addressState: string | null;
+    addressZipCode: string | null;
+    phone: string | null;
+  }> {
+    if (actingRole !== 'ADMIN') {
+      throw new AppError('Apenas administradores podem ver dados pessoais.');
+    }
+
+    await this.assertAdminReauth(adminUserId, idToken);
+
+    const user = await userRepository.findById(targetUserId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+
+    return {
+      document: user.document,
+      addressStreet: user.addressStreet,
+      addressNumber: user.addressNumber,
+      addressComplement: user.addressComplement,
+      addressDistrict: user.addressDistrict,
+      addressCity: user.addressCity,
+      addressState: user.addressState,
+      addressZipCode: user.addressZipCode,
+      phone: user.phone,
+    };
+  },
+
+  /**
+   * Confirma que quem está pedindo é mesmo o admin da sessão, e agora.
+   *
+   * O cliente reautentica no Firebase com a própria senha e manda o ID token
+   * resultante — a senha NUNCA chega ao nosso servidor (mesmo desenho do
+   * login, ver `authenticateUser`). Aqui verificamos a assinatura do token e,
+   * o ponto crítico, que o `uid` dele é o mesmo da sessão: sem essa
+   * comparação, a senha de QUALQUER conta válida abriria o cofre.
+   */
+  async assertAdminReauth(adminUserId: string, idToken: string): Promise<void> {
+    if (!adminAuth) {
+      throw new AppError('Verificação indisponível no momento. Tente novamente mais tarde.');
+    }
+
+    let decoded;
+    try {
+      decoded = await adminAuth.verifyIdToken(idToken);
+    } catch {
+      throw new AppError('Não foi possível confirmar sua senha. Tente novamente.');
+    }
+
+    if (decoded.uid !== adminUserId) {
+      throw new AppError('A confirmação precisa ser feita com a sua própria conta.');
+    }
+
+    // `auth_time` é quando a senha foi digitada; `verifyIdToken` sozinho aceita
+    // um token emitido há uma hora, o que transformaria a confirmação num
+    // carimbo antigo em vez de uma prova de que o admin está ali agora.
+    const authAgeSeconds = Date.now() / 1000 - decoded.auth_time;
+    if (authAgeSeconds > REAUTH_MAX_AGE_SECONDS) {
+      throw new AppError('Sua confirmação expirou. Digite a senha novamente.');
+    }
   },
 
   /**

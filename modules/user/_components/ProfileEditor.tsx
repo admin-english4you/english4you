@@ -55,7 +55,10 @@ export function ProfileEditor({ user, aside }: ProfileEditorProps) {
     user.role === "TEACHER" ? "Professor(a)" : "Aluno(a)";
 
   return (
-    <AppLayout role={user.role} userAvatarUrl={user.avatarUrl}>
+    // Sem `userAvatarUrl`: o header lê o avatar do SessionProvider, e o
+    // `revalidatePath("/", "layout")` de `updateAvatarAction` já refaz o
+    // layout do servidor com a foto nova.
+    <AppLayout role={user.role}>
       <PageHeader
         title="Meu Perfil"
         description="Gerencie suas informações pessoais e foto de perfil."

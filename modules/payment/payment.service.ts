@@ -19,12 +19,14 @@ import {
 } from './payment.utils';
 import type { Role } from '@/modules/user/user.types';
 import type { Contract } from '@/modules/contract/contract.types';
+import { toDayKey, todayKey } from '@/lib/date';
 import type {
   AccessCheck,
   BillingView,
   CancelReason,
   OnboardingState,
   Payment,
+  StudentFinancialSummary,
   StudentSubscription,
   SubscriptionStatus,
 } from './payment.types';
@@ -482,6 +484,101 @@ export const paymentService = {
   async sumPaidInRange(actingRole: Role, from: Date, to: Date): Promise<number> {
     assertAdmin(actingRole);
     return await paymentRepository.sumPaidInRange(from, to);
+  },
+
+  /**
+   * Situação financeira de um aluno para a ficha em /admin/users/[userId]:
+   * assinatura atual, o que já foi pago, o que está em aberto e se a
+   * mensalidade DO MÊS CORRENTE já entrou.
+   */
+  async getStudentFinancialSummary(
+    actingRole: Role,
+    userId: string
+  ): Promise<StudentFinancialSummary> {
+    assertAdmin(actingRole);
+
+    const subscriptions = await paymentRepository.findRecentSubscriptionsByUserId(
+      userId,
+      ACCESS_LOOKBACK
+    );
+    const subscription =
+      subscriptions.find((s) => s.status === 'AUTHORIZED') ?? subscriptions[0] ?? null;
+
+    const [pkg, payments] = await Promise.all([
+      subscription ? financeService.getPackageById(subscription.packageId) : Promise.resolve(undefined),
+      paymentRepository.findPaymentsByUserId(userId),
+    ]);
+
+    // "Pagou o mês corrente?" olha `paidAt` (quando o dinheiro entrou), não
+    // `dueDate`: uma parcela de julho quitada em agosto não torna agosto pago.
+    const monthPrefix = todayKey().slice(0, 7);
+    const currentMonthPayment =
+      payments.find(
+        (p) => p.status === 'PAID' && p.paidAt && toDayKey(p.paidAt).startsWith(monthPrefix)
+      ) ?? null;
+
+    const paid = payments.filter((p) => p.status === 'PAID');
+    const open = payments.filter((p) => p.status === 'PENDING' || p.status === 'FAILED');
+
+    return {
+      subscription,
+      pkg: pkg ?? null,
+      payments,
+      paidPayments: paid,
+      openPayments: open,
+      currentMonthPayment,
+      totalPaidCents: paid.reduce((sum, p) => sum + p.amountCents, 0),
+      openCents: open.reduce((sum, p) => sum + p.amountCents, 0),
+    };
+  },
+
+  /**
+   * Desativa o aluno: conta inativa, assinatura encerrada no Mercado Pago e
+   * cobranças ainda não processadas canceladas.
+   *
+   * Mora aqui, e não em `userService`, pela mesma razão de
+   * `cancelContractAndSubscription`: `payment` já depende de `user`, então é
+   * deste lado que a composição pode existir sem fechar ciclo de imports.
+   *
+   * A ordem importa. O preapproval é cancelado ANTES de mexer no nosso banco:
+   * se a chamada ao MP falhar, o aluno continua ativo e o admin tenta de novo —
+   * o oposto (marcar inativo e falhar no MP) deixaria uma conta desativada
+   * continuando a ser cobrada todo mês.
+   */
+  async deactivateStudent(
+    actingRole: Role,
+    userId: string
+  ): Promise<{ canceledSubscriptions: number; canceledPayments: number }> {
+    assertAdmin(actingRole);
+
+    const user = await userService.getUserById(userId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+
+    const subscriptions = await paymentRepository.findRecentSubscriptionsByUserId(
+      userId,
+      ACCESS_LOOKBACK
+    );
+    const live = subscriptions.filter((s) => !isTerminal(s.status));
+
+    for (const subscription of live) {
+      await this.cancelSubscription(subscription, 'ADMIN');
+    }
+
+    const canceledPayments = await paymentRepository.cancelPendingPaymentsByUserId(userId);
+    await userService.setUserStatus(actingRole, userId, 'Inactive');
+
+    return { canceledSubscriptions: live.length, canceledPayments };
+  },
+
+  /**
+   * Reativa a conta — e SÓ isso. A assinatura cancelada não volta: o Mercado
+   * Pago não reabre um preapproval encerrado, então o aluno passa pelo
+   * /onboarding e contrata de novo. É o que o portão de acesso do
+   * `(hub)/layout.tsx` já faz sozinho ao ver uma conta sem assinatura viva.
+   */
+  async reactivateStudent(actingRole: Role, userId: string): Promise<void> {
+    assertAdmin(actingRole);
+    await userService.setUserStatus(actingRole, userId, 'Active');
   },
 
   /**

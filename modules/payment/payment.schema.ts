@@ -40,8 +40,18 @@ export const subscriptionStatusEnumDb = pgEnum('subscription_status', [
  * PAID: pagamento aprovado.
  * FAILED: recusado — `statusDetail` guarda o motivo mostrado em /fix-payment.
  * REFUNDED: estornado.
+ * CANCELED: a escola desativou o aluno antes de a cobrança rodar. É NOSSO
+ *   estado, não do MP: cancelar o preapproval impede o MP de cobrar, mas as
+ *   cobranças que ele já havia agendado continuariam como PENDING para
+ *   sempre, aparecendo como dívida viva de um aluno que não estuda mais.
  */
-export const paymentStatusEnumDb = pgEnum('payment_status', ['PENDING', 'PAID', 'FAILED', 'REFUNDED']);
+export const paymentStatusEnumDb = pgEnum('payment_status', [
+  'PENDING',
+  'PAID',
+  'FAILED',
+  'REFUNDED',
+  'CANCELED',
+]);
 
 /** Por que uma assinatura foi cancelada — usado para auditoria e para o texto na UI. */
 export const cancelReasonEnumDb = pgEnum('subscription_cancel_reason', [

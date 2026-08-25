@@ -150,6 +150,22 @@ export const paymentRepository = {
     });
   },
 
+  /**
+   * Cancela em bloco as cobranças ainda não processadas do aluno.
+   *
+   * Só `PENDING` entra: uma cobrança já paga, recusada ou estornada é fato
+   * consumado e reescrevê-la apagaria histórico financeiro real.
+   */
+  async cancelPendingPaymentsByUserId(userId: string): Promise<number> {
+    const rows = await db
+      .update(paymentsTable)
+      .set({ status: 'CANCELED', updatedAt: new Date() })
+      .where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.status, 'PENDING')))
+      .returning({ id: paymentsTable.id });
+
+    return rows.length;
+  },
+
   async createPayment(data: NewPayment): Promise<Payment> {
     const [payment] = await db.insert(paymentsTable).values(data).returning();
     return payment;

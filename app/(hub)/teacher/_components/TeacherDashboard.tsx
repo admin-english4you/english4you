@@ -20,7 +20,7 @@ export function TeacherDashboard({ user, overview, todayKey }: TeacherDashboardP
   const nextRecord = overview.upcomingRecords[0] ?? null;
 
   return (
-    <AppLayout role="TEACHER" userName={user.name} userAvatarUrl={user.avatarUrl}>
+    <AppLayout role="TEACHER">
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
           <div>

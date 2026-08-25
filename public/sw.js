@@ -42,3 +42,35 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// Lembretes de estudo (ver modules/push-notification). O payload é o
+// PushPayload de lib/web-push.ts: { title, body, link }.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  const data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { link: data.link || "/student/practice" },
+    })
+  );
+});
+
+// Foca uma aba já aberta na rota do lembrete em vez de sempre abrir uma nova
+// — evita empilhar abas toda vez que o aluno clica numa notificação.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const link = event.notification.data?.link || "/student/practice";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(link) && "focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(link);
+    })
+  );
+});

@@ -53,3 +53,19 @@ export interface BillingView {
   pkg: Package | null;
   payments: Payment[];
 }
+
+/**
+ * Situação financeira de um aluno na ficha do admin.
+ *
+ * Estende o que o próprio aluno vê (`BillingView`) com as fatias que o admin
+ * precisa decidir na hora: já pagou este mês? quanto ainda está em aberto?
+ */
+export interface StudentFinancialSummary extends BillingView {
+  paidPayments: Payment[];
+  /** Cobranças ainda vivas — `PENDING` (agendadas) e `FAILED` (recusadas). */
+  openPayments: Payment[];
+  /** A cobrança quitada DENTRO do mês corrente, se houver. */
+  currentMonthPayment: Payment | null;
+  totalPaidCents: number;
+  openCents: number;
+}

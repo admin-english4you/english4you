@@ -41,7 +41,7 @@ export function StudentDashboard({
       : 0;
 
   return (
-    <AppLayout role="STUDENT" userName={user.name} userAvatarUrl={user.avatarUrl}>
+    <AppLayout role="STUDENT">
       <div className="mx-auto space-y-8">
         {/* Boas-vindas */}
         <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-md sm:flex-row sm:items-center sm:p-8">

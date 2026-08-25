@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { LoginSchema, CreateUserByAdminSchema } from "./user.schema";
+import { LoginSchema, CreateUserByAdminSchema, RevealIdentitySchema, RequestPasswordResetSchema } from "./user.schema";
 import { userService } from "./user.service";
 import { contractService } from "@/modules/contract/contract.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -42,6 +42,23 @@ export async function loginAction(input: z.infer<typeof LoginSchema>) {
 
     const redirectUrl = getHomeRouteForRole(user.role);
     return { user, redirectUrl };
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action pública (sem sessão) do "esqueci minha senha".
+ *
+ * Sempre devolve sucesso, exista ou não o e-mail — `userService.requestPasswordReset`
+ * é quem decide silenciosamente se manda alguma coisa. Revelar a diferença
+ * aqui (erro vs sucesso) transformaria esta rota num oráculo pra descobrir
+ * e-mails cadastrados.
+ */
+export async function requestPasswordResetAction(input: z.infer<typeof RequestPasswordResetSchema>) {
+  const safeAction = createSafeAction(RequestPasswordResetSchema, async (data) => {
+    await userService.requestPasswordReset(data.email);
+    return { success: true };
   });
 
   return safeAction(input);
@@ -140,4 +157,31 @@ export async function updateAvatarAction(formData: FormData): Promise<ActionResu
     }
     return { success: false, error: "Ocorreu um erro interno no servidor. Tente novamente." };
   }
+}
+
+/**
+ * Revela CPF/endereço/telefone de um usuário para o admin.
+ *
+ * `idToken` vem de uma reautenticação no Firebase feita NO CLIENTE com a senha
+ * do próprio admin — a senha não passa por aqui. O Service confere assinatura,
+ * dono e frescor do token (ver `assertAdminReauth`).
+ */
+export async function revealUserIdentityAction(
+  input: z.infer<typeof RevealIdentitySchema>
+) {
+  const safeAction = createSafeAction(RevealIdentitySchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    return await userService.getUserIdentityForAdmin(
+      currentUser.role,
+      currentUser.id,
+      data.idToken,
+      data.userId
+    );
+  });
+
+  return safeAction(input);
 }

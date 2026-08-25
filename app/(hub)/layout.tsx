@@ -1,5 +1,7 @@
 import { getCurrentUser } from "@/lib/auth-server";
 import { paymentService } from "@/modules/payment/payment.service";
+import { userService } from "@/modules/user/user.service";
+import { SessionProvider } from "@/components/layout/SessionProvider";
 import { redirect } from "next/navigation";
 
 export default async function HubBaseLayout({
@@ -26,5 +28,22 @@ export default async function HubBaseLayout({
     if (state === "BLOCKED") redirect("/fix-payment");
   }
 
-  return <>{children}</>;
+  // Lido do banco, e não do cookie: é a mesma leitura fresca que o `AppHeader`
+  // fazia por conta própria depois de hidratar (`getMeAction`). Trazê-la para
+  // cá elimina o round-trip pós-render — e com ele o flash do nome de exemplo.
+  const freshUser = await userService.getUserById(user.id);
+
+  return (
+    <SessionProvider
+      user={{
+        id: user.id,
+        name: freshUser?.name ?? user.name,
+        email: freshUser?.email ?? user.email,
+        role: freshUser?.role ?? user.role,
+        avatarUrl: freshUser?.avatarUrl ?? null,
+      }}
+    >
+      {children}
+    </SessionProvider>
+  );
 }

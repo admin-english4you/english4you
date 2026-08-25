@@ -1,12 +1,12 @@
 "use client";
 
 import { Menu, Search, LogOut, Settings, User as UserIcon } from "lucide-react";
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getMeAction, logoutAction } from "@/modules/user/user.actions";
+import { logoutAction } from "@/modules/user/user.actions";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { useSessionUser } from "@/components/layout/SessionProvider";
 
 type HeaderRole = "ADMIN" | "TEACHER" | "STUDENT";
 
@@ -31,41 +31,21 @@ const SEARCH_PLACEHOLDER: Record<HeaderRole, string> = {
 interface AppHeaderProps {
   onOpenMobileMenu?: () => void;
   role?: HeaderRole;
-  userName?: string;
-  userRoleTitle?: string;
-  userAvatarText?: string;
-  userAvatarUrl?: string | null;
 }
 
-export function AppHeader({
-  onOpenMobileMenu,
-  role = "ADMIN",
-  userName = "Sarah Jenkins",
-  userRoleTitle = "Diretora Escolar",
-  userAvatarUrl = null,
-}: AppHeaderProps) {
-  const [localUserName, setLocalUserName] = useState(userName);
-  const [localUserRoleTitle, setLocalUserRoleTitle] = useState(userRoleTitle);
-  const [localUserAvatarUrl, setLocalUserAvatarUrl] = useState<string | null>(userAvatarUrl);
-  const [profilePath, setProfilePath] = useState<string>(`/${role.toLowerCase()}/profile`);
+/**
+ * Identidade vem do `SessionProvider` (preenchido no servidor pelo
+ * `(hub)/layout.tsx`), nunca de default de prop nem de fetch pós-hidratação:
+ * era isso que fazia o nome de exemplo piscar a cada navegação.
+ */
+export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) {
+  const sessionUser = useSessionUser();
   const router = useRouter();
 
-  const [prevUserAvatarUrl, setPrevUserAvatarUrl] = useState(userAvatarUrl);
-  if (userAvatarUrl !== prevUserAvatarUrl) {
-    setPrevUserAvatarUrl(userAvatarUrl);
-    setLocalUserAvatarUrl(userAvatarUrl);
-  }
-
-  useEffect(() => {
-    getMeAction().then(user => {
-      if (user) {
-        setLocalUserName(user.name);
-        setLocalUserRoleTitle(ROLE_TITLES[user.role]);
-        setLocalUserAvatarUrl(user.avatarUrl || null);
-        setProfilePath(`/${user.role.toLowerCase()}/profile`);
-      }
-    });
-  }, []);
+  const userName = sessionUser?.name ?? "";
+  const userRoleTitle = sessionUser ? ROLE_TITLES[sessionUser.role] : ROLE_TITLES[role];
+  const userAvatarUrl = sessionUser?.avatarUrl ?? null;
+  const profilePath = `/${(sessionUser?.role ?? role).toLowerCase()}/profile`;
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-10 shrink-0 sticky top-0">
@@ -101,16 +81,16 @@ export function AppHeader({
           trigger={
             <div className="flex items-center gap-3 group">
               <Avatar
-                name={localUserName}
-                src={localUserAvatarUrl}
+                name={userName}
+                src={userAvatarUrl}
                 size="sm"
                 className="ring-2 ring-white group-hover:ring-indigo-200 transition-all shadow-sm"
               />
               <div className="hidden sm:block text-left text-sm">
                 <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
-                  {localUserName}
+                  {userName}
                 </p>
-                <p className="text-xs text-slate-500 leading-none">{localUserRoleTitle}</p>
+                <p className="text-xs text-slate-500 leading-none">{userRoleTitle}</p>
               </div>
             </div>
           }

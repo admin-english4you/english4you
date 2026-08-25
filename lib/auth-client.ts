@@ -1,7 +1,6 @@
-import { 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut, 
-  sendPasswordResetEmail 
+import {
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
 } from "firebase/auth";
 import { auth } from "./firebase-client";
 import { loginAction, logoutAction } from "@/modules/user/user.actions";
@@ -78,20 +77,11 @@ export const authClient = {
     }
     await logoutAction();
   },
-
-  /**
-   * Dispara o e-mail de redefinição de senha do Firebase Auth.
-   */
-  async sendPasswordReset(email: string): Promise<AuthResult<void>> {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      return { success: true, data: undefined };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Não foi possível enviar o e-mail de redefinição.";
-      return {
-        success: false,
-        error: message,
-      };
-    }
-  },
 };
+
+// Redefinição de senha não vive mais aqui: era o e-mail padrão (não
+// personalizável) do próprio Firebase Auth, e nunca chegou a ser chamada por
+// ninguém (o formulário de "esqueci minha senha" simulava o envio com um
+// `setTimeout`). O fluxo real agora é `requestPasswordResetAction`
+// (`modules/user/user.actions.ts`), que gera o link pelo Admin SDK no
+// servidor e manda pelo nosso template do Resend — ver `lib/resend.ts`.

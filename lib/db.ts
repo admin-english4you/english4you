@@ -11,6 +11,7 @@ import * as webhookEventSchema from '@/modules/webhook-event/webhook-event.schem
 import * as financeSchema from '@/modules/finance/finance.schema';
 import * as contractSchema from '@/modules/contract/contract.schema';
 import * as paymentSchema from '@/modules/payment/payment.schema';
+import * as pushNotificationSchema from '@/modules/push-notification/push-notification.schema';
 
 const databaseUrl = process.env.DATABASE_URL!;
 
@@ -32,5 +33,6 @@ export const db = drizzle(sql, {
     ...financeSchema,
     ...contractSchema,
     ...paymentSchema,
+    ...pushNotificationSchema,
   }
 });

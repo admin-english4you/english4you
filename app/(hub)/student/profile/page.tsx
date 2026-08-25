@@ -5,6 +5,7 @@ import { todayKey } from "@/lib/date";
 import { userService } from "@/modules/user/user.service";
 import { classService } from "@/modules/class/class.service";
 import { ProfileEditor } from "@/modules/user/_components/ProfileEditor";
+import { PushNotificationManager } from "@/components/pwa/PushNotificationManager";
 import { NextClassCard } from "./_components/NextClassCard";
 
 export const metadata: Metadata = {
@@ -28,12 +29,15 @@ export default async function StudentProfilePage() {
     <ProfileEditor
       user={user}
       aside={
-        <NextClassCard
-          record={nextClass}
-          classGroup={overview?.classGroup ?? null}
-          headTeacherName={overview?.teacher?.name ?? null}
-          todayKey={todayKey()}
-        />
+        <div className="space-y-6">
+          <NextClassCard
+            record={nextClass}
+            classGroup={overview?.classGroup ?? null}
+            headTeacherName={overview?.teacher?.name ?? null}
+            todayKey={todayKey()}
+          />
+          <PushNotificationManager />
+        </div>
       }
     />
   );

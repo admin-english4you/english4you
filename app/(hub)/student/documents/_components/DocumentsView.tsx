@@ -19,7 +19,7 @@ export function DocumentsView({ user, contracts }: DocumentsViewProps) {
   const others = contracts.filter((c) => c.status !== "PENDING_SIGNATURE");
 
   return (
-    <AppLayout role={user.role} userName={user.name} userAvatarUrl={user.avatarUrl}>
+    <AppLayout role={user.role}>
       <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Documentos"

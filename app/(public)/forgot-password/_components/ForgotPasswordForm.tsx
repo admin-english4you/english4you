@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { requestPasswordResetAction } from "@/modules/user/user.actions";
 
 const easing = [0.22, 1, 0.36, 1] as const;
 
@@ -26,14 +27,24 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simula envio de e-mail
-    await new Promise((r) => setTimeout(r, 1500));
+    setErrorMessage(null);
+
+    // A Action sempre devolve sucesso quando o e-mail é válido — exista ou
+    // não a conta, pra não virar um jeito de descobrir e-mails cadastrados.
+    // Um `success: false` aqui só acontece por erro de formato do e-mail.
+    const result = await requestPasswordResetAction({ email });
+
     setIsLoading(false);
-    setIsSent(true);
+    if (result.success) {
+      setIsSent(true);
+    } else {
+      setErrorMessage(result.error);
+    }
   };
 
   return (
@@ -138,6 +149,12 @@ export function ForgotPasswordForm() {
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-5">
+                    {errorMessage && (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+                        {errorMessage}
+                      </div>
+                    )}
+
                     {/* Email */}
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-sm font-bold text-foreground">

@@ -67,7 +67,7 @@ export function PaymentsView({ user, billing }: PaymentsViewProps) {
     subscription?.status === "PAUSED";
 
   return (
-    <AppLayout role={user.role} userName={user.name} userAvatarUrl={user.avatarUrl}>
+    <AppLayout role={user.role}>
       <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Pagamentos"

@@ -21,6 +21,9 @@ import type { AccessState } from "./payment.types";
 /** Ações sem payload ainda precisam de um schema — este aceita e descarta. */
 const EmptySchema = z.object({}).loose();
 
+/** Ações do admin sobre a conta de um aluno específico. */
+const StudentIdSchema = z.object({ userId: z.uuid() });
+
 export async function startSubscriptionCheckoutAction() {
   const safeAction = createSafeAction(EmptySchema, async () => {
     const currentUser = await getCurrentUser();
@@ -84,6 +87,49 @@ export async function changeStudentPackageAction(
     revalidatePath("/admin/finance");
     revalidatePath("/admin/users");
     return contract;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Desativa o aluno: conta inativa, assinatura cancelada no Mercado Pago e
+ * cobranças agendadas canceladas. Revalida a ficha, a lista de usuários e o
+ * financeiro — os três mostram o status ou o valor em aberto.
+ */
+export async function deactivateStudentAction(input: z.infer<typeof StudentIdSchema>) {
+  const safeAction = createSafeAction(StudentIdSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await paymentService.deactivateStudent(currentUser.role, data.userId);
+
+    revalidatePath(`/admin/users/${data.userId}`);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/finance");
+    revalidatePath("/admin");
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/** Reativa a conta. NÃO recria a assinatura — ver `paymentService.reactivateStudent`. */
+export async function reactivateStudentAction(input: z.infer<typeof StudentIdSchema>) {
+  const safeAction = createSafeAction(StudentIdSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await paymentService.reactivateStudent(currentUser.role, data.userId);
+
+    revalidatePath(`/admin/users/${data.userId}`);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    return { success: true };
   });
 
   return safeAction(input);

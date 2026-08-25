@@ -31,6 +31,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   PAID: 'Pago',
   FAILED: 'Recusado',
   REFUNDED: 'Estornado',
+  CANCELED: 'Cancelada',
 };
 
 export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
@@ -38,6 +39,7 @@ export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
   REFUNDED: 'bg-slate-100 text-slate-600 border-slate-200',
+  CANCELED: 'bg-slate-100 text-slate-500 border-slate-200',
 };
 
 /**

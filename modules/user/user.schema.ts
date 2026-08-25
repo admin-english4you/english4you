@@ -66,6 +66,32 @@ export const LoginSchema = z.object({
 });
 
 /**
+ * RequestPasswordResetSchema
+ * Fluxo público de "esqueci minha senha" — sem sessão, qualquer um pode
+ * chamar. Por isso a Action nunca revela se o e-mail existe ou não (ver
+ * `userService.requestPasswordReset`).
+ */
+export const RequestPasswordResetSchema = z.object({
+  email: z.email('Insira um e-mail válido'),
+});
+
+/**
+ * RevealIdentitySchema
+ * Pedido do admin para ver CPF/endereço de um usuário. `idToken` é a prova de
+ * que ele acabou de redigitar a própria senha (ver `assertAdminReauth`).
+ */
+export const RevealIdentitySchema = z.object({
+  userId: z.uuid(),
+  idToken: z.string().min(1, 'Confirmação de senha ausente.'),
+});
+
+/** Ativar/desativar uma conta pelo painel do admin. */
+export const SetUserStatusSchema = z.object({
+  userId: z.uuid(),
+  status: z.enum(['Active', 'Inactive']),
+});
+
+/**
  * CreateUserByAdminSchema
  * Usado pelo administrador para convidar/cadastrar novos usuários.
  *

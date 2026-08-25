@@ -240,6 +240,33 @@ export const contractService = {
     }));
   },
 
+  /**
+   * Contratos de UM usuário, para a ficha em /admin/users/[userId].
+   *
+   * Sem o `html` de propósito — a ficha só mostra status e datas, e renderizar
+   * a prévia de cada contrato aqui seria trabalho jogado fora. Quem quer ler ou
+   * baixar abre a página do contrato, que já faz isso (`getContractDetail`).
+   */
+  async getContractsForUser(
+    actingRole: Role,
+    userId: string
+  ): Promise<(Contract & { packageName: string | null })[]> {
+    assertAdmin(actingRole);
+
+    const contracts = await contractRepository.findContractsByUserId(userId);
+    if (contracts.length === 0) return [];
+
+    const packages = await financeService.getPackagesByIds(
+      Array.from(new Set(contracts.map((c) => c.packageId).filter((id): id is string => Boolean(id))))
+    );
+    const packageById = new Map(packages.map((pkg) => [pkg.id, pkg]));
+
+    return contracts.map((contract) => ({
+      ...contract,
+      packageName: contract.packageId ? packageById.get(contract.packageId)?.name ?? null : null,
+    }));
+  },
+
   async getContractDetail(actingRole: Role, contractId: string): Promise<ContractDetail | null> {
     assertAdmin(actingRole);
 

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Filter, Download, Mail, MoreVertical, Search, Check } from "lucide-react";
+import { Plus, Filter, Download, Mail, ChevronRight, Search, Check, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, TablePagination } from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
+import { toast } from "@/components/ui/toaster";
 import { Role } from "@/modules/user/user.types";
 import { createUserByAdminAction } from "@/modules/user/user.actions";
 import Image from "next/image";
@@ -102,6 +103,16 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
     }
   };
 
+  const handleShareInstallLink = async () => {
+    const link = `${window.location.origin}/instalar`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Link copiado! Envie por WhatsApp ou e-mail para o aluno instalar o app.");
+    } catch {
+      toast.error("Não foi possível copiar o link. Copie manualmente: " + link);
+    }
+  };
+
   const filteredUsers = usersList.filter((u) => {
     const matchesRole = filterRole === "ALL" || u.role === filterRole;
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -116,10 +127,13 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
           title="Gestão de Usuários" 
           description="Gerencie alunos, professores e a equipe administrativa da escola."
         >
+          <Button variant="outline" className="flex-1 sm:flex-initial" onClick={handleShareInstallLink}>
+            <Share2 className="w-4 h-4 mr-2" /> Link do App
+          </Button>
           <Button variant="outline" className="flex-1 sm:flex-initial">
             <Download className="w-4 h-4 mr-2" /> Exportar
           </Button>
-          <Button 
+          <Button
             onClick={() => setIsModalOpen(true)}
             className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700"
           >
@@ -194,10 +208,10 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
             {filteredUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell isHeaderCell>
-                  <div className="flex items-center gap-3">
+                  <Link href={`/admin/users/${user.id}`} className="flex items-center gap-3 group">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-sm relative overflow-hidden shrink-0
-                      ${user.role === 'TEACHER' ? 'bg-amber-100 text-amber-800' : 
-                        user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800' : 
+                      ${user.role === 'TEACHER' ? 'bg-amber-100 text-amber-800' :
+                        user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800' :
                         'bg-emerald-100 text-emerald-800'}`}>
                       {user.avatarUrl ? (
                         <Image src={user.avatarUrl} alt={user.name} fill sizes="36px" className="object-cover" />
@@ -205,11 +219,13 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                         user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
                       )}
                     </div>
-                    <div>
-                      <div className="font-semibold text-slate-900">{user.name}</div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                        {user.name}
+                      </div>
                       <div className="text-[10px] text-slate-400 font-medium md:text-xs">{user.id}</div>
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 
                 <TableCell mobileLabel="Perfil">
@@ -235,9 +251,15 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                 </TableCell>
 
                 <TableCell mobileLabel="Ações" className="md:justify-end" hideBorderMobile>
-                  <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+                  {/* Link em vez do menu de três pontos, que nunca abriu nada:
+                      a ficha do usuário é o destino de toda ação individual
+                      (dados pessoais, contratos, financeiro, desativar). */}
+                  <Link
+                    href={`/admin/users/${user.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    Ver ficha <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
                 </TableCell>
               </TableRow>
             ))}
