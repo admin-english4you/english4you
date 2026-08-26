@@ -47,12 +47,12 @@ export function Select({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 flex items-center justify-between outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all font-medium text-left disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
+        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 flex items-center justify-between outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium text-left disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
       >
         <span className={selectedOption ? "text-slate-900" : "text-slate-400"}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-indigo-500" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-primary" : ""}`} />
       </button>
 
       {isOpen && (
@@ -74,12 +74,12 @@ export function Select({
                   }}
                   className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors text-left font-medium
                     ${isSelected 
-                      ? "bg-indigo-50/80 text-indigo-700 font-semibold" 
-                      : "text-slate-700 hover:bg-indigo-50/40 hover:text-indigo-700"
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-slate-700 hover:bg-primary/10 hover:text-primary"
                     }`}
                 >
                   <span className="truncate">{option.label}</span>
-                  {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                  {isSelected && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
                 </button>
               );
             })

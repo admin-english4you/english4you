@@ -92,7 +92,7 @@ function LessonCard({
             type="button"
             onClick={handleSave}
             disabled={!hasChanges || isPending}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-30 disabled:hover:text-indigo-600 shrink-0"
+            className="text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-30 disabled:hover:text-primary shrink-0"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
           </button>

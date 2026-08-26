@@ -198,7 +198,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
           Livro-caixa da escola em <strong className="font-semibold text-slate-700">{monthLabel}</strong> — o
           que você lança aqui somado às mensalidades cobradas pelo Mercado Pago.
         </p>
-        <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={openCreate}>
+        <Button className="bg-primary hover:bg-primary/80" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" /> Novo Lançamento
         </Button>
       </div>
@@ -271,7 +271,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
                   filter === option.key
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-slate-500 hover:bg-slate-200/70 hover:text-slate-800"
                 )}
               >
@@ -369,7 +369,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
                               title="Editar"
                               onClick={() => openEdit(entry)}
                               disabled={isPending}
-                              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
+                              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
@@ -524,7 +524,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
                 type="checkbox"
                 checked={form.isPaid}
                 onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
               <span className="text-sm font-semibold text-slate-700">
                 {form.type === "INCOME" ? "Já recebido" : "Já pago"}
@@ -559,7 +559,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
               rows={2}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus-visible:border-[#016ad1] focus-visible:ring-2 focus-visible:ring-[#016ad1]/20"
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
               placeholder="Detalhes que ajudem a lembrar do lançamento depois."
             />
           </div>
@@ -568,7 +568,7 @@ export function FinancialOverview({ overview }: FinancialOverviewProps) {
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isPending}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button type="submit" loading={isPending} className="bg-primary text-primary-foreground hover:bg-primary/80">
               {editing ? "Salvar" : "Lançar"}
             </Button>
           </Modal.Footer>

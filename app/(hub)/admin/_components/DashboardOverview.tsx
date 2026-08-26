@@ -25,7 +25,7 @@ interface DashboardOverviewProps {
 
 const ACTIVITY_BADGES: Record<ActivityKind, { label: string; className: string }> = {
   ENROLLMENT: { label: "Cadastro", className: "bg-emerald-50 text-emerald-700" },
-  CONTRACT: { label: "Contrato", className: "bg-indigo-50 text-indigo-700" },
+  CONTRACT: { label: "Contrato", className: "bg-primary/10 text-primary" },
   PAYMENT: { label: "Financeiro", className: "bg-amber-50 text-amber-700" },
   CLASS: { label: "Turmas", className: "bg-purple-50 text-purple-700" },
 };
@@ -91,7 +91,7 @@ export function DashboardOverview({ dashboard, adminName }: DashboardOverviewPro
             href="/admin/classes"
             className={cn(
               buttonVariants({ variant: "default" }),
-              "flex-1 bg-indigo-600 text-white hover:bg-indigo-700 sm:flex-initial"
+              "flex-1 bg-primary text-primary-foreground hover:bg-primary/80 sm:flex-initial"
             )}
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Criar Turma
@@ -116,7 +116,7 @@ export function DashboardOverview({ dashboard, adminName }: DashboardOverviewPro
                     className={cn(
                       "flex h-9 w-9 items-center justify-center rounded-lg border",
                       card.color === "emerald" && "border-emerald-100 bg-emerald-50 text-emerald-600",
-                      card.color === "indigo" && "border-indigo-100 bg-indigo-50 text-indigo-600",
+                      card.color === "indigo" && "border-primary/20 bg-primary/10 text-primary",
                       card.color === "amber" && "border-amber-100 bg-amber-50 text-amber-600",
                       card.color === "rose" && "border-rose-100 bg-rose-50 text-rose-600"
                     )}
@@ -185,7 +185,7 @@ export function DashboardOverview({ dashboard, adminName }: DashboardOverviewPro
             <div className="mt-6 border-t border-slate-100 pt-4 text-right">
               <Link
                 href="/admin/users"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
               >
                 Ver todos os usuários <ArrowRight className="h-4 w-4" />
               </Link>
@@ -200,10 +200,10 @@ export function DashboardOverview({ dashboard, adminName }: DashboardOverviewPro
             <div className="space-y-3">
               <Link
                 href="/admin/plans"
-                className="group flex items-center justify-between rounded-lg border border-slate-100 p-3 transition-all hover:border-indigo-200 hover:bg-indigo-50/50"
+                className="group flex items-center justify-between rounded-lg border border-slate-100 p-3 transition-all hover:border-primary/20 hover:bg-primary/10"
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+                  <div className="rounded-lg bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                     <BookOpen className="h-4 w-4" />
                   </div>
                   <div>
@@ -211,7 +211,7 @@ export function DashboardOverview({ dashboard, adminName }: DashboardOverviewPro
                     <p className="text-xs text-slate-400">Criar lições e materiais</p>
                   </div>
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-indigo-600" />
+                <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-primary" />
               </Link>
 
               <Link

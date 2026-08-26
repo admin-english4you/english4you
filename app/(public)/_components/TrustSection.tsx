@@ -46,7 +46,7 @@ export function TrustSection() {
         <motion.div
           {...fadeInUp}
           transition={{ duration: 0.6, ease: easing }}
-          className="bg-gradient-to-br from-[#016ad1] to-[#0255a9] rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-12 lg:p-20 text-white relative overflow-hidden"
+          className="bg-gradient-to-br from-primary to-primary/80 rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-12 lg:p-20 text-white relative overflow-hidden"
         >
           {/* Subtle overlay pattern */}
           <div
@@ -68,7 +68,7 @@ export function TrustSection() {
               <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
                 Aprovado por brasileiros ambiciosos em todo o mundo.
               </h3>
-              <p className="text-[#bae0fd] text-base sm:text-lg mb-10 leading-relaxed">
+              <p className="text-primary-foreground/70 text-base sm:text-lg mb-10 leading-relaxed">
                 Seja para se preparar para uma carreira internacional, viajar ou apenas ganhar a confiança necessária, a English4You te leva lá mais rápido.
               </p>
               <div className="flex flex-wrap gap-10">
@@ -76,7 +76,7 @@ export function TrustSection() {
                   <p className="text-4xl sm:text-5xl font-extrabold mb-1">
                     98%
                   </p>
-                  <p className="text-sm font-medium text-[#bae0fd]">
+                  <p className="text-sm font-medium text-primary-foreground/70">
                     De aprovação nos exames de Cambridge
                   </p>
                 </div>
@@ -84,7 +84,7 @@ export function TrustSection() {
                   <p className="text-4xl sm:text-5xl font-extrabold mb-1">
                     4.9/5
                   </p>
-                  <p className="text-sm font-medium text-[#bae0fd]">
+                  <p className="text-sm font-medium text-primary-foreground/70">
                     Avaliação média dos alunos
                   </p>
                 </div>
@@ -117,7 +117,7 @@ export function TrustSection() {
                     />
                     <div>
                       <p className="font-bold text-sm">{t.name}</p>
-                      <p className="text-xs text-[#bae0fd]">{t.role}</p>
+                      <p className="text-xs text-primary-foreground/70">{t.role}</p>
                     </div>
                   </div>
                 </motion.div>

@@ -183,7 +183,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
                     key={lesson.id}
                     className={`w-full text-left p-3 rounded-xl flex items-start gap-2 transition-all border ${
                       selectedLessonId === lesson.id
-                        ? "bg-white shadow-sm border-indigo-200 ring-1 ring-indigo-100"
+                        ? "bg-white shadow-sm border-primary/20 ring-1 ring-primary/10"
                         : "border-transparent hover:bg-slate-200/50"
                     }`}
                   >
@@ -217,7 +217,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
                           </span>
                         )}
                       </div>
-                      <h3 className={`font-semibold text-xs leading-snug line-clamp-2 ${selectedLessonId === lesson.id ? "text-indigo-700" : "text-slate-700"}`}>
+                      <h3 className={`font-semibold text-xs leading-snug line-clamp-2 ${selectedLessonId === lesson.id ? "text-primary" : "text-slate-700"}`}>
                         {lesson.title}
                       </h3>
                       <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
@@ -231,7 +231,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
                       onClick={() => toggleLessonStatus(lesson)}
                       disabled={isPending || lesson.status === "IN_PROGRESS"}
                       title={lesson.status === "ACTIVE" ? "Desativar lição" : "Ativar lição"}
-                      className="shrink-0 text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-30"
+                      className="shrink-0 text-[10px] font-semibold text-primary hover:text-primary/80 disabled:opacity-30"
                     >
                       {lesson.status === "ACTIVE" ? "Desativar" : "Ativar"}
                     </button>
@@ -278,7 +278,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
             <Button type="button" variant="outline" onClick={closeAddLessonModal}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isSubmittingLesson} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button type="submit" loading={isSubmittingLesson} className="bg-primary hover:bg-primary/80 text-primary-foreground">
               Adicionar
             </Button>
           </Modal.Footer>
@@ -296,7 +296,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Descrição</label>
             <textarea
               rows={3}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all resize-y"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
               {...registerPlan("description")}
             />
           </div>
@@ -314,7 +314,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
             <Button type="button" variant="outline" onClick={() => setIsEditPlanModalOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isSubmittingPlan} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button type="submit" loading={isSubmittingPlan} className="bg-primary hover:bg-primary/80 text-primary-foreground">
               Salvar
             </Button>
           </Modal.Footer>

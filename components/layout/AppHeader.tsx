@@ -58,7 +58,7 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
         >
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-bold text-lg text-indigo-600">{MOBILE_BRAND[role]}</span>
+        <span className="font-bold text-lg text-primary">{MOBILE_BRAND[role]}</span>
       </div>
 
       {/* Global Search Bar */}
@@ -67,7 +67,7 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
         <input
           type="text"
           placeholder={SEARCH_PLACEHOLDER[role]}
-          className="w-full pl-9 pr-4 py-2 bg-slate-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
+          className="w-full pl-9 pr-4 py-2 bg-slate-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all outline-none"
         />
       </div>
 
@@ -84,10 +84,10 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
                 name={userName}
                 src={userAvatarUrl}
                 size="sm"
-                className="ring-2 ring-white group-hover:ring-indigo-200 transition-all shadow-sm"
+                className="ring-2 ring-white group-hover:ring-primary/20 transition-all shadow-sm"
               />
               <div className="hidden sm:block text-left text-sm">
-                <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-indigo-600 transition-colors">
+                <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-primary transition-colors">
                   {userName}
                 </p>
                 <p className="text-xs text-slate-500 leading-none">{userRoleTitle}</p>
@@ -96,11 +96,11 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
           }
         >
           <DropdownItem onClick={() => router.push(profilePath)}>
-            <UserIcon className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-500" />
+            <UserIcon className="w-4 h-4 mr-3 text-slate-400 group-hover:text-primary" />
             Meu Perfil
           </DropdownItem>
           <DropdownItem>
-            <Settings className="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-500" />
+            <Settings className="w-4 h-4 mr-3 text-slate-400 group-hover:text-primary" />
             Configurações
           </DropdownItem>
           <DropdownSeparator />

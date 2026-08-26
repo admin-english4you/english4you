@@ -55,7 +55,7 @@ function DocSection({
   return (
     <section id={id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 scroll-mt-24 space-y-4">
       <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
           <Icon className="w-4 h-4" />
         </div>
         <h2 className="font-bold text-slate-900 text-base">{title}</h2>
@@ -127,7 +127,7 @@ export default function AdminDocsPage() {
                 <li>
                   <strong>Entradas do mês</strong> — tudo que ENTROU no caixa no mês corrente: os lançamentos de
                   entrada que você marcou como recebidos em{" "}
-                  <Link href="/admin/finance" className="text-indigo-600 hover:underline">Financeiro</Link> mais as
+                  <Link href="/admin/finance" className="text-primary hover:underline">Financeiro</Link> mais as
                   mensalidades efetivamente pagas via Mercado Pago. Abaixo dele, o <strong>saldo</strong> (entradas
                   menos saídas do mês), que fica vermelho quando negativo.
                 </li>
@@ -174,7 +174,7 @@ export default function AdminDocsPage() {
                 Use os filtros no topo da lista (<strong>Todos / Alunos / Professores / Admins</strong>) e a busca por
                 nome ou e-mail para localizar um usuário rapidamente. O botão <strong>&quot;Link do App&quot;</strong>{" "}
                 copia o link da página de instalação do aplicativo (veja a seção{" "}
-                <Link href="#instalar-app" className="text-indigo-600 hover:underline">
+                <Link href="#instalar-app" className="text-primary hover:underline">
                   Instalar o App
                 </Link>{" "}
                 mais abaixo) — útil pra mandar por WhatsApp ou e-mail pro aluno.
@@ -183,7 +183,7 @@ export default function AdminDocsPage() {
                 Ao cadastrar um <strong>aluno</strong>, o pacote escolhido é obrigatório: é dele que sai o contrato,
                 gerado e enviado automaticamente para assinatura. Por isso é preciso ter pelo menos um{" "}
                 <strong>modelo de contrato de aluno ativo</strong> em{" "}
-                <Link href="/admin/finance?tab=modelos" className="text-indigo-600 hover:underline">
+                <Link href="/admin/finance?tab=modelos" className="text-primary hover:underline">
                   Financeiro → Modelos
                 </Link>{" "}
                 antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
@@ -315,7 +315,7 @@ export default function AdminDocsPage() {
               <p>
                 Em <code>/admin/plans</code> você monta o currículo (plano de ensino) — nome, descrição, lições e
                 conteúdo — que depois é atribuído a uma turma em{" "}
-                <Link href="/admin/classes" className="text-indigo-600 hover:underline">Turmas</Link>.
+                <Link href="/admin/classes" className="text-primary hover:underline">Turmas</Link>.
               </p>
 
               <h3>Criando um plano</h3>

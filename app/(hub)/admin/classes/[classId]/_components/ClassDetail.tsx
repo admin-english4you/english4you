@@ -102,7 +102,7 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
             size="sm"
             onClick={() => setIsAddStudentModalOpen(true)}
             disabled={!isEditable || isFull}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-primary hover:bg-primary/80 text-primary-foreground"
           >
             <Plus className="w-4 h-4 mr-1" /> Adicionar Aluno
           </Button>

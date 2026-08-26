@@ -31,10 +31,10 @@ export function PricingSection() {
           transition={{ duration: 0.5, ease: easing }}
           className="text-center mb-14"
         >
-          <p className="text-xs font-bold text-[#016ad1] tracking-widest uppercase mb-3">
+          <p className="text-xs font-bold text-primary tracking-widest uppercase mb-3">
             Investimento
           </p>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#07274f]">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-primary">
             Um único plano, acesso completo.
           </h2>
         </motion.div>
@@ -42,11 +42,11 @@ export function PricingSection() {
         <motion.div
           {...fadeInUp}
           transition={{ duration: 0.5, ease: easing, delay: 0.1 }}
-          className="rounded-3xl bg-[#07274f] border border-slate-700 shadow-xl relative overflow-hidden p-8 sm:p-12"
+          className="rounded-3xl bg-primary border border-slate-700 shadow-xl relative overflow-hidden p-8 sm:p-12"
         >
           <div
             aria-hidden
-            className="absolute top-0 right-0 w-48 h-48 bg-[#016ad1] rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
+            className="absolute top-0 right-0 w-48 h-48 bg-primary rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
           />
 
           <div className="relative z-10">
@@ -70,7 +70,7 @@ export function PricingSection() {
                   key={item}
                   className="flex items-start gap-2.5 text-sm sm:text-base font-medium text-slate-200"
                 >
-                  <CheckCircle2 size={18} className="text-[#38a5f8] shrink-0 mt-0.5" />
+                  <CheckCircle2 size={18} className="text-primary-foreground/80 shrink-0 mt-0.5" />
                   {item}
                 </li>
               ))}
@@ -82,7 +82,7 @@ export function PricingSection() {
               rel="noopener noreferrer"
               className={cn(
                 buttonVariants({ variant: "default" }),
-                "w-full h-14 rounded-full text-base font-bold bg-white text-[#07274f] hover:bg-slate-100 shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center"
+                "w-full h-14 rounded-full text-base font-bold bg-white text-primary hover:bg-slate-100 shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center"
               )}
             >
               Começar hoje

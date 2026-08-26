@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const TONE_STYLES = {
-  default: "bg-indigo-600",
+  default: "bg-primary",
   success: "bg-success",
   xp: "bg-xp",
   warning: "bg-warning",

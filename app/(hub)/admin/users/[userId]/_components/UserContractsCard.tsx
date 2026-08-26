@@ -67,7 +67,7 @@ export function UserContractsCard({ contracts }: UserContractsCardProps) {
                   <Link
                     href={`/admin/finance/contracts/${contract.id}/print`}
                     target="_blank"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
                   >
                     <Download className="h-3.5 w-3.5" /> Baixar
                   </Link>

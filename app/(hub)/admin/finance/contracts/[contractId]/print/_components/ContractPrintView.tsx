@@ -43,7 +43,7 @@ export function ContractPrintView({
               Use &quot;Salvar como PDF&quot; no destino da impressão.
             </p>
           </div>
-          <Button onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => window.print()} className="bg-primary hover:bg-primary/80">
             <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
           </Button>
         </div>
@@ -51,7 +51,7 @@ export function ContractPrintView({
 
       <div className="mx-auto max-w-3xl bg-white p-8 shadow-sm print:max-w-none print:p-0 print:shadow-none sm:my-8 sm:p-12">
         <header className="mb-8 border-b border-slate-200 pb-6">
-          <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">English4You</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">English4You</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
             Contrato de Prestação de Serviços
           </h1>

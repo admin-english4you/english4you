@@ -57,7 +57,7 @@ export function FeaturesSection() {
         className="absolute inset-0 opacity-30"
         style={{
           backgroundImage:
-            "radial-gradient(circle, #016ad1 1px, transparent 1px)",
+            "radial-gradient(circle, #04215d 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       />
@@ -69,10 +69,10 @@ export function FeaturesSection() {
           transition={{ duration: 0.5, ease: easing }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <p className="text-xs font-bold text-[#016ad1] tracking-widest uppercase mb-3">
+          <p className="text-xs font-bold text-primary tracking-widest uppercase mb-3">
             Nossa Metodologia
           </p>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-[#07274f] mb-5">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-primary mb-5">
             Projetada para a fluência real.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground">
@@ -90,14 +90,14 @@ export function FeaturesSection() {
               whileHover={{ y: -6 }}
               className={`rounded-2xl p-5 sm:p-6 transition-shadow flex flex-col ${
                 f.dark
-                  ? "bg-[#07274f] border border-slate-700 shadow-xl relative overflow-hidden"
+                  ? "bg-primary border border-slate-700 shadow-xl relative overflow-hidden"
                   : "bg-card border border-border shadow-sm hover:shadow-md"
               }`}
             >
               {f.dark && (
                 <div
                   aria-hidden
-                  className="absolute top-0 right-0 w-24 h-24 bg-[#016ad1] rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
+                  className="absolute top-0 right-0 w-24 h-24 bg-primary rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"
                 />
               )}
               <div className="relative z-10 flex flex-col flex-1">
@@ -105,7 +105,7 @@ export function FeaturesSection() {
                   className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${
                     f.dark
                       ? "bg-white/10 border border-white/20 text-white"
-                      : "bg-[#f0f7ff] text-[#016ad1]"
+                      : "bg-primary/10 text-primary"
                   }`}
                 >
                   <f.icon size={20} />
@@ -113,7 +113,7 @@ export function FeaturesSection() {
 
                 <h3
                   className={`text-base sm:text-lg font-bold mb-2 leading-snug ${
-                    f.dark ? "text-white" : "text-[#07274f]"
+                    f.dark ? "text-white" : "text-primary"
                   }`}
                 >
                   {f.title}
@@ -138,7 +138,7 @@ export function FeaturesSection() {
                       >
                         <CheckCircle2
                           size={14}
-                          className={`shrink-0 ${f.dark ? "text-[#38a5f8]" : "text-green-500"}`}
+                          className={`shrink-0 ${f.dark ? "text-primary-foreground/80" : "text-green-500"}`}
                         />
                         {perk}
                       </li>

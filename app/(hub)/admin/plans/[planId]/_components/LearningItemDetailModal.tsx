@@ -57,7 +57,7 @@ function VocabDetails({ metadata }: { metadata: VocabMetadata }) {
       <Field label="Exemplos">
         <ul className="space-y-1.5">
           {metadata.examples.map((ex, i) => (
-            <li key={i} className="border-l-2 border-indigo-200 pl-3">
+            <li key={i} className="border-l-2 border-primary/20 pl-3">
               <p className="text-slate-800">{ex.text}</p>
               <p className="text-slate-400 text-xs">{ex.translation}</p>
             </li>
@@ -69,7 +69,7 @@ function VocabDetails({ metadata }: { metadata: VocabMetadata }) {
         <Field label="Sinônimos">
           <div className="flex flex-wrap gap-1.5">
             {metadata.synonyms.map((s) => (
-              <span key={s} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-xs">
+              <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded text-xs">
                 {s}
               </span>
             ))}
@@ -123,7 +123,7 @@ export function LearningItemDetailModal({ item, onClose }: LearningItemDetailMod
           <span
             className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border mb-4 ${
               item.type === "VOCABULARY"
-                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                ? "bg-primary/10 text-primary border-primary/20"
                 : "bg-violet-50 text-violet-700 border-violet-200"
             }`}
           >

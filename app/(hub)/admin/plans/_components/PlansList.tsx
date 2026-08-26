@@ -93,7 +93,7 @@ export function PlansList({ initialPlans }: PlansListProps) {
           title="Planos de Ensino"
           description="Monte o currículo, as lições e o conteúdo pedagógico da escola."
         >
-          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setIsModalOpen(true)}>
+          <Button className="bg-primary hover:bg-primary/80" onClick={() => setIsModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" /> Criar Plano
           </Button>
         </PageHeader>
@@ -114,10 +114,10 @@ export function PlansList({ initialPlans }: PlansListProps) {
                     <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded text-xs font-bold border ${PLAN_STATUS_STYLES[p.status]}`}>
                       {PLAN_STATUS_LABELS[p.status]}
                     </span>
-                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
                   </div>
 
-                  <h3 className="font-bold text-lg text-slate-900 leading-tight mb-2 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="font-bold text-lg text-slate-900 leading-tight mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                     {p.name}
                   </h3>
 
@@ -165,7 +165,7 @@ export function PlansList({ initialPlans }: PlansListProps) {
             <textarea
               rows={3}
               placeholder="Descreva o objetivo e o público deste plano..."
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all resize-y"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
               {...register("description")}
             />
           </div>
@@ -174,7 +174,7 @@ export function PlansList({ initialPlans }: PlansListProps) {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button type="submit" loading={isSubmitting} className="bg-primary hover:bg-primary/80 text-primary-foreground">
               {isSubmitting ? "Criando..." : "Criar Plano"}
             </Button>
           </Modal.Footer>

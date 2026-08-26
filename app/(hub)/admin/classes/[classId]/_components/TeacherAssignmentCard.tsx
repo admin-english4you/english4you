@@ -64,7 +64,7 @@ export function TeacherAssignmentCard({ classGroupId, currentTeacher, teachers, 
               options={teachers.map((t) => ({ value: t.id, label: t.name }))}
             />
           </div>
-          <Button type="button" onClick={handleSave} disabled={!hasChanges} loading={isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button type="button" onClick={handleSave} disabled={!hasChanges} loading={isPending} className="bg-primary hover:bg-primary/80 text-primary-foreground">
             Salvar
           </Button>
         </div>

@@ -19,7 +19,7 @@ export function BillingShell({ title, description, children }: BillingShellProps
     <div className="space-y-8">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">English4You</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">English4You</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
             {title}
           </h1>

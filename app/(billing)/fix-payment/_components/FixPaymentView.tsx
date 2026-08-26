@@ -103,7 +103,7 @@ export function FixPaymentView({ subscription, lastFailure, packageName }: FixPa
             <Button
               onClick={handleReplaceCard}
               loading={isPending}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
+              className="w-full bg-primary hover:bg-primary/80 sm:w-auto"
             >
               {!isPending && <CreditCard className="mr-2 h-4 w-4" />}
               Atualizar cartão

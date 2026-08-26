@@ -64,9 +64,9 @@ export function GapFillListeningCard({
           className={cn(
             "flex h-20 w-20 items-center justify-center rounded-full transition-all",
             supported
-              ? "bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 active:scale-95"
+              ? "bg-primary text-primary-foreground shadow-lg hover:bg-primary/80 active:scale-95"
               : "cursor-not-allowed bg-slate-200 text-slate-400",
-            speaking && "ring-4 ring-indigo-200"
+            speaking && "ring-4 ring-primary/20"
           )}
         >
           {supported ? <Volume2 className="h-8 w-8" /> : <VolumeX className="h-8 w-8" />}
@@ -78,7 +78,7 @@ export function GapFillListeningCard({
             <button
               type="button"
               onClick={() => speak(gapFill.fullSentenceForTTS ?? item.mainText)}
-              className="text-xs font-medium text-indigo-600 hover:underline"
+              className="text-xs font-medium text-primary hover:underline"
             >
               Ouvir a frase completa
             </button>
@@ -122,7 +122,7 @@ export function GapFillListeningCard({
               "!inline-block !h-auto !w-36 !rounded-none !border-0 !border-b-2 !bg-transparent !px-1 !py-0 text-center !text-lg font-bold sm:!w-44 sm:!text-xl",
               answered && isCorrect === true && "!border-emerald-500 !text-emerald-700",
               answered && isCorrect === false && "!border-rose-500 !text-rose-700",
-              !answered && "!border-indigo-400 !text-indigo-700"
+              !answered && "!border-primary !text-primary"
             )}
           />
           <span>{after}</span>

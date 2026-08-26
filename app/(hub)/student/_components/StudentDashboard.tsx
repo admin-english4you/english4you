@@ -44,7 +44,7 @@ export function StudentDashboard({
     <AppLayout role="STUDENT">
       <div className="mx-auto space-y-8">
         {/* Boas-vindas */}
-        <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-md sm:flex-row sm:items-center sm:p-8">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-gradient-to-r from-primary to-violet-600 p-6 text-white shadow-md sm:flex-row sm:items-center sm:p-8">
           <div>
             {nextPractice && (
               <span className="mb-2 inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">
@@ -54,7 +54,7 @@ export function StudentDashboard({
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
               Olá, {firstName}!
             </h1>
-            <p className="mt-1 text-sm text-indigo-100">
+            <p className="mt-1 text-sm text-primary-foreground/80">
               {overview
                 ? `Você já concluiu ${overview.completedLessons} de ${overview.totalLessons} aulas da turma ${overview.classGroup.name}.`
                 : "Assim que você for alocado em uma turma, suas aulas aparecem aqui."}
@@ -66,9 +66,9 @@ export function StudentDashboard({
               render={
                 <Link href={`/student/practice/${nextPractice.lessonId}/${nextPractice.dayIndex}`} />
               }
-              className="bg-white font-bold text-indigo-700 shadow-sm hover:bg-slate-100"
+              className="bg-white font-bold text-primary shadow-sm hover:bg-slate-100"
             >
-              <PlayCircle className="mr-2 h-4 w-4 text-indigo-600" /> Praticar agora
+              <PlayCircle className="mr-2 h-4 w-4 text-primary" /> Praticar agora
             </Button>
           )}
         </div>
@@ -105,7 +105,7 @@ export function StudentDashboard({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-base font-bold text-slate-900">Minha turma</h2>
               {overview && (
-                <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                <span className="rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
                   {overview.classGroup.level}
                 </span>
               )}
@@ -158,10 +158,10 @@ export function StudentDashboard({
                   <Link
                     key={`${day.lessonId}-${day.dayIndex}`}
                     href={`/student/practice/${day.lessonId}/${day.dayIndex}`}
-                    className="group block rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 transition-all hover:border-indigo-200 hover:bg-indigo-50/40"
+                    className="group block rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 transition-all hover:border-primary/30 hover:bg-primary/10"
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
-                      <h4 className="text-xs font-bold text-slate-800 transition-colors group-hover:text-indigo-600">
+                      <h4 className="text-xs font-bold text-slate-800 transition-colors group-hover:text-primary">
                         {PRACTICE_MODE_LABELS[day.renderMode]}
                       </h4>
                       <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-700">
@@ -196,7 +196,7 @@ export function StudentDashboard({
 }
 
 const TONE_STYLES = {
-  indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+  indigo: "bg-primary/10 text-primary border-primary/20",
   amber: "bg-amber-50 text-amber-600 border-amber-100",
   emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
 } as const;

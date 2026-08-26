@@ -29,7 +29,7 @@ export function TeacherClassDetailView({ detail, todayKey }: TeacherClassDetailV
         <div className="space-y-6 lg:col-span-1">
           <Card>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-indigo-500" />
+              <Users className="h-4 w-4 text-primary" />
               Alunos ({students.length})
             </CardTitle>
             <div className="mt-4">

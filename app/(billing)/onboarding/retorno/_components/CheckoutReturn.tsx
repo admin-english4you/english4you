@@ -95,7 +95,7 @@ export function CheckoutReturn() {
         {confirmed ? (
           <CheckCircle2 className="h-10 w-10 text-emerald-500" />
         ) : (
-          <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
         )}
         <p className="text-sm text-slate-600">
           {confirmed ? "Redirecionando para a plataforma…" : "Isso costuma levar poucos segundos."}

@@ -48,7 +48,7 @@ export function StaffLoginForm() {
   return (
     <>
       {/* ─── Left Panel ─────────────────────────────────────────────── */}
-      <div className="hidden lg:flex w-1/2 relative bg-[#07274f] flex-col overflow-hidden">
+      <div className="hidden lg:flex w-1/2 relative bg-primary flex-col overflow-hidden">
         {/* Background image */}
         <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -57,8 +57,8 @@ export function StaffLoginForm() {
             alt="Professor ensinando no computador"
             className="w-full h-full object-cover opacity-75"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07274f] via-[#07274f]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#016ad1]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-transparent" />
         </div>
 
         {/* Content */}
@@ -87,7 +87,7 @@ export function StaffLoginForm() {
               {perks.map((perk) => (
                 <li key={perk} className="flex items-start gap-3">
                   <CheckCircle2
-                    className="text-[#7dc5fb] mt-0.5 shrink-0"
+                    className="text-primary-foreground/80 mt-0.5 shrink-0"
                     size={18}
                   />
                   <p className="text-slate-300 font-medium leading-relaxed text-sm">
@@ -105,7 +105,7 @@ export function StaffLoginForm() {
         {/* Decorative blob */}
         <div
           aria-hidden
-          className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#f0f7ff] rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/2 pointer-events-none hidden lg:block"
+          className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/2 pointer-events-none hidden lg:block"
         />
 
         <motion.div
@@ -117,10 +117,10 @@ export function StaffLoginForm() {
           {/* Mobile Logo */}
           <div className="flex lg:hidden justify-center mb-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#016ad1] to-[#38a5f8] flex items-center justify-center text-white shadow-lg">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white shadow-lg">
                 <GraduationCap size={24} strokeWidth={2.5} />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-[#07274f]">
+              <span className="text-2xl font-bold tracking-tight text-primary">
                 English4You
               </span>
             </Link>
@@ -129,7 +129,7 @@ export function StaffLoginForm() {
           {/* Card wrapper */}
           <div className="bg-card lg:bg-transparent p-7 sm:p-9 rounded-[2rem] shadow-2xl shadow-slate-200/50 lg:shadow-none lg:p-0">
             <div className="mb-7 text-center lg:text-left">
-              <h1 className="text-3xl font-extrabold text-[#07274f] mb-2">
+              <h1 className="text-3xl font-extrabold text-primary mb-2">
                 Acesso do Colaborador
               </h1>
               <p className="text-muted-foreground font-medium text-sm">
@@ -167,7 +167,7 @@ export function StaffLoginForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nome@english4you.com"
                     required
-                    className="pl-10 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-[#016ad1] focus-visible:ring-[#016ad1]/20 text-foreground"
+                    className="pl-10 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-primary focus-visible:ring-primary/20 text-foreground"
                   />
                 </div>
               </div>
@@ -180,7 +180,7 @@ export function StaffLoginForm() {
                   </Label>
                   <Link
                     href="/forgot-password"
-                    className="text-xs font-bold text-[#016ad1] hover:text-[#0255a9] transition-colors"
+                    className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
                   >
                     Esqueceu a senha?
                   </Link>
@@ -197,7 +197,7 @@ export function StaffLoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="pl-10 pr-11 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-[#016ad1] focus-visible:ring-[#016ad1]/20 text-foreground"
+                    className="pl-10 pr-11 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-primary focus-visible:ring-primary/20 text-foreground"
                   />
                   <button
                     type="button"
@@ -215,7 +215,7 @@ export function StaffLoginForm() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 rounded-2xl font-bold text-base bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/35 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-2xl font-bold text-base bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <motion.div
@@ -239,7 +239,7 @@ export function StaffLoginForm() {
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold text-[#016ad1] hover:text-[#0255a9] transition-colors"
+                className="font-bold text-primary hover:text-primary/80 transition-colors"
               >
                 Contate o suporte interno
               </a>

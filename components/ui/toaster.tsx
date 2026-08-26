@@ -84,7 +84,7 @@ const VARIANT_STYLES: Record<ToastVariant, { wrapper: string; icon: typeof Check
   info: {
     wrapper: "bg-white border-slate-200",
     icon: Info,
-    iconColor: "text-indigo-600",
+    iconColor: "text-primary",
   },
 };
 

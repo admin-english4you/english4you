@@ -72,8 +72,8 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
-        <Link href={homeHref} className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-indigo-600">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-extrabold shadow-sm">
+        <Link href={homeHref} className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-primary">
+          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-sm font-extrabold shadow-sm">
             E4
           </div>
           <span>English4You</span>
@@ -103,11 +103,11 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
               onClick={onCloseMobile}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors font-medium text-sm ${
                 isActive
-                  ? "bg-indigo-50 text-indigo-700 font-semibold"
+                  ? "bg-primary/10 text-primary font-semibold"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-indigo-600" : "text-slate-400"}`} />
+              <Icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-slate-400"}`} />
               <span>{item.name}</span>
             </Link>
           );
@@ -120,7 +120,7 @@ export function AppSidebar({ role = "ADMIN", mobileOpen = false, onCloseMobile }
           <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
             <p className="font-semibold text-slate-800 text-xs mb-1">Precisa de ajuda?</p>
             <p className="text-slate-500 text-xs mb-2">Acesse os guias administrativos da escola.</p>
-            <Link href="/admin/docs" onClick={onCloseMobile} className="text-indigo-600 font-medium text-xs hover:underline flex items-center gap-1">
+            <Link href="/admin/docs" onClick={onCloseMobile} className="text-primary font-medium text-xs hover:underline flex items-center gap-1">
               Ver documentação →
             </Link>
           </div>

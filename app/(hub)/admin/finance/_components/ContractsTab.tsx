@@ -43,7 +43,7 @@ export function ContractsTab({ contracts, activeStatus }: ContractsTabProps) {
               className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                 isActive
-                  ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                  ? "border-primary/20 bg-primary/10 text-primary"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
             >
@@ -96,7 +96,7 @@ export function ContractsTab({ contracts, activeStatus }: ContractsTabProps) {
                     <td className="px-6 py-4 text-right">
                       <Link
                         href={`/admin/finance/contracts/${contract.id}`}
-                        className="inline-flex items-center text-xs font-semibold text-indigo-600 hover:underline"
+                        className="inline-flex items-center text-xs font-semibold text-primary hover:underline"
                       >
                         Ver <ChevronRight className="h-3.5 w-3.5" />
                       </Link>

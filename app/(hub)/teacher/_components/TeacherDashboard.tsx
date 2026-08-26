@@ -94,7 +94,7 @@ export function TeacherDashboard({ user, overview, todayKey }: TeacherDashboardP
 
 const TONE_STYLES = {
   amber: "bg-amber-50 text-amber-600 border-amber-100",
-  indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+  indigo: "bg-primary/10 text-primary border-primary/20",
 } as const;
 
 function StatCard({

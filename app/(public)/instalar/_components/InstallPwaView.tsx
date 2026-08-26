@@ -89,7 +89,7 @@ export function InstallPwaView() {
   if (platform === null) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f0f7ff] to-white px-4 py-12 sm:py-16">
+    <div className="min-h-screen bg-gradient-to-b from-primary/10 to-white px-4 py-12 sm:py-16">
       <div className="mx-auto max-w-md text-center">
         <Image
           src="/icon-192.png"
@@ -99,7 +99,7 @@ export function InstallPwaView() {
           className="mx-auto rounded-2xl shadow-lg shadow-slate-900/10"
         />
 
-        <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-[#07274f] sm:text-3xl">
+        <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-primary sm:text-3xl">
           Instale a English4You
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">
@@ -115,7 +115,7 @@ export function InstallPwaView() {
             </p>
             <Link
               href="/login"
-              className="text-sm font-bold text-indigo-600 hover:underline"
+              className="text-sm font-bold text-primary hover:underline"
             >
               Ir para o login
             </Link>
@@ -126,7 +126,7 @@ export function InstallPwaView() {
               <Button
                 onClick={handleInstallClick}
                 loading={isInstalling}
-                className="h-12 w-full rounded-2xl bg-[#016ad1] text-base font-bold text-white shadow-lg shadow-[#016ad1]/25 hover:bg-[#0255a9]"
+                className="h-12 w-full rounded-2xl bg-primary text-base font-bold text-white shadow-lg shadow-primary/25 hover:bg-primary/80"
               >
                 <Download className="mr-2 h-5 w-5" />
                 Instalar agora
@@ -141,7 +141,7 @@ export function InstallPwaView() {
 
         <p className="mt-10 text-xs text-slate-400">
           Já tem uma conta?{" "}
-          <Link href="/login" className="font-semibold text-indigo-600 hover:underline">
+          <Link href="/login" className="font-semibold text-primary hover:underline">
             Fazer login
           </Link>
         </p>
@@ -153,7 +153,7 @@ export function InstallPwaView() {
 function StepCard({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
         <Icon className="h-4 w-4" />
       </div>
       <p className="text-sm text-slate-600">{children}</p>

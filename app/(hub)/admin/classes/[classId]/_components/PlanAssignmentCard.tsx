@@ -97,7 +97,7 @@ export function PlanAssignmentCard({ classGroupId, currentPlan, activePlans, isE
               options={activePlans.map((p) => ({ value: p.id, label: p.name }))}
             />
           </div>
-          <Button type="button" onClick={handleSaveClick} disabled={!hasChanges} loading={isPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button type="button" onClick={handleSaveClick} disabled={!hasChanges} loading={isPending} className="bg-primary hover:bg-primary/80 text-primary-foreground">
             Salvar
           </Button>
         </div>

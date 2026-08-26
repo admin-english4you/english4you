@@ -18,7 +18,7 @@ export function CtaSection() {
         <motion.h2
           {...fadeInUp}
           transition={{ duration: 0.5, ease: easing }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#07274f] mb-6 leading-tight"
+          className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-primary mb-6 leading-tight"
         >
           Pronto para falar com confiança?
         </motion.h2>
@@ -42,7 +42,7 @@ export function CtaSection() {
             rel="noopener noreferrer"
             className={cn(
               buttonVariants({ variant: "default" }),
-              "w-full sm:w-64 h-14 rounded-full text-base font-bold bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-xl shadow-[#016ad1]/25 hover:shadow-[#016ad1]/40 hover:-translate-y-1 transition-all flex items-center justify-center"
+              "w-full sm:w-64 h-14 rounded-full text-base font-bold bg-primary hover:bg-primary/80 text-white shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center"
             )}
           >
             Ver Planos de Assinatura
@@ -53,7 +53,7 @@ export function CtaSection() {
             rel="noopener noreferrer"
             className={cn(
               buttonVariants({ variant: "secondary" }),
-              "w-full sm:w-64 h-14 rounded-full text-base font-bold text-[#016ad1] bg-[#f0f7ff] hover:bg-[#e0effe] flex items-center justify-center"
+              "w-full sm:w-64 h-14 rounded-full text-base font-bold text-primary bg-primary/10 hover:bg-primary/15 flex items-center justify-center"
             )}
           >
             Experimentar Aula Grátis

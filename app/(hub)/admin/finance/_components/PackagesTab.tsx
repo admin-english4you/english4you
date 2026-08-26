@@ -105,7 +105,7 @@ export function PackagesTab({ packages }: PackagesTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={openCreate}>
+        <Button className="bg-primary hover:bg-primary/80" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" /> Novo Pacote
         </Button>
       </div>
@@ -256,7 +256,7 @@ export function PackagesTab({ packages }: PackagesTabProps) {
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isPending}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button type="submit" loading={isPending} className="bg-primary text-primary-foreground hover:bg-primary/80">
               {editing ? "Salvar" : "Criar Pacote"}
             </Button>
           </Modal.Footer>

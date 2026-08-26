@@ -132,7 +132,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
           title="Turmas"
           description="Gerencie os horários, matrículas e alocação de professores das turmas."
         >
-          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setIsModalOpen(true)}>
+          <Button className="bg-primary hover:bg-primary/80" onClick={() => setIsModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" /> Criar Nova Turma
           </Button>
         </PageHeader>
@@ -146,7 +146,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
                 onClick={() => setStatusFilter(filter.value)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                   statusFilter === filter.value
-                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
@@ -189,10 +189,10 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
                     <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded text-xs font-bold ${style.badgeBg} ${style.badgeText} border ${style.badgeBorder}`}>
                       {c.level}
                     </span>
-                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
                   </div>
 
-                  <h3 className="font-bold text-lg text-slate-900 leading-tight mb-3 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="font-bold text-lg text-slate-900 leading-tight mb-3 line-clamp-1 group-hover:text-primary transition-colors">
                     {c.name}
                   </h3>
 
@@ -218,7 +218,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
                     </div>
                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-4">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ease-in-out ${isFull ? "bg-amber-500" : "bg-indigo-600"}`}
+                        className={`h-full rounded-full transition-all duration-500 ease-in-out ${isFull ? "bg-amber-500" : "bg-primary"}`}
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
@@ -286,7 +286,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
               <button
                 type="button"
                 onClick={() => append(emptySchedule)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                className="text-xs font-semibold text-primary hover:text-primary/80"
               >
                 + Adicionar horário
               </button>
@@ -331,7 +331,7 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button type="submit" loading={isSubmitting} className="bg-primary hover:bg-primary/80 text-primary-foreground">
               {isSubmitting ? "Criando..." : "Criar Turma"}
             </Button>
           </Modal.Footer>

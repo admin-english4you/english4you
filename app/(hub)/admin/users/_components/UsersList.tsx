@@ -135,7 +135,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
           </Button>
           <Button
             onClick={() => setIsModalOpen(true)}
-            className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700"
+            className="flex-1 sm:flex-initial bg-primary hover:bg-primary/80"
           >
             <Plus className="w-4 h-4 mr-2" /> Adicionar Usuário
           </Button>
@@ -150,7 +150,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
             <button
               onClick={() => setFilterRole("ALL")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filterRole === "ALL" ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "text-slate-600 hover:bg-slate-100"
+                filterRole === "ALL" ? "bg-primary/10 text-primary border border-primary/20" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Todos
@@ -174,7 +174,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
             <button
               onClick={() => setFilterRole("ADMIN")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filterRole === "ADMIN" ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "text-slate-600 hover:bg-slate-100"
+                filterRole === "ADMIN" ? "bg-primary/10 text-primary border border-primary/20" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Admins
@@ -211,7 +211,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                   <Link href={`/admin/users/${user.id}`} className="flex items-center gap-3 group">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-sm relative overflow-hidden shrink-0
                       ${user.role === 'TEACHER' ? 'bg-amber-100 text-amber-800' :
-                        user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800' :
+                        user.role === 'ADMIN' ? 'bg-primary/20 text-primary' :
                         'bg-emerald-100 text-emerald-800'}`}>
                       {user.avatarUrl ? (
                         <Image src={user.avatarUrl} alt={user.name} fill sizes="36px" className="object-cover" />
@@ -220,7 +220,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      <div className="font-semibold text-slate-900 group-hover:text-primary transition-colors">
                         {user.name}
                       </div>
                       <div className="text-[10px] text-slate-400 font-medium md:text-xs">{user.id}</div>
@@ -231,7 +231,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                 <TableCell mobileLabel="Perfil">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
                     user.role === 'TEACHER' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    user.role === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                    user.role === 'ADMIN' ? 'bg-primary/10 text-primary border-primary/20' :
                     'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     {user.role}
@@ -256,7 +256,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       (dados pessoais, contratos, financeiro, desativar). */}
                   <Link
                     href={`/admin/users/${user.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-primary/20 hover:bg-primary/10 hover:text-primary"
                   >
                     Ver ficha <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
@@ -340,7 +340,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       type="button"
                       onClick={executeCreateUser}
                       loading={isSubmitting}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="bg-primary hover:bg-primary/80 text-primary-foreground"
                     >
                       {isSubmitting ? "Cadastrando..." : "Confirmar e Criar"}
                     </Button>
@@ -437,7 +437,7 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                     </Button>
                     <Button 
                       type="submit" 
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="bg-primary hover:bg-primary/80 text-primary-foreground"
                     >
                       Cadastrar e Enviar Convite
                     </Button>

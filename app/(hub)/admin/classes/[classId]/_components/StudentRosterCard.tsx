@@ -172,7 +172,7 @@ export function StudentRosterCard({
               onClick={handleAddStudent}
               disabled={!selectedNewStudentId}
               loading={isPending}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary/80 text-primary-foreground"
             >
               Adicionar
             </Button>
@@ -207,7 +207,7 @@ export function StudentRosterCard({
               onClick={handleTransfer}
               disabled={!selectedTargetClassId}
               loading={isPending}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary/80 text-primary-foreground"
             >
               Transferir
             </Button>

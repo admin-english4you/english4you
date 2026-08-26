@@ -45,7 +45,7 @@ export function SentenceUnscrambleCard({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
       <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">
           Monte a frase
         </p>
         <p className="mt-1 text-sm text-slate-500">
@@ -79,7 +79,7 @@ export function SentenceUnscrambleCard({
                   "rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-colors",
                   answered
                     ? "cursor-default border-slate-200 bg-white text-slate-700"
-                    : "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
+                    : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
                 )}
               >
                 {token.word}
@@ -102,7 +102,7 @@ export function SentenceUnscrambleCard({
               type="button"
               disabled={answered}
               onClick={() => onPickFromBank(token)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-primary/50 hover:bg-slate-50 disabled:opacity-50"
             >
               {token.word}
             </motion.button>

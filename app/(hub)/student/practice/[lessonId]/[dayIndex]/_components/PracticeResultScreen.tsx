@@ -39,7 +39,7 @@ export function PracticeResultScreen({
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 220, damping: 14 }}
         className={`flex h-20 w-20 items-center justify-center rounded-3xl ${
-          nailed ? "bg-emerald-100 text-emerald-600" : "bg-indigo-100 text-indigo-600"
+          nailed ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary"
         }`}
       >
         {nailed ? <PartyPopper className="h-9 w-9" /> : <Target className="h-9 w-9" />}

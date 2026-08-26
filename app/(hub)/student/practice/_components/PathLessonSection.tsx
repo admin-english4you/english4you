@@ -22,7 +22,7 @@ export function PathLessonSection({ section, onPurchase }: PathLessonSectionProp
     <Card>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
             Nível {section.lessonLevel}
             {!section.hasAudio && <span className="text-slate-400"> · sem áudio</span>}
           </p>

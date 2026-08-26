@@ -91,7 +91,7 @@ export function IdentityVault({ userId, userName, hasIdentity, hasPhone }: Ident
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/10 bg-primary/10 text-primary">
             <Fingerprint className="h-4 w-4" />
           </div>
           <h2 className="text-base font-bold text-slate-900">Dados pessoais</h2>
@@ -223,7 +223,7 @@ export function IdentityVault({ userId, userName, hasIdentity, hasPhone }: Ident
             >
               Cancelar
             </Button>
-            <Button type="submit" loading={isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button type="submit" loading={isPending} className="bg-primary text-primary-foreground hover:bg-primary/80">
               Ver dados
             </Button>
           </Modal.Footer>

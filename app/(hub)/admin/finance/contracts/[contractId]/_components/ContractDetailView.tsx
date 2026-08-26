@@ -210,7 +210,7 @@ export function ContractDetailView({ contract, packages }: ContractDetailViewPro
               Voltar
             </Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-primary hover:bg-primary/80"
               onClick={handleChangePackage}
               disabled={!newPackageId}
               loading={isPending}

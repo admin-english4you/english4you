@@ -20,11 +20,11 @@ export function HeroSection() {
       {/* Background blobs */}
       <div
         aria-hidden
-        className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#f0f7ff] rounded-full blur-3xl opacity-70 -translate-y-1/2 translate-x-1/3 pointer-events-none"
+        className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl opacity-70 -translate-y-1/2 translate-x-1/3 pointer-events-none"
       />
       <div
         aria-hidden
-        className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#e0effe] rounded-full blur-3xl opacity-50 translate-y-1/3 -translate-x-1/3 pointer-events-none"
+        className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/15 rounded-full blur-3xl opacity-50 translate-y-1/3 -translate-x-1/3 pointer-events-none"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -34,7 +34,7 @@ export function HeroSection() {
             {...fadeInUp}
             transition={{ duration: 0.5, ease: easing }}
           >
-            <Badge className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#f0f7ff] text-[#016ad1] border border-[#bae0fd] text-sm font-semibold mb-6 hover:bg-[#f0f7ff]">
+            <Badge className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-semibold mb-6 hover:bg-primary/10">
               <Sparkles size={14} />
               O novo padrão para aprender inglês
             </Badge>
@@ -43,11 +43,11 @@ export function HeroSection() {
           <motion.h1
             {...fadeInUp}
             transition={{ duration: 0.55, ease: easing, delay: 0.08 }}
-            className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#07274f] leading-[1.08] mb-6"
+            className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-primary leading-[1.08] mb-6"
           >
             A fluência encontra a{" "}
             <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-[#016ad1] to-[#38a5f8] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               inovação.
             </span>
           </motion.h1>
@@ -75,7 +75,7 @@ export function HeroSection() {
               rel="noopener noreferrer"
               className={cn(
                 buttonVariants({ variant: "default" }),
-                "rounded-full w-full sm:w-64 h-14 text-base font-bold bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-xl shadow-[#016ad1]/25 hover:shadow-[#016ad1]/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                "rounded-full w-full sm:w-64 h-14 text-base font-bold bg-primary hover:bg-primary/80 text-white shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
               )}
             >
               Começar a Aprender Hoje
@@ -88,7 +88,7 @@ export function HeroSection() {
                 "rounded-full w-full sm:w-64 h-14 text-base font-bold text-foreground border border-border hover:bg-muted flex items-center justify-center gap-2"
               )}
             >
-              <PlayCircle size={20} className="text-[#016ad1]" />
+              <PlayCircle size={20} className="text-primary" />
               Ver Como Funciona
             </a>
           </motion.div>
@@ -116,7 +116,7 @@ export function HeroSection() {
             </div>
             <p className="text-sm font-medium text-muted-foreground">
               Junte-se a mais de{" "}
-              <span className="font-bold text-[#07274f]">10.000</span>{" "}
+              <span className="font-bold text-primary">10.000</span>{" "}
               brasileiros
               <br />
               que dominam o inglês conosco.
@@ -136,11 +136,11 @@ export function HeroSection() {
           <motion.div
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute inset-4 bg-gradient-to-tr from-[#016ad1]/10 via-[#38a5f8]/5 to-transparent rounded-[3rem] -rotate-2 border border-[#016ad1]/10"
+            className="absolute inset-4 bg-gradient-to-tr from-primary/10 via-primary/5 to-transparent rounded-[3rem] -rotate-2 border border-primary/10"
           />
 
           {/* Main card */}
-          <div className="relative w-full max-h-[520px] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#016ad1]/10 border-4 border-white">
+          <div className="relative w-full max-h-[520px] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-primary/10 border-4 border-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80"
@@ -160,7 +160,7 @@ export function HeroSection() {
                 <MonitorPlay size={22} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#07274f]">
+                <p className="text-sm font-bold text-primary">
                   Aula ao Vivo Começando
                 </p>
                 <p className="text-xs font-medium text-muted-foreground truncate">
@@ -169,7 +169,7 @@ export function HeroSection() {
               </div>
               <Button
                 size="sm"
-                className="rounded-xl bg-[#07274f] text-white hover:bg-[#016ad1] shrink-0 px-4"
+                className="rounded-xl bg-primary text-white hover:bg-primary/80 shrink-0 px-4"
               >
                 Entrar
               </Button>

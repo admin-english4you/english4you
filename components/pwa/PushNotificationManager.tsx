@@ -118,7 +118,7 @@ export function PushNotificationManager() {
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
             isSubscribed
-              ? "border-indigo-100 bg-indigo-50 text-indigo-600"
+              ? "border-primary/20 bg-primary/10 text-primary"
               : "border-slate-200 bg-slate-50 text-slate-400"
           }`}
         >
@@ -145,7 +145,7 @@ export function PushNotificationManager() {
         className={`mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
           isSubscribed
             ? "border border-slate-200 text-slate-600 hover:bg-slate-50"
-            : "bg-indigo-600 text-white hover:bg-indigo-700"
+            : "bg-primary text-primary-foreground hover:bg-primary/80"
         }`}
       >
         {isSubscribed ? (

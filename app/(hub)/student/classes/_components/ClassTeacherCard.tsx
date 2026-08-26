@@ -27,10 +27,10 @@ export function ClassTeacherCard({
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-500 px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-indigo-100">Minha turma</p>
+      <div className="bg-primary px-6 py-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/80">Minha turma</p>
         <h2 className="text-xl font-bold text-white mt-1">{classGroup.name}</h2>
-        <p className="text-sm text-indigo-100 mt-0.5">Nível {classGroup.level}</p>
+        <p className="text-sm text-primary-foreground/80 mt-0.5">Nível {classGroup.level}</p>
       </div>
 
       <div className="p-6 space-y-5">

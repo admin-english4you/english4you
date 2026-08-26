@@ -47,7 +47,7 @@ export function FinanceShell({ activeTab, children }: FinanceShellProps) {
                 className={cn(
                   "shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
                   isActive
-                    ? "border-indigo-600 text-indigo-700"
+                    ? "border-primary text-primary"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
                 )}
               >

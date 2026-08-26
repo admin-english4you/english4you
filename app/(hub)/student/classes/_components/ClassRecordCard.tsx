@@ -35,14 +35,14 @@ export function ClassRecordCard({
     <div
       className={cn(
         "group flex items-center gap-4 rounded-xl border bg-white p-4 transition-all",
-        isToday ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200",
-        isOpenable ? "hover:border-indigo-300 hover:shadow-sm" : "opacity-75"
+        isToday ? "border-primary ring-2 ring-primary/20" : "border-slate-200",
+        isOpenable ? "hover:border-primary hover:shadow-sm" : "opacity-75"
       )}
     >
       <div
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-          variant === "past" ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"
+          variant === "past" ? "bg-emerald-50 text-emerald-600" : "bg-primary/10 text-primary"
         )}
       >
         {isOpenable ? <PlayCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
@@ -74,7 +74,7 @@ export function ClassRecordCard({
       </div>
 
       {isOpenable ? (
-        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 transition-colors group-hover:text-indigo-500" />
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 transition-colors group-hover:text-primary" />
       ) : (
         <span className="shrink-0 text-xs text-slate-400">Em breve</span>
       )}

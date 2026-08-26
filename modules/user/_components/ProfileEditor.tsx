@@ -79,14 +79,14 @@ export function ProfileEditor({ user, aside }: ProfileEditorProps) {
       <div className={aside ? "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start" : undefined}>
       <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden${aside ? " lg:col-span-2" : ""}`}>
         {/* Banner */}
-        <div className="h-32 bg-gradient-to-r from-indigo-600 to-blue-500 w-full relative"></div>
+        <div className="h-32 bg-gradient-to-r from-primary to-primary/70 w-full relative"></div>
         
         <div className="px-6 sm:px-10 pb-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 -mt-12 relative z-10">
             
             {/* Avatar Section */}
             <div className="relative group">
-              <div className="w-28 h-28 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-3xl shadow-xl ring-4 ring-white overflow-hidden relative">
+              <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-3xl shadow-xl ring-4 ring-white overflow-hidden relative">
                 {user.avatarUrl ? (
                   <Image src={user.avatarUrl} alt={user.name} fill sizes="112px" className="object-cover" />
                 ) : (
@@ -118,7 +118,7 @@ export function ProfileEditor({ user, aside }: ProfileEditorProps) {
 
             <div className="text-center sm:text-left mt-2 sm:mt-14 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">{user.name}</h2>
-              <p className="text-indigo-600 font-medium text-sm flex items-center justify-center sm:justify-start gap-1.5 mt-1">
+              <p className="text-primary font-medium text-sm flex items-center justify-center sm:justify-start gap-1.5 mt-1">
                 <Shield size={14} />
                 {roleText}
               </p>

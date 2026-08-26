@@ -85,7 +85,7 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
         <ContractSigner contract={contract} user={user} />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-slate-200 bg-indigo-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 border-b border-slate-200 bg-primary/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-bold text-slate-900">Pagamento da mensalidade</h2>
               <p className="text-xs text-slate-500">
@@ -148,7 +148,7 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
                 onClick={handleCheckout}
                 loading={isPending}
                 disabled={!pkg}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
+                className="w-full bg-primary hover:bg-primary/80 sm:w-auto"
               >
                 {!isPending && <CreditCard className="mr-2 h-4 w-4" />}
                 Cadastrar cartão no Mercado Pago
@@ -186,7 +186,7 @@ function StepPill({
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold",
         state === "done" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-        state === "current" && "border-indigo-200 bg-indigo-50 text-indigo-700",
+        state === "current" && "border-primary/20 bg-primary/10 text-primary",
         state === "upcoming" && "border-slate-200 bg-white text-slate-400"
       )}
     >

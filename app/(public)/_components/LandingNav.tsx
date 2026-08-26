@@ -39,10 +39,10 @@ export function LandingNav() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between py-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#016ad1] to-[#38a5f8] flex items-center justify-center text-white shadow-lg shadow-[#016ad1]/20 group-hover:shadow-[#016ad1]/40 transition-shadow">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
             <GraduationCap size={22} strokeWidth={2.5} />
           </div>
-          <span className="text-xl font-bold tracking-tight text-[#07274f]">
+          <span className="text-xl font-bold tracking-tight text-primary">
             English4You
           </span>
         </Link>
@@ -53,7 +53,7 @@ export function LandingNav() {
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-semibold text-muted-foreground hover:text-[#016ad1] transition-colors"
+              className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
             </a>
@@ -64,7 +64,7 @@ export function LandingNav() {
         <div className="hidden md:flex items-center gap-3">
           <Link
             href="/login"
-            className="text-sm font-bold text-[#016ad1] hover:text-[#0255a9] transition-colors"
+            className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
           >
             Área do Aluno
           </Link>
@@ -72,7 +72,7 @@ export function LandingNav() {
             href="#pricing"
             className={cn(
               buttonVariants({ variant: "default" }),
-              "rounded-full px-6 bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/40 hover:-translate-y-0.5 transition-all"
+              "rounded-full px-6 bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all"
             )}
           >
             Matricule-se Já
@@ -105,7 +105,7 @@ export function LandingNav() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-base font-semibold text-foreground hover:text-[#016ad1] transition-colors py-1"
+                  className="text-base font-semibold text-foreground hover:text-primary transition-colors py-1"
                 >
                   {link.label}
                 </a>
@@ -113,7 +113,7 @@ export function LandingNav() {
               <div className="pt-2 flex flex-col gap-3 border-t border-border">
                 <Link
                   href="/login"
-                  className="text-sm font-bold text-[#016ad1] text-center py-2"
+                  className="text-sm font-bold text-primary text-center py-2"
                 >
                   Área do Aluno
                 </Link>
@@ -121,7 +121,7 @@ export function LandingNav() {
                   href="#pricing"
                   className={cn(
                     buttonVariants({ variant: "default" }),
-                    "w-full rounded-full bg-[#016ad1] hover:bg-[#0255a9] text-white text-center"
+                    "w-full rounded-full bg-primary hover:bg-primary/80 text-white text-center"
                   )}
                 >
                   Matricule-se Já

@@ -51,7 +51,7 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
         {day.status === "AVAILABLE" && (
           <motion.span
             aria-hidden
-            className="absolute inset-0 rounded-full bg-indigo-400"
+            className="absolute inset-0 rounded-full bg-primary/70"
             animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -62,7 +62,7 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
             "relative flex h-14 w-14 items-center justify-center rounded-full border-4 transition-transform",
             day.status === "COMPLETED" && "border-emerald-200 bg-emerald-500 text-white",
             day.status === "REPLAYABLE" && "border-violet-200 bg-violet-500 text-white",
-            day.status === "AVAILABLE" && "border-indigo-200 bg-indigo-600 text-white shadow-lg",
+            day.status === "AVAILABLE" && "border-primary/30 bg-primary text-primary-foreground shadow-lg",
             day.status === "LOCKED_FUTURE" && "border-slate-100 bg-slate-200 text-slate-400",
             day.status === "EXPIRED" && "border-amber-100 bg-slate-300 text-slate-600",
             day.status === "EMPTY" && "border-dashed border-slate-300 bg-slate-50 text-slate-300",

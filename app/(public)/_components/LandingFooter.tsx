@@ -33,12 +33,12 @@ const InstagramIcon = () => (
 
 export function LandingFooter() {
   return (
-    <footer className="bg-[#07274f] text-slate-300 py-14 sm:py-16">
+    <footer className="bg-primary text-slate-300 py-14 sm:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
         {/* Brand */}
         <div className="col-span-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-5 group">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#016ad1] to-[#38a5f8] flex items-center justify-center text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white">
               <GraduationCap size={19} strokeWidth={2.5} />
             </div>
             <span className="text-lg font-bold tracking-tight text-white">
@@ -52,14 +52,14 @@ export function LandingFooter() {
           <div className="flex items-center gap-3">
             <a
               href="#"
-              className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-[#016ad1] hover:text-white transition-colors"
+              className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               aria-label="Twitter"
             >
               <TwitterIcon />
             </a>
             <a
               href="#"
-              className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-[#016ad1] hover:text-white transition-colors"
+              className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               aria-label="Instagram"
             >
               <InstagramIcon />

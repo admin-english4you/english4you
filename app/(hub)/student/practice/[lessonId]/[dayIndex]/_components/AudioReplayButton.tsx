@@ -46,25 +46,25 @@ export function AudioReplayButton({ src, label = "Ouça o áudio da aula" }: Aud
   };
 
   return (
-    <div className="mb-6 flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+    <div className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-4">
       <button
         type="button"
         onClick={toggle}
         aria-label={playing ? "Pausar áudio" : "Reproduzir áudio"}
         className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition-all hover:bg-indigo-700 active:scale-95",
-          playing && "ring-4 ring-indigo-200"
+          "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:bg-primary/80 active:scale-95",
+          playing && "ring-4 ring-primary/20"
         )}
       >
         {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5 fill-current" />}
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-indigo-900">{label}</p>
+        <p className="text-sm font-medium text-primary">{label}</p>
         <button
           type="button"
           onClick={restart}
-          className="text-xs font-medium text-indigo-600 hover:underline"
+          className="text-xs font-medium text-primary hover:underline"
         >
           Ouvir desde o início
         </button>

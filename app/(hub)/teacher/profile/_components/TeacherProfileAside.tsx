@@ -23,10 +23,10 @@ export function TeacherProfileAside({ overview, todayKey }: TeacherProfileAsideP
               {overview.classCount === 1 ? "Turma" : "Turmas"}
             </p>
           </div>
-          <div className="rounded-xl bg-indigo-50 px-3 py-3 text-center">
-            <Users className="mx-auto h-5 w-5 text-indigo-600" />
-            <p className="mt-1.5 text-lg font-bold text-indigo-800">{overview.studentCount}</p>
-            <p className="text-[11px] font-medium text-indigo-700">
+          <div className="rounded-xl bg-primary/10 px-3 py-3 text-center">
+            <Users className="mx-auto h-5 w-5 text-primary" />
+            <p className="mt-1.5 text-lg font-bold text-primary">{overview.studentCount}</p>
+            <p className="text-[11px] font-medium text-primary">
               {overview.studentCount === 1 ? "Aluno" : "Alunos"}
             </p>
           </div>
@@ -35,7 +35,7 @@ export function TeacherProfileAside({ overview, todayKey }: TeacherProfileAsideP
 
       <Card>
         <CardTitle className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-indigo-500" />
+          <CalendarClock className="h-4 w-4 text-primary" />
           Próximas aulas
         </CardTitle>
 

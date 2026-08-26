@@ -33,7 +33,7 @@ export function Avatar({ name, src, size = "sm", className }: AvatarProps) {
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-full bg-indigo-100 font-bold text-indigo-700",
+        "relative shrink-0 overflow-hidden rounded-full bg-primary/10 font-bold text-primary",
         "flex items-center justify-center select-none",
         box,
         className

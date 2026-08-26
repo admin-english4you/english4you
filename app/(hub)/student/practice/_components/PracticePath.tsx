@@ -30,8 +30,8 @@ export function PracticePath({ path }: PracticePathProps) {
 
       {!hasSections ? (
         <Card className="flex flex-col items-center py-14 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-            <Sparkles className="h-7 w-7 text-indigo-400" />
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <Sparkles className="h-7 w-7 text-primary" />
           </div>
           <p className="font-semibold text-slate-800">Sua prática ainda não começou</p>
           <p className="mt-1 max-w-md text-sm text-slate-500">

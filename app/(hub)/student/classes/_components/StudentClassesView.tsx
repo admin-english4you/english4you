@@ -58,9 +58,9 @@ export function StudentClassesView({ overview, todayKey }: StudentClassesViewPro
         <div className="space-y-6 lg:col-span-2">
           <section>
             <div className="mb-3 flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-indigo-500" />
+              <CalendarClock className="h-4 w-4 text-primary" />
               <h2 className="font-semibold text-slate-900">Próximas aulas</h2>
-              <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                 {upcomingRecords.length}
               </span>
             </div>

@@ -37,7 +37,7 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 const ROLE_STYLES: Record<Role, string> = {
-  ADMIN: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  ADMIN: "bg-primary/10 text-primary border-primary/20",
   TEACHER: "bg-amber-50 text-amber-700 border-amber-200",
   STUDENT: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
@@ -68,7 +68,7 @@ export function UserDetailView({
       <div className="mx-auto space-y-6">
         <Link
           href="/admin/users"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-primary"
         >
           <ArrowLeft className="h-4 w-4" /> Voltar para usuários
         </Link>
@@ -114,7 +114,7 @@ export function UserDetailView({
               {classGroup && (
                 <Link
                   href={`/admin/classes/${classGroup.id}`}
-                  className="inline-flex items-center gap-1.5 hover:text-indigo-600"
+                  className="inline-flex items-center gap-1.5 hover:text-primary"
                 >
                   <GraduationCap className="h-3.5 w-3.5 text-slate-400" />
                   {classGroup.name}

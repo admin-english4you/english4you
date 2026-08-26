@@ -46,9 +46,9 @@ export function NextClassCard({ record, classGroup, headTeacherName, todayKey }:
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="flex items-center gap-2 bg-indigo-50 px-6 py-3">
-        <CalendarClock className="h-4 w-4 text-indigo-600" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
+      <div className="flex items-center gap-2 bg-primary/10 px-6 py-3">
+        <CalendarClock className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-primary">
           Próxima aula
         </span>
       </div>

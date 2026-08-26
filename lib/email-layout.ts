@@ -22,8 +22,8 @@ export interface EmailLayoutParams {
   footnote?: string;
 }
 
-const BRAND_NAVY = "#07274f";
-const BRAND_BLUE = "#016ad1";
+const BRAND_NAVY = "#04215d";
+const BRAND_BLUE = "#04215d";
 
 /**
  * Envolve o conteúdo na moldura visual padrão: cabeçalho com a marca, corpo

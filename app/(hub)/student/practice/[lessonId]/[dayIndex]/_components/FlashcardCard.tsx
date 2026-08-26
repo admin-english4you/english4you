@@ -89,7 +89,7 @@ export function FlashcardCard({ item, onResult }: FlashcardCardProps) {
                   speak(flashcard.front);
                 }}
                 aria-label="Ouvir a pronúncia"
-                className="rounded-full bg-indigo-50 p-2.5 text-indigo-600 transition-colors hover:bg-indigo-100"
+                className="rounded-full bg-primary/10 p-2.5 text-primary transition-colors hover:bg-primary/20"
               >
                 <Volume2 className="h-5 w-5" />
               </button>
@@ -103,10 +103,10 @@ export function FlashcardCard({ item, onResult }: FlashcardCardProps) {
 
           {/* Verso */}
           <div
-            className="card-face absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-6 shadow-sm"
+            className="card-face absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-primary/30 bg-primary/10 p-6 shadow-sm"
             style={{ transform: "rotateY(180deg)" }}
           >
-            <p className="text-center text-2xl font-bold text-indigo-900 sm:text-3xl">
+            <p className="text-center text-2xl font-bold text-primary sm:text-3xl">
               {flashcard.back}
             </p>
 
@@ -118,7 +118,7 @@ export function FlashcardCard({ item, onResult }: FlashcardCardProps) {
                   speak(flashcard.back);
                 }}
                 aria-label="Ouvir a pronúncia"
-                className="rounded-full bg-white p-2.5 text-indigo-600 transition-colors hover:bg-indigo-100"
+                className="rounded-full bg-white p-2.5 text-primary transition-colors hover:bg-primary/10"
               >
                 <Volume2 className="h-5 w-5" />
               </button>

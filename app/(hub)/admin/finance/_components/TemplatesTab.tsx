@@ -59,7 +59,7 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
           Só existe <strong>um modelo ativo por perfil</strong> — é ele que gera os contratos dos novos
           cadastros.
         </p>
-        <Button className="shrink-0 bg-indigo-600 hover:bg-indigo-700" onClick={() => setIsModalOpen(true)}>
+        <Button className="shrink-0 bg-primary hover:bg-primary/80" onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Novo Modelo
         </Button>
       </div>
@@ -112,7 +112,7 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
                   variant="outline"
                   size="sm"
                   render={<Link href={`/admin/finance/templates/${template.id}`} />}
-                  className={cn("text-indigo-700")}
+                  className={cn("text-primary")}
                 >
                   Editar <ChevronRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
@@ -166,7 +166,7 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isPending}>
               Cancelar
             </Button>
-            <Button type="submit" loading={isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button type="submit" loading={isPending} className="bg-primary text-primary-foreground hover:bg-primary/80">
               Criar Modelo
             </Button>
           </Modal.Footer>

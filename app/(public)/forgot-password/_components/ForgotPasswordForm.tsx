@@ -50,7 +50,7 @@ export function ForgotPasswordForm() {
   return (
     <>
       {/* ─── Left Panel ─────────────────────────────────────────────── */}
-      <div className="hidden lg:flex w-1/2 relative bg-[#07274f] flex-col overflow-hidden">
+      <div className="hidden lg:flex w-1/2 relative bg-primary flex-col overflow-hidden">
         {/* Background image */}
         <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,8 +59,8 @@ export function ForgotPasswordForm() {
             alt="Estudante estudando"
             className="w-full h-full object-cover opacity-75"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07274f] via-[#07274f]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#016ad1]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-transparent" />
         </div>
 
         {/* Content */}
@@ -89,7 +89,7 @@ export function ForgotPasswordForm() {
               {perks.map((perk) => (
                 <li key={perk} className="flex items-start gap-3">
                   <CheckCircle2
-                    className="text-[#7dc5fb] mt-0.5 shrink-0"
+                    className="text-primary-foreground/80 mt-0.5 shrink-0"
                     size={18}
                   />
                   <p className="text-slate-300 font-medium leading-relaxed text-sm">
@@ -107,7 +107,7 @@ export function ForgotPasswordForm() {
         {/* Decorative blob */}
         <div
           aria-hidden
-          className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#f0f7ff] rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/2 pointer-events-none hidden lg:block"
+          className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/2 pointer-events-none hidden lg:block"
         />
 
         <motion.div
@@ -119,10 +119,10 @@ export function ForgotPasswordForm() {
           {/* Mobile Logo */}
           <div className="flex lg:hidden justify-center mb-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#016ad1] to-[#38a5f8] flex items-center justify-center text-white shadow-lg">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white shadow-lg">
                 <GraduationCap size={24} strokeWidth={2.5} />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-[#07274f]">
+              <span className="text-2xl font-bold tracking-tight text-primary">
                 English4You
               </span>
             </Link>
@@ -140,7 +140,7 @@ export function ForgotPasswordForm() {
                   transition={{ duration: 0.35, ease: easing }}
                 >
                   <div className="mb-9 text-center lg:text-left">
-                    <h1 className="text-3xl font-extrabold text-[#07274f] mb-2">
+                    <h1 className="text-3xl font-extrabold text-primary mb-2">
                       Recuperar Senha
                     </h1>
                     <p className="text-muted-foreground font-medium text-sm">
@@ -172,7 +172,7 @@ export function ForgotPasswordForm() {
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="aluno@exemplo.com"
                           required
-                          className="pl-10 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-[#016ad1] focus-visible:ring-[#016ad1]/20 text-foreground"
+                          className="pl-10 h-12 rounded-2xl bg-muted/60 border-border focus-visible:border-primary focus-visible:ring-primary/20 text-foreground"
                         />
                       </div>
                     </div>
@@ -182,7 +182,7 @@ export function ForgotPasswordForm() {
                       <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 rounded-2xl font-bold text-base bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/35 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                        className="w-full h-12 rounded-2xl font-bold text-base bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                       >
                         {isLoading ? (
                           <motion.div
@@ -204,7 +204,7 @@ export function ForgotPasswordForm() {
                   <div className="mt-7 text-center">
                     <Link
                       href="/login"
-                      className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-[#016ad1] transition-colors"
+                      className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
                     >
                       <ArrowLeft size={16} />
                       Voltar para o Login
@@ -219,11 +219,11 @@ export function ForgotPasswordForm() {
                   transition={{ duration: 0.4, ease: easing }}
                   className="text-center"
                 >
-                  <div className="w-16 h-16 rounded-full bg-[#f0f7ff] text-[#016ad1] flex items-center justify-center mx-auto mb-6 border border-[#bae0fd]">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6 border border-primary/20">
                     <CheckCircle2 size={32} />
                   </div>
 
-                  <h2 className="text-2xl font-extrabold text-[#07274f] mb-3">
+                  <h2 className="text-2xl font-extrabold text-primary mb-3">
                     Link Enviado!
                   </h2>
                   <p className="text-muted-foreground font-medium text-sm mb-8 leading-relaxed max-w-sm mx-auto">
@@ -234,7 +234,7 @@ export function ForgotPasswordForm() {
                     href="/login"
                     className={cn(
                       buttonVariants({ variant: "default" }),
-                      "w-full h-12 rounded-2xl font-bold text-base bg-[#016ad1] hover:bg-[#0255a9] text-white shadow-lg shadow-[#016ad1]/20 hover:shadow-[#016ad1]/35 hover:-translate-y-0.5 transition-all text-center flex items-center justify-center"
+                      "w-full h-12 rounded-2xl font-bold text-base bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 transition-all text-center flex items-center justify-center"
                     )}
                   >
                     Ir para o Login

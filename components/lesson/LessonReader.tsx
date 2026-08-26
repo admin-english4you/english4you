@@ -16,7 +16,7 @@ export function LessonReader({ title, level, html, audioUrl, videoUrl }: LessonR
 
   return (
     <article className="mx-auto max-w-3xl px-5 py-4 sm:px-8 scrollbar-hide">
-      <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
         Material da aula · {level}
       </p>
       <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>

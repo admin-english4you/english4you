@@ -48,11 +48,11 @@ export function TodayPracticeCard({ days }: TodayPracticeCardProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.06 }}
-          className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg"
+          className="rounded-2xl bg-gradient-to-br from-primary to-violet-600 p-6 text-white shadow-lg"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-200">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
                 Prática de hoje · Dia {day.dayIndex}
               </p>
               <h2 className="mt-1 text-lg font-bold">{PRACTICE_MODE_LABELS[day.renderMode]}</h2>
@@ -62,16 +62,16 @@ export function TodayPracticeCard({ days }: TodayPracticeCardProps) {
             </span>
           </div>
 
-          <p className="mt-2 text-sm text-indigo-100">{PRACTICE_MODE_HINTS[day.renderMode]}</p>
-          <p className="mt-1 truncate text-xs text-indigo-200">{day.lessonTitle}</p>
+          <p className="mt-2 text-sm text-primary-foreground/80">{PRACTICE_MODE_HINTS[day.renderMode]}</p>
+          <p className="mt-1 truncate text-xs text-primary-foreground/70">{day.lessonTitle}</p>
 
           <div className="mt-5 flex items-center justify-between gap-3">
-            <span className="text-xs font-semibold text-indigo-100">
+            <span className="text-xs font-semibold text-primary-foreground/80">
               {day.xpReward > 0 ? `+${formatXp(day.xpReward)}` : "Revisão · sem XP"}
             </span>
             <Button
               render={<Link href={`/student/practice/${day.lessonId}/${day.dayIndex}`} />}
-              className="bg-white font-bold text-indigo-700 hover:bg-indigo-50"
+              className="bg-white font-bold text-primary hover:bg-primary/10"
               size="sm"
             >
               {day.status === "REPLAYABLE" ? "Refazer" : "Começar"}

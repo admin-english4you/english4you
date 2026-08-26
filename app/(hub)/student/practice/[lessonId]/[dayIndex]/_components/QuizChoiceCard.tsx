@@ -54,8 +54,8 @@ export function QuizChoiceCard({
                 "flex items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left transition-colors",
                 showAsCorrect && "border-emerald-400 bg-emerald-50",
                 showAsWrong && "border-rose-400 bg-rose-50",
-                !answered && isSelected && "border-indigo-400 bg-indigo-50",
-                !answered && !isSelected && "border-slate-200 bg-white hover:border-indigo-300",
+                !answered && isSelected && "border-primary bg-primary/10",
+                !answered && !isSelected && "border-slate-200 bg-white hover:border-primary/50",
                 answered && !showAsCorrect && !showAsWrong && "border-slate-200 bg-white opacity-60"
               )}
             >
@@ -64,7 +64,7 @@ export function QuizChoiceCard({
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
                   showAsCorrect && "bg-emerald-500 text-white",
                   showAsWrong && "bg-rose-500 text-white",
-                  !answered && isSelected && "bg-indigo-500 text-white",
+                  !answered && isSelected && "bg-primary text-primary-foreground",
                   !answered && !isSelected && "bg-slate-100 text-slate-500",
                   answered && !showAsCorrect && !showAsWrong && "bg-slate-100 text-slate-400"
                 )}

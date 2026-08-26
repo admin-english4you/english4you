@@ -104,11 +104,11 @@ function LearningItemRow({ item, planId, onOpenDetails }: { item: LearningItem; 
 
   return (
     <div className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg">
-      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.type === "VOCABULARY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-violet-50 text-violet-700 border-violet-200"}`}>
+      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.type === "VOCABULARY" ? "bg-primary/10 text-primary border-primary/20" : "bg-violet-50 text-violet-700 border-violet-200"}`}>
         {item.type === "VOCABULARY" ? "Vocab" : "Estrutura"}
       </span>
       <button type="button" onClick={() => onOpenDetails(item)} className="flex-1 min-w-0 text-left">
-        <p className="font-semibold text-slate-900 text-sm truncate hover:text-indigo-600 transition-colors">{item.lemma}</p>
+        <p className="font-semibold text-slate-900 text-sm truncate hover:text-primary transition-colors">{item.lemma}</p>
         <p className="text-xs text-slate-500 truncate">{itemSummary(item)}</p>
         {errorMessage && <p className="text-[11px] text-rose-600 mt-1">{errorMessage}</p>}
       </button>
@@ -182,7 +182,7 @@ function QuizQuestionRow({
   return (
     <div className="flex items-center gap-3 p-2.5 border border-slate-200 rounded-lg">
       <button type="button" onClick={() => onOpenDetails(question)} className="flex-1 min-w-0 text-left">
-        <p className="text-sm text-slate-800 truncate hover:text-indigo-600 transition-colors">{question.question}</p>
+        <p className="text-sm text-slate-800 truncate hover:text-primary transition-colors">{question.question}</p>
         {errorMessage && <p className="text-[11px] text-rose-600 mt-1">{errorMessage}</p>}
       </button>
       <div className="flex items-center gap-2 shrink-0">
@@ -379,7 +379,7 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
           </span>
         </div>
 
-        <Button type="button" size="sm" onClick={handleSubmit(onSave)} disabled={isSubmitting} loading={isSavePending} className="bg-indigo-600 hover:bg-indigo-700">
+        <Button type="button" size="sm" onClick={handleSubmit(onSave)} disabled={isSubmitting} loading={isSavePending} className="bg-primary hover:bg-primary/80">
           {!isSavePending && <Save className="w-4 h-4 mr-1.5" />}
           Salvar
         </Button>
@@ -466,7 +466,7 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
               <textarea
                 rows={4}
                 placeholder="Cole a transcrição do áudio/vídeo aqui, ou deixe em branco para a IA transcrever."
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-xs text-slate-800 outline-none focus:border-[#016ad1] focus:ring-2 focus:ring-[#016ad1]/20 transition-all resize-y"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-xs text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
                 {...register("transcript")}
               />
             </div>
@@ -476,13 +476,13 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-indigo-500" /> Itens de Prática
+                  <Sparkles className="w-4 h-4 text-primary" /> Itens de Prática
                 </h3>
                 <p className="text-[11px] text-slate-400">
                   {learningItems.length} gerados{pendingCount > 0 ? ` • ${pendingCount} pendente${pendingCount > 1 ? "s" : ""} de revisão` : ""}
                 </p>
               </div>
-              <Button type="button" size="sm" onClick={handleGenerate} loading={isGeneratePending} className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="button" size="sm" onClick={handleGenerate} loading={isGeneratePending} className="bg-primary hover:bg-primary/80">
                 {!isGeneratePending && <Sparkles className="w-4 h-4 mr-1.5" />}
                 {isGeneratePending ? "Gerando... até 60s" : "Gerar com IA"}
               </Button>

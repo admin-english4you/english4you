@@ -94,7 +94,7 @@ export function NotificationBell() {
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:underline"
+            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
           >
             <CheckCheck className="h-3 w-3" />
             Marcar todas lidas
@@ -109,7 +109,7 @@ export function NotificationBell() {
         <div className="max-h-80 overflow-y-auto">
           {notifications.map((notification) => (
             <DropdownItem key={notification.id} onClick={() => handleOpen(notification)}>
-              <Video className="w-4 h-4 mr-3 mt-0.5 shrink-0 text-slate-400 group-hover:text-indigo-500" />
+              <Video className="w-4 h-4 mr-3 mt-0.5 shrink-0 text-slate-400 group-hover:text-primary" />
               <div className="min-w-0 flex-1">
                 <p className={`truncate text-xs ${notification.readAt ? "text-slate-600" : "font-semibold text-slate-900"}`}>
                   {notification.title}
@@ -117,7 +117,7 @@ export function NotificationBell() {
                 <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500">{notification.body}</p>
                 <p className="mt-0.5 text-[10px] text-slate-400">{timeAgo(notification.createdAt)}</p>
               </div>
-              {!notification.readAt && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />}
+              {!notification.readAt && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
             </DropdownItem>
           ))}
         </div>

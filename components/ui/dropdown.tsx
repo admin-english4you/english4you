@@ -90,7 +90,7 @@ export function DropdownItem({ children, onClick, className = "", destructive = 
   const baseClass = "flex w-full items-center px-4  py-2.5 text-sm transition-colors text-left";
   const colorClass = destructive
     ? "text-rose-600 hover:bg-rose-50"
-    : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-700";
+    : "text-slate-700 hover:bg-primary/10 hover:text-primary";
 
   return (
     <button onClick={onClick} className={`${baseClass} ${colorClass} ${className}`}>

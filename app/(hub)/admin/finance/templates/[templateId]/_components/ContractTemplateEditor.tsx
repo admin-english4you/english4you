@@ -98,7 +98,7 @@ export function ContractTemplateEditor({ template }: ContractTemplateEditorProps
               onClick={handleSave}
               loading={isPending}
               disabled={unknownKeys.length > 0}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-primary hover:bg-primary/80"
             >
               {!isPending && <Save className="mr-2 h-4 w-4" />}
               Salvar

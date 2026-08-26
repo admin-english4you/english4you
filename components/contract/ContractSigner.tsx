@@ -176,7 +176,7 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
                 </Field>
               </div>
 
-              <Button type="submit" loading={isPending} className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="submit" loading={isPending} className="bg-primary hover:bg-primary/80">
                 Salvar e continuar
               </Button>
             </form>
@@ -193,7 +193,7 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
               <button
                 type="button"
                 onClick={() => setShowIdentityForm(true)}
-                className="font-semibold text-indigo-600 hover:underline"
+                className="font-semibold text-primary hover:underline"
               >
                 Alterar
               </button>
@@ -240,7 +240,7 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
                 disabled={contract.needsIdentity || isPending}
-                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-indigo-600 accent-indigo-600 disabled:cursor-not-allowed"
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-primary accent-primary disabled:cursor-not-allowed"
               />
               <span>Li e concordo com os termos do contrato acima.</span>
             </label>
