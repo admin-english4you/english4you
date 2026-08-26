@@ -12,7 +12,7 @@ export interface ContentImageUploaders {
 }
 
 export function isOwnStorageUrl(src: string): boolean {
-  return src.includes("firebasestorage.googleapis.com");
+  return src.includes(".public.blob.vercel-storage.com");
 }
 
 function needsRehost(src: string): boolean {

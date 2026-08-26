@@ -177,7 +177,7 @@ export const lessonService = {
   async deleteContentImages(actingRole: Role, lessonId: string, imageUrls: string[]): Promise<void> {
     assertAdmin(actingRole);
 
-    const ownImages = imageUrls.filter((url) => url.includes(`/lessons%2F${lessonId}%2Fcontent_`));
+    const ownImages = imageUrls.filter((url) => url.includes(`/lessons/${lessonId}/content_`));
     await Promise.all(ownImages.map((url) => deleteStorageFileByUrl(url)));
   },
 

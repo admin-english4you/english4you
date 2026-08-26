@@ -1,60 +1,31 @@
-import { adminStorage } from '@/lib/firebase-admin';
+import { put, del } from '@vercel/blob';
 import { AppError } from '@/lib/errors';
-import crypto from 'crypto';
 
 /**
- * Upload/apagar arquivos no Firebase Storage — extraído de
+ * Upload/apagar arquivos no Vercel Blob — extraído de
  * `lessonService` (era só de lá) porque o board ao vivo da sala do
  * professor (classService) também precisa subir imagens de conteúdo.
  */
 
-function storageUrlPrefix(bucketName: string): string {
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`;
-}
-
-/** Sobe um buffer para um caminho do Storage e retorna a URL pública (com download token). */
+/** Sobe um buffer para um caminho do Blob e retorna a URL pública. */
 export async function uploadBufferToStorage(filePath: string, buffer: Buffer, contentType: string): Promise<string> {
-  if (!adminStorage) {
-    throw new AppError('Serviço de Storage não configurado no servidor.');
-  }
-
-  const bucket = adminStorage.bucket();
-  const fileRef = bucket.file(filePath);
-  const downloadToken = crypto.randomUUID();
-
-  await fileRef.save(buffer, {
-    metadata: {
-      contentType,
-      cacheControl: 'public, max-age=31536000',
-      metadata: {
-        firebaseStorageDownloadTokens: downloadToken,
-      },
-    },
+  const blob = await put(filePath, buffer, {
+    access: 'public',
+    contentType,
+    addRandomSuffix: false,
   });
 
-  return `${storageUrlPrefix(bucket.name)}${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+  return blob.url;
 }
 
-/** Apaga (best-effort) um arquivo do Storage a partir da sua URL pública. Não lança em caso de falha. */
+/** Apaga (best-effort) um arquivo do Blob a partir da sua URL pública. Não lança em caso de falha. */
 export async function deleteStorageFileByUrl(url: string): Promise<void> {
-  if (!adminStorage) return;
+  if (!url.includes('.public.blob.vercel-storage.com')) return;
 
-  const bucket = adminStorage.bucket();
-  const prefix = storageUrlPrefix(bucket.name);
-  if (!url.startsWith(prefix)) return;
-
-  const parts = url.split('/o/');
-  if (parts.length < 2) return;
-
-  const filePath = decodeURIComponent(parts[1].split('?')[0]);
   try {
-    const fileRef = bucket.file(filePath);
-    const [exists] = await fileRef.exists();
-    if (exists) {
-      await fileRef.delete();
-    }
+    await del(url);
   } catch (err) {
-    console.error('Erro ao deletar arquivo do Firebase Storage:', err);
+    console.error('Erro ao deletar arquivo do Vercel Blob:', err);
   }
 }
 

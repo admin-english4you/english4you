@@ -676,7 +676,7 @@ export const classService = {
       throw new AppError('Você não tem permissão para editar esta aula.');
     }
 
-    const ownImages = imageUrls.filter((url) => url.includes(`/class-boards%2F${recordId}%2Fcontent_`));
+    const ownImages = imageUrls.filter((url) => url.includes(`/class-boards/${recordId}/content_`));
     await Promise.all(ownImages.map((url) => deleteStorageFileByUrl(url)));
   },
 
