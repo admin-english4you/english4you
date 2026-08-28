@@ -56,13 +56,30 @@ export const paymentClient = mpConfig ? new Payment(mpConfig) : null;
  */
 export function getAppUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (explicit) return stripTrailingSlash(explicit);
+  // Só aceita a variável explícita se ela REALMENTE servir como back_url.
+  //
+  // A checagem existe por causa de uma armadilha do Next: `NEXT_PUBLIC_*` é
+  // substituída pelo valor literal em tempo de BUILD, inclusive no bundle do
+  // servidor. Um build feito com `http://localhost:3000` (o valor de
+  // desenvolvimento) congela localhost aqui dentro, e o `if (explicit)` puro
+  // devolvia isso em produção — deixando os passos 2/3 abaixo como código
+  // morto justamente quando eles seriam necessários. Descartando o valor
+  // inútil, o deploy na Vercel se recupera sozinho pelo domínio dela.
+  if (explicit) {
+    const normalized = stripTrailingSlash(explicit);
+    if (!describeUnusableBackUrl(normalized)) return normalized;
+    console.warn(
+      `[MercadoPago] NEXT_PUBLIC_APP_URL ("${normalized}") não serve como back_url — usando o domínio da Vercel.`
+    );
+  }
 
   const vercelHost =
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
   if (vercelHost) return `https://${stripTrailingSlash(vercelHost)}`;
 
-  return "http://localhost:3000";
+  // Fora da Vercel sobra localhost: em dev é o valor certo, e em produção é o
+  // que faz `describeUnusableBackUrl` barrar a chamada com mensagem clara.
+  return explicit ? stripTrailingSlash(explicit) : "http://localhost:3000";
 }
 
 function stripTrailingSlash(value: string): string {

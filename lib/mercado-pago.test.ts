@@ -93,6 +93,33 @@ describe('getAppUrl', () => {
     const getAppUrl = await importGetAppUrl();
     expect(getAppUrl()).toBe('http://localhost:3000');
   });
+
+  /**
+   * O cenário que derrubou o checkout em produção: `NEXT_PUBLIC_*` é congelada
+   * no build, então um deploy feito com o valor de desenvolvimento carregava
+   * `localhost` embutido e ignorava o domínio da Vercel.
+   */
+  it('ignora uma NEXT_PUBLIC_APP_URL inutilizável e usa o domínio da Vercel', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('https://meu-app.vercel.app');
+  });
+
+  it('descarta http não-local em favor do domínio da Vercel (o MP exige https)', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://www.english4ubr.com.br');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('https://meu-app.vercel.app');
+  });
+
+  it('mantém localhost em dev, onde não há domínio da Vercel para usar', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', '');
+    vi.stubEnv('VERCEL_URL', '');
+    const getAppUrl = await importGetAppUrl();
+    expect(getAppUrl()).toBe('http://localhost:3000');
+  });
 });
 
 describe('describeUnusableBackUrl', () => {
