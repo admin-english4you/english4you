@@ -21,11 +21,26 @@ export const metadata: Metadata = {
   title: "English4You",
   description: "Plataforma de aulas de inglês da English4You — aulas ao vivo, materiais e prática com IA.",
   appleWebApp: {
+    // O Next emite isto como `<meta name="mobile-web-app-capable">` (o nome
+    // padronizado), e NÃO como o `apple-mobile-web-app-capable` legado. Quem
+    // coloca o app em tela cheia no iPhone hoje é o `display: "standalone"`
+    // do manifest, suportado desde o iOS 16.4.
+    capable: true,
     title: "English4You",
     statusBarStyle: "black-translucent",
   },
   icons: {
-    apple: "/apple-icon.png",
+    // Ícones OPACOS, de `public/ios/`, e não o `/apple-icon.png` (que tem os
+    // cantos transparentes): o iOS não suporta alfa no ícone da tela inicial —
+    // ele compõe o transparente sobre PRETO, e o ícone sai com moldura preta
+    // ou simplesmente sumindo contra o fundo. O iOS também não escolhe o
+    // arquivo pelo manifest; é desta lista que ele tira o ícone.
+    apple: [
+      { url: "/ios/180.png", sizes: "180x180", type: "image/png" },
+      { url: "/ios/167.png", sizes: "167x167", type: "image/png" },
+      { url: "/ios/152.png", sizes: "152x152", type: "image/png" },
+      { url: "/ios/120.png", sizes: "120x120", type: "image/png" },
+    ],
   },
 };
 

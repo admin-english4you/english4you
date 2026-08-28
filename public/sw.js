@@ -1,5 +1,11 @@
-const CACHE_NAME = "e4y-static-v1";
-const PRECACHE_URLS = ["/icon-192.png", "/icon-512.png", "/apple-icon.png"];
+const CACHE_NAME = "e4y-static-v2";
+// Precisam EXISTIR: `cache.addAll` rejeita em bloco se qualquer URL der 404, e
+// isso derruba a instalação inteira do service worker (junto com o push).
+const PRECACHE_URLS = [
+  "/android/launchericon-192x192.png",
+  "/android/launchericon-512x512.png",
+  "/ios/180.png",
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -52,8 +58,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      icon: "/android/launchericon-192x192.png",
+      badge: "/android/launchericon-192x192.png",
       data: { link: data.link || "/student/practice" },
     })
   );
