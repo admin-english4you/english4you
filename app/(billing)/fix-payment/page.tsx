@@ -15,8 +15,14 @@ export default async function FixPaymentPage() {
   if (!currentUser) redirect("/login");
 
   const { state, subscription, lastFailure } = await paymentService.getAccessState(currentUser.id);
+  if (state === "DEACTIVATED") redirect("/conta-desativada");
   // Quem nunca contratou não tem cartão para consertar — vai assinar primeiro.
   if (state === "NEEDS_ONBOARDING") redirect("/onboarding");
+
+  // Um aluno de cobrança MANUAL nunca chega aqui: `getAccessState` trata o
+  // contrato manual antes das regras de assinatura e jamais devolve BLOCKED
+  // para ele (ver a regra 1 lá). Esta tela depende dessa ordem — inverter as
+  // regras de lá deixaria o bolsista preso numa tela sem nada a consertar.
 
   const pkg = subscription ? await financeService.getPackageById(subscription.packageId) : undefined;
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ChangeStudentPackageSchema } from "./payment.schema";
+import { SetScholarshipTermsSchema } from "@/modules/contract/contract.schema";
 import { paymentService } from "./payment.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { createSafeAction } from "@/lib/safe-action";
@@ -86,6 +87,33 @@ export async function changeStudentPackageAction(
 
     revalidatePath("/admin/finance");
     revalidatePath("/admin/users");
+    return contract;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Altera os termos de bolsa do aluno. Reemite o contrato — ver
+ * `paymentService.setScholarshipTerms`.
+ */
+export async function setScholarshipTermsAction(
+  input: z.infer<typeof SetScholarshipTermsSchema>
+) {
+  const safeAction = createSafeAction(SetScholarshipTermsSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const contract = await paymentService.setScholarshipTerms(currentUser.role, data.userId, {
+      scholarshipPercent: data.scholarshipPercent,
+      billingMode: data.billingMode,
+    });
+
+    revalidatePath(`/admin/users/${data.userId}`);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/finance");
     return contract;
   });
 

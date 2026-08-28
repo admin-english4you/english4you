@@ -12,7 +12,7 @@ import {
   studentSubscriptionsTable,
 } from './payment.schema';
 import type { Package } from '@/modules/finance/finance.types';
-import type { StudentContractView } from '@/modules/contract/contract.types';
+import type { ContractBillingMode, StudentContractView } from '@/modules/contract/contract.types';
 
 export type SubscriptionStatus = z.infer<typeof SubscriptionStatusEnum>;
 export type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
@@ -42,9 +42,14 @@ export interface OnboardingState {
   contract: StudentContractView | null;
   pkg: Package | null;
   needsContract: boolean;
+  /** `false` para bolsista integral e cobrança manual — não há checkout. */
   needsPayment: boolean;
   /** Assinatura já criada mas ainda não autorizada — permite retomar o checkout. */
   pendingSubscription: StudentSubscription | null;
+  scholarshipPercent: number;
+  billingMode: ContractBillingMode;
+  /** Mensalidade já com a bolsa aplicada; `null` quando não há pacote. */
+  effectiveInstallmentCents: number | null;
 }
 
 /** Visão da aba de pagamentos do aluno. */

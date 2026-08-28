@@ -25,9 +25,19 @@ interface OnboardingWizardProps {
  * discordar do banco num F5 (aluno legado, contrato já assinado, aba duplicada).
  */
 export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
-  const { contract, pkg, needsContract } = onboarding;
+  const {
+    contract,
+    pkg,
+    needsContract,
+    needsPayment,
+    scholarshipPercent,
+    effectiveInstallmentCents,
+  } = onboarding;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const monthlyCents = effectiveInstallmentCents ?? pkg?.installmentValueCents ?? 0;
+  const hasScholarship = scholarshipPercent > 0;
 
   const handleCheckout = () => {
     setError(null);
@@ -62,10 +72,39 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
     );
   }
 
+  // Bolsista integral e aluno de cobrança manual não têm passo de pagamento:
+  // assinar o contrato conclui a matrícula. Na prática o `(billing)/layout.tsx`
+  // já os manda para o hub assim que o contrato fica ACTIVE — este ramo existe
+  // para que o wizard nunca ofereça um checkout a quem não deve pagar, mesmo
+  // que a ordem dos refreshes mude.
+  if (!needsContract && !needsPayment) {
+    return (
+      <BillingShell
+        title="Matrícula concluída"
+        description="Está tudo certo — você já pode começar a estudar."
+      >
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold text-emerald-900">
+            Contrato assinado. Não há mensalidade a pagar por aqui.
+          </p>
+          <p className="mt-2 text-xs text-emerald-800">
+            {scholarshipPercent === 100
+              ? "Você é bolsista integral da English4You."
+              : "Sua mensalidade é acertada diretamente com a secretaria da escola."}
+          </p>
+        </div>
+      </BillingShell>
+    );
+  }
+
   return (
     <BillingShell
       title="Conclua sua matrícula"
-      description="Faltam dois passos para você começar a estudar."
+      description={
+        needsPayment
+          ? "Faltam dois passos para você começar a estudar."
+          : "Falta um passo para você começar a estudar."
+      }
     >
       <ol className="flex items-center gap-3">
         <StepPill
@@ -73,12 +112,16 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
           label="Contrato"
           state={needsContract ? "current" : "done"}
         />
-        <div className="h-px flex-1 bg-slate-200" />
-        <StepPill
-          icon={CreditCard}
-          label="Pagamento"
-          state={needsContract ? "upcoming" : "current"}
-        />
+        {needsPayment && (
+          <>
+            <div className="h-px flex-1 bg-slate-200" />
+            <StepPill
+              icon={CreditCard}
+              label="Pagamento"
+              state={needsContract ? "upcoming" : "current"}
+            />
+          </>
+        )}
       </ol>
 
       {needsContract ? (
@@ -111,9 +154,16 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
                   {pkg.name}
                 </p>
                 <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-                  {formatCents(pkg.installmentValueCents)}
+                  {formatCents(monthlyCents)}
                   <span className="ml-1 text-sm font-medium text-slate-400">/mês</span>
                 </p>
+                {hasScholarship && (
+                  <p className="mt-1 text-xs font-semibold text-emerald-700">
+                    Bolsa de {scholarshipPercent}% aplicada — de{" "}
+                    <span className="line-through">{formatCents(pkg.installmentValueCents)}</span>{" "}
+                    por {formatCents(monthlyCents)}
+                  </p>
+                )}
                 <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4 text-xs">
                   <div>
                     <dt className="text-slate-500">Duração</dt>
@@ -128,7 +178,7 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
                   <div>
                     <dt className="text-slate-500">Total do contrato</dt>
                     <dd className="font-semibold text-slate-800">
-                      {formatCents(pkg.installmentValueCents * pkg.durationInMonths)}
+                      {formatCents(monthlyCents * pkg.durationInMonths)}
                     </dd>
                   </div>
                   <div>

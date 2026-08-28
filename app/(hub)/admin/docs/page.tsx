@@ -153,6 +153,10 @@ export default function AdminDocsPage() {
                 <li>Clique em <strong>&quot;Adicionar Usuário&quot;</strong>.</li>
                 <li>Preencha nome completo e e-mail, e escolha o <strong>Perfil de Acesso</strong> (Aluno, Professor ou Administrador).</li>
                 <li>Se o perfil for <strong>Aluno</strong>, selecione também o pacote de aulas contratado.</li>
+                <li>
+                  Ainda para <strong>Aluno</strong>, informe se ele tem <strong>bolsa de estudos</strong> (veja
+                  logo abaixo). O padrão é &quot;Sem bolsa&quot;, que mantém o comportamento de sempre.
+                </li>
                 <li>Confirme os dados na tela de revisão e clique em <strong>&quot;Confirmar e Criar&quot;</strong>.</li>
               </ol>
               <p>
@@ -179,10 +183,111 @@ export default function AdminDocsPage() {
                 antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
               </p>
 
+              <h3>Bolsa de estudos (bolsistas)</h3>
+              <p>
+                Nem todo aluno paga a mensalidade cheia. No cadastro (e depois, na ficha dele) você define os
+                termos da bolsa, que ficam gravados <strong>no contrato daquela matrícula</strong> — não na conta
+                do aluno. Isso é proposital: se ele renovar no semestre seguinte sem bolsa, o histórico continua
+                mostrando sob quais condições ele estudou em cada período.
+              </p>
+              <ul>
+                <li>
+                  <strong>Sem bolsa</strong> — o padrão. Paga o valor cheio do pacote, com assinatura no Mercado
+                  Pago. Nada muda em relação ao que já existia.
+                </li>
+                <li>
+                  <strong>Bolsa integral</strong> — o aluno <strong>não paga nada</strong>. Não há assinatura, não
+                  há cobrança e ele nunca passa pelo checkout: assinar o contrato já conclui a matrícula.
+                </li>
+                <li>
+                  <strong>Bolsa parcial</strong> — você informa o percentual (de 1 a 99) e a plataforma calcula a
+                  mensalidade com desconto, mostrando o valor final antes de você confirmar.
+                </li>
+              </ul>
+              <p>
+                Para a bolsa parcial você ainda escolhe <strong>como cobrar a diferença</strong>:
+              </p>
+              <ul>
+                <li>
+                  <strong>Assinatura no Mercado Pago</strong> — cobrança automática no cartão, igual a qualquer
+                  aluno, só que no valor já com o desconto.
+                </li>
+                <li>
+                  <strong>Controle manual</strong> — a plataforma <strong>não cobra nada</strong>. A escola combina
+                  o pagamento por fora (PIX, dinheiro, boleto) e registra os recebimentos no livro-caixa em{" "}
+                  <Link href="/admin/finance" className="text-primary hover:underline">Financeiro → Visão Geral</Link>.
+                  A ficha do aluno deixa isso explícito, para que a ausência de cobranças não seja lida como
+                  inadimplência. <strong>A plataforma não bloqueia esse aluno por falta de pagamento</strong> — veja
+                  &quot;Inadimplência de quem paga por fora&quot;, logo abaixo.
+                </li>
+              </ul>
+              <p>
+                O controle manual também serve para um aluno <strong>sem bolsa</strong> que prefira pagar por fora:
+                basta escolher &quot;Sem bolsa&quot; e, na ficha dele, mudar a cobrança para manual.
+              </p>
+
+              <h3>Inadimplência de quem paga por fora</h3>
+              <p>
+                <strong>A plataforma nunca bloqueia sozinha um aluno de cobrança manual.</strong> Ela não tem como
+                saber se ele pagou: o dinheiro entra por PIX, dinheiro ou boleto, fora do sistema, sem nenhum aviso
+                automático. Enquanto o contrato estiver assinado, ele continua estudando normalmente — esteja em dia
+                ou três meses atrasado.
+              </p>
+              <p>
+                Isso é proposital. Bloquear por ausência de informação expulsaria da aula um aluno que pagou em dia
+                no caixa da escola. Quem decide que houve inadimplência é a escola, não o sistema. O caminho é:
+              </p>
+              <ol>
+                <li>
+                  <strong>Lançar a mensalidade</strong> em{" "}
+                  <Link href="/admin/finance" className="text-primary hover:underline">Financeiro → Visão Geral</Link>{" "}
+                  como uma entrada a receber, com a data de vencimento. Enquanto não for marcada como liquidada, ela
+                  aparece em <strong>&quot;Em aberto&quot;</strong>, com destaque para o que já venceu — esse é o seu
+                  painel de inadimplência desses alunos.
+                </li>
+                <li>
+                  <strong>Cobrar o aluno</strong> pelos canais da escola.
+                </li>
+                <li>
+                  Persistindo o atraso, <strong>desativar a conta</strong> na ficha do aluno. Esse é o único
+                  mecanismo de bloqueio para cobrança manual.
+                </li>
+              </ol>
+              <p>
+                <strong>Atenção:</strong> o passo 1 depende de alguém lançar a mensalidade. Se ninguém lançar, não há
+                nada a vencer e o atraso <strong>não aparece em lugar nenhum</strong> — o aluno some do radar
+                financeiro. Antes de colocar vários alunos em cobrança manual, combine essa rotina de lançamento com
+                a secretaria.
+              </p>
+              <p>
+                A boa notícia é que desativar e reativar um aluno de cobrança manual é um ciclo leve:{" "}
+                <strong>reativar devolve o acesso na hora</strong>, sem onboarding, sem reassinatura e sem checkout.
+                É diferente do aluno cobrado pelo Mercado Pago, que precisa contratar de novo porque o preapproval
+                cancelado não é reaberto.
+              </p>
+              <p>
+                <strong>Atenção — o bolsista assina um contrato diferente.</strong> É preciso ter um modelo do tipo
+                <strong> Bolsista</strong> ativo em{" "}
+                <Link href="/admin/finance?tab=modelos" className="text-primary hover:underline">
+                  Financeiro → Modelos
+                </Link>{" "}
+                antes de cadastrar o primeiro bolsista — senão o cadastro é recusado com um aviso. Esse modelo tem
+                variáveis próprias ({"{{percentual_bolsa}}"}, {"{{valor_bolsista}}"}, {"{{valor_desconto}}"} e{" "}
+                {"{{forma_cobranca}}"}) para escrever a cláusula da bolsa.
+              </p>
+              <p>
+                <strong>Alterar a bolsa depois</strong> é possível pelo card &quot;Bolsa de estudos&quot; na ficha do
+                aluno, mas não é uma edição simples: como o contrato assinado tem o valor antigo escrito dentro dele,
+                a plataforma <strong>cancela o contrato e a assinatura atuais e emite um contrato novo</strong>, do
+                modelo correto. O aluno volta para o onboarding e precisa <strong>assinar de novo</strong> antes de
+                voltar a estudar. As mensalidades já pagas permanecem no histórico, e não há estorno automático do
+                mês já cobrado — se houver crédito a devolver, isso é acertado à mão no livro-caixa.
+              </p>
+
               <h3>Ficha do usuário</h3>
               <p>
                 Clique em qualquer linha da lista (ou no botão <strong>&quot;Ver ficha&quot;</strong>) para abrir a
-                página de detalhes do usuário, com quatro blocos:
+                página de detalhes do usuário, com cinco blocos:
               </p>
               <ul>
                 <li>
@@ -199,18 +304,28 @@ export default function AdminDocsPage() {
                   como destino para gerar o arquivo.
                 </li>
                 <li>
+                  <strong>Bolsa de estudos</strong> (só para alunos) — mostra os termos vigentes (sem bolsa,
+                  integral ou o percentual) e como a mensalidade é cobrada. O botão{" "}
+                  <strong>&quot;Alterar bolsa&quot;</strong> reemite o contrato — veja o aviso na seção acima.
+                </li>
+                <li>
                   <strong>Situação financeira</strong> (só para alunos) — mostra se a mensalidade{" "}
                   <strong>do mês corrente</strong> já foi paga, os dados da assinatura ativa (valor, próxima
-                  cobrança, cartão), e o histórico de cobranças pagas e em aberto do Mercado Pago.
+                  cobrança, cartão), e o histórico de cobranças pagas e em aberto do Mercado Pago. Para bolsista
+                  integral ou aluno de cobrança manual, este bloco muda: em vez de alertar sobre uma mensalidade
+                  que não existe, ele explica que a plataforma não cobra esse aluno.
                 </li>
                 <li>
                   <strong>Ativar/Desativar conta</strong> — desativar um <strong>aluno</strong> bloqueia o acesso dele
                   à plataforma, <strong>cancela a assinatura no Mercado Pago</strong> e cancela as cobranças ainda não
                   processadas (as já pagas continuam no histórico, nada é apagado). O usuário recebe um e-mail
-                  avisando que a conta foi desativada. Reativar devolve o acesso (sem e-mail de aviso), mas{" "}
+                  avisando que a conta foi desativada e, ao tentar entrar, vê uma tela explicando que o acesso está
+                  suspenso — sem nenhum botão para se recontratar sozinho. O bloqueio vale para{" "}
+                  <strong>qualquer aluno</strong>, inclusive bolsista integral e aluno de cobrança manual, que não
+                  têm assinatura para cancelar. Reativar devolve o acesso (sem e-mail de aviso), mas{" "}
                   <strong>não recria a assinatura</strong> — o Mercado Pago não reabre uma cobrança cancelada, então
-                  o aluno precisa contratar de novo pelo fluxo normal de matrícula. Você não consegue desativar a
-                  própria conta.
+                  o aluno pagante precisa contratar de novo pelo fluxo normal de matrícula. Você não consegue
+                  desativar a própria conta.
                 </li>
               </ul>
 
@@ -465,18 +580,121 @@ export default function AdminDocsPage() {
                 <li>
                   <strong>Pacotes</strong> — a base comercial: duração em meses, aulas por semana e valor da
                   mensalidade. É o pacote escolhido no cadastro do aluno que define o contrato e o valor cobrado pelo
-                  Mercado Pago. Pacotes são <strong>arquivados</strong>, nunca excluídos, porque podem estar
-                  vinculados a contratos antigos.
+                  Mercado Pago. O valor do pacote é sempre o <strong>preço cheio</strong>: um desconto de bolsista
+                  não vira pacote novo, é registrado no contrato do aluno (veja{" "}
+                  <Link href="#usuarios" className="text-primary hover:underline">Usuários → Bolsa de estudos</Link>).
+                  Pacotes são <strong>arquivados</strong>, nunca excluídos, porque podem estar vinculados a
+                  contratos antigos.
                 </li>
                 <li>
-                  <strong>Modelos</strong> — os textos de contrato (um para aluno, um para professor). Cada alteração
-                  gera uma nova versão; contratos já assinados guardam uma cópia congelada do texto vigente na época.
+                  <strong>Modelos</strong> — os textos de contrato. Cada modelo tem um <strong>perfil</strong>
+                  (aluno ou professor) e, para aluno, um <strong>tipo</strong>: <strong>Padrão</strong> ou{" "}
+                  <strong>Bolsista</strong>. Fica <strong>um modelo ativo por perfil e tipo</strong>, então o
+                  contrato padrão e o de bolsista podem (e devem) estar ativos ao mesmo tempo — é o tipo que decide
+                  qual texto o aluno assina. Cada alteração gera uma nova versão; contratos já assinados guardam uma
+                  cópia congelada do texto vigente na época.
                 </li>
                 <li>
                   <strong>Contratos</strong> — a lista de contratos emitidos, filtrável por status (aguardando
-                  assinatura, ativo, cancelado, concluído).
+                  assinatura, ativo, cancelado, concluído). Clicar num contrato abre a ficha dele, de onde se
+                  <strong>troca o pacote do aluno</strong> ou se <strong>cancela o contrato</strong> — veja abaixo.
                 </li>
               </ul>
+
+              <h3>Criar, editar e arquivar pacotes</h3>
+              <p>
+                Na aba <strong>Pacotes</strong>, o botão <strong>&quot;Novo pacote&quot;</strong> pede nome, duração
+                em meses, aulas por semana e o valor da mensalidade. É preciso ter pelo menos um pacote ativo antes
+                de cadastrar o primeiro aluno — o seletor do cadastro puxa daqui.
+              </p>
+              <p>
+                Clicar num pacote existente abre o mesmo formulário para <strong>editar</strong>. E aqui está a
+                parte que mais confunde: <strong>editar um pacote NÃO altera quem já contratou</strong>. O pacote é
+                a tabela de preços; o que cada aluno paga foi congelado no contrato e na assinatura dele. Na prática:
+              </p>
+              <ul>
+                <li>
+                  <strong>Aluno com assinatura já autorizada</strong> — continua pagando o valor antigo, para sempre.
+                  O Mercado Pago segue cobrando o valor combinado quando ele autorizou o cartão. Subir o preço aqui
+                  não reajusta ninguém.
+                </li>
+                <li>
+                  <strong>Contrato já assinado</strong> — o texto ficou congelado no momento da assinatura, com o
+                  valor da época. Editar o pacote não reescreve contrato assinado.
+                </li>
+                <li>
+                  <strong>Contrato ainda aguardando assinatura</strong> — <strong>este muda</strong>. O texto é
+                  montado na hora, então o aluno vai ver e pagar o valor NOVO. Se você reajustar o preço enquanto há
+                  contratos pendentes, esses alunos são pegos pelo reajuste sem terem sido avisados.
+                </li>
+                <li>
+                  <strong>Duração em meses</strong> — só vale para contratos futuros. A data de término de um
+                  contrato existente foi calculada quando ele foi emitido e não é recalculada.
+                </li>
+              </ul>
+              <p>
+                Ou seja: <strong>para reajustar quem já é aluno, editar o pacote não basta</strong> — é preciso
+                trocar o pacote do aluno (logo abaixo), o que reemite o contrato e exige nova assinatura. Editar o
+                pacote serve para as <strong>próximas</strong> matrículas.
+              </p>
+              <p>
+                <strong>Arquivar</strong> um pacote apenas o tira do seletor de novos alunos — contratos e
+                assinaturas existentes continuam funcionando normalmente. Pacotes nunca são excluídos, porque estão
+                referenciados por contratos antigos que precisam continuar legíveis. O mesmo botão reativa um pacote
+                arquivado.
+              </p>
+
+              <h3>Trocar o pacote de um aluno</h3>
+              <p>
+                O pacote é <strong>individual por aluno</strong>: cada um tem o seu no próprio contrato, então
+                trocar o pacote de um não mexe em mais ninguém. (Editar o pacote em <strong>Pacotes</strong> é outra
+                coisa — ali você altera a definição comercial, que vale para todo mundo que vier a contratá-la.)
+              </p>
+              <p>
+                O caminho é pela <strong>ficha do contrato</strong>, e não pela ficha do usuário: abra{" "}
+                <Link href="/admin/finance?tab=contratos" className="text-primary hover:underline">
+                  Financeiro → Contratos
+                </Link>
+                , clique no contrato do aluno e use <strong>&quot;Trocar pacote&quot;</strong>. O botão só aparece
+                em contratos <strong>aguardando assinatura</strong> ou <strong>ativos</strong> — um contrato
+                cancelado ou concluído não é editável, nesse caso emita um contrato novo.
+              </p>
+              <p>
+                Ao confirmar, a plataforma cancela a assinatura no Mercado Pago, cancela o contrato atual e{" "}
+                <strong>emite um contrato novo</strong> com o pacote escolhido. Consequências que valem avisar ao
+                aluno antes:
+              </p>
+              <ul>
+                <li>
+                  Ele <strong>perde o acesso até assinar o contrato novo</strong> e, se for cobrado pelo Mercado
+                  Pago, refazer o cadastro do cartão. Não é uma troca silenciosa.
+                </li>
+                <li>
+                  <strong>Não há proporcional nem estorno.</strong> A mensalidade já cobrada no mês não volta, e a
+                  assinatura nova começa do zero. Qualquer diferença é acertada à mão no livro-caixa.
+                </li>
+                <li>
+                  <strong>A vigência recomeça.</strong> O contrato novo começa hoje e o vencimento é recalculado
+                  pela duração do pacote novo — trocar no meio do semestre <strong>estende</strong> o fim do
+                  contrato, não aproveita o tempo já corrido.
+                </li>
+                <li>
+                  Se o aluno for <strong>bolsista</strong>, os termos da bolsa são preservados no contrato novo.
+                </li>
+              </ul>
+              <p>
+                Se a intenção é apenas mudar <strong>quanto o aluno paga</strong>, e não a estrutura do curso
+                (duração e aulas por semana), o caminho certo é a{" "}
+                <Link href="#usuarios" className="text-primary hover:underline">bolsa de estudos</Link> na ficha
+                dele — não a troca de pacote, e muito menos criar um pacote novo só para ele.
+              </p>
+
+              <h3>Cancelar um contrato</h3>
+              <p>
+                Também na ficha do contrato. Cancela o contrato e a cobrança recorrente de uma vez. Use quando o
+                aluno desiste do curso; para apenas suspender o acesso temporariamente, prefira{" "}
+                <strong>desativar a conta</strong> na ficha do usuário.
+              </p>
             </DocSection>
 
             <DocSection id="notificacoes" title="Lembretes de Estudo" icon={BellRing}>

@@ -36,7 +36,7 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
 
   const isStudent = user.role === "STUDENT";
 
-  const [contracts, financial, classGroup] = await Promise.all([
+  const [contracts, financial, classGroup, currentContract] = await Promise.all([
     contractService.getContractsForUser(currentUser.role, userId),
     // Assinatura e cobranças só existem para aluno — nem consultamos para
     // professor/admin.
@@ -46,6 +46,10 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
     user.classGroupId
       ? classService.getClassById(currentUser.role, user.classGroupId)
       : Promise.resolve(undefined),
+    // Os termos de bolsa vivem no contrato VIGENTE, não no usuário.
+    isStudent
+      ? contractService.getCurrentContractForUser(userId)
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -67,6 +71,15 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
       classGroup={classGroup ? { id: classGroup.id, name: classGroup.name } : null}
       contracts={contracts}
       financial={financial}
+      scholarship={
+        currentContract
+          ? {
+              scholarshipPercent: currentContract.scholarshipPercent,
+              billingMode: currentContract.billingMode,
+              canEdit: Boolean(currentContract.packageId),
+            }
+          : null
+      }
       isSelf={currentUser.id === user.id}
     />
   );

@@ -1,5 +1,5 @@
 import { formatCep, formatCpf } from '@/lib/br-document';
-import { formatCents } from '@/modules/finance/finance.utils';
+import { applyScholarshipDiscount, formatCents } from '@/modules/finance/finance.utils';
 import type { ContractStatus } from './contract.types';
 
 /**
@@ -68,6 +68,17 @@ export const CONTRACT_PLACEHOLDERS: { key: string; label: string; example: strin
   { key: 'data_inicio', label: 'Data de início', example: '01/03/2026' },
   { key: 'data_assinatura', label: 'Data da assinatura', example: '28/02/2026' },
   { key: 'escola', label: 'Nome da escola', example: 'English4You' },
+  // Bolsa. `valor_bolsista` (o que ele paga) e não `valor_com_desconto`: convive
+  // com o `valor_mensalidade` acima, que segue sendo o preço cheio para a frase
+  // "de X por Y", e não se confunde com `valor_desconto`, que é o abatimento.
+  { key: 'percentual_bolsa', label: 'Percentual de bolsa', example: '50%' },
+  { key: 'valor_bolsista', label: 'Mensalidade já com a bolsa', example: 'R$ 75,00' },
+  { key: 'valor_desconto', label: 'Valor abatido por mês', example: 'R$ 75,00' },
+  {
+    key: 'forma_cobranca',
+    label: 'Como a mensalidade é cobrada',
+    example: 'Cartão de crédito, em débito automático mensal',
+  },
 ];
 
 /** `cpf` é alias de `documento` — os dois são naturais para quem escreve o contrato. */
@@ -157,9 +168,19 @@ export function buildPlaceholderValues(input: {
   pkg?: PlaceholderPackage | null;
   startDate: Date;
   signedAt?: Date;
+  /** Termos de bolsa do contrato. Ausente = matrícula sem bolsa. */
+  scholarship?: { percent: number; billingMode: 'MERCADO_PAGO' | 'MANUAL' } | null;
 }): Record<string, string> {
-  const { user, pkg, startDate, signedAt } = input;
+  const { user, pkg, startDate, signedAt, scholarship } = input;
   const cpf = formatCpf(user.document);
+
+  const scholarshipPercent = scholarship?.percent ?? 0;
+  // ATENÇÃO: numa bolsa integral isto é `formatCents(0)` = "R$ 0,00" — string
+  // verdadeira, que renderiza certo e NÃO entra em `unresolved`. Devolver ''
+  // aqui transformaria o valor real em um travessão.
+  const effectiveCents = pkg
+    ? applyScholarshipDiscount(pkg.installmentValueCents, scholarshipPercent)
+    : null;
 
   return {
     nome: user.name,
@@ -182,6 +203,20 @@ export function buildPlaceholderValues(input: {
     data_inicio: formatDatePtBr(startDate),
     data_assinatura: signedAt ? formatDatePtBr(signedAt) : '',
     escola: 'English4You',
+    // Vazio quando não há bolsa: um modelo PADRÃO que use estas variáveis por
+    // engano cai em `unresolved`, que é exatamente o alerta desejado.
+    percentual_bolsa: scholarshipPercent > 0 ? `${scholarshipPercent}%` : '',
+    valor_bolsista: scholarshipPercent > 0 && effectiveCents !== null ? formatCents(effectiveCents) : '',
+    valor_desconto:
+      scholarshipPercent > 0 && pkg && effectiveCents !== null
+        ? formatCents(pkg.installmentValueCents - effectiveCents)
+        : '',
+    forma_cobranca:
+      scholarshipPercent === 100
+        ? 'Isento — bolsa integral'
+        : scholarship?.billingMode === 'MANUAL'
+          ? 'Diretamente na secretaria da escola'
+          : 'Cartão de crédito, em débito automático mensal',
   };
 }
 

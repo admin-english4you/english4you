@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import type { Package } from '@/modules/finance/finance.types';
 import {
+  ContractBillingModeEnum,
   ContractSchema,
   ContractStatusEnum,
   ContractTargetRoleEnum,
+  ContractTemplateKindEnum,
   ContractTemplateSchema,
+  ScholarshipTermsSchema,
   SignContractSchema,
   SigningIdentitySchema,
   contractsTable,
@@ -13,6 +16,9 @@ import {
 
 export type ContractStatus = z.infer<typeof ContractStatusEnum>;
 export type ContractTargetRole = z.infer<typeof ContractTargetRoleEnum>;
+export type ContractBillingMode = z.infer<typeof ContractBillingModeEnum>;
+export type ContractTemplateKind = z.infer<typeof ContractTemplateKindEnum>;
+export type ScholarshipTerms = z.infer<typeof ScholarshipTermsSchema>;
 
 export type ContractTemplate = z.infer<typeof ContractTemplateSchema>;
 export type Contract = z.infer<typeof ContractSchema>;
@@ -22,6 +28,16 @@ export type NewContractTemplate = typeof contractTemplatesTable.$inferInsert;
 
 export type SigningIdentityInput = z.infer<typeof SigningIdentitySchema>;
 export type SignContractInput = z.infer<typeof SignContractSchema>;
+
+/**
+ * Fatia mínima do contrato lida pelo portão de acesso a cada navegação do hub.
+ * Deliberadamente sem `contentSnapshot` — ver
+ * `contractRepository.findCurrentContractGateFieldsByUserId`.
+ */
+export type ContractGateFields = Pick<
+  Contract,
+  'id' | 'status' | 'packageId' | 'scholarshipPercent' | 'billingMode'
+>;
 
 /** Linha da lista de contratos do admin, já com os nomes resolvidos. */
 export type ContractListItem = Contract & {

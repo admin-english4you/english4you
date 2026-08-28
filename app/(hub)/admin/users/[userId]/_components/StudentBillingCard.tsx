@@ -1,6 +1,7 @@
-import { AlertTriangle, CheckCircle2, CreditCard, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CreditCard, GraduationCap, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCents } from "@/modules/finance/finance.utils";
+import { applyScholarshipDiscount, formatCents } from "@/modules/finance/finance.utils";
+import type { ContractBillingMode } from "@/modules/contract/contract.types";
 import {
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUS_STYLES,
@@ -13,6 +14,8 @@ import type { StudentFinancialSummary } from "@/modules/payment/payment.types";
 interface StudentBillingCardProps {
   financial: StudentFinancialSummary;
   monthLabel: string;
+  scholarshipPercent: number;
+  billingMode: ContractBillingMode;
 }
 
 /**
@@ -24,9 +27,22 @@ interface StudentBillingCardProps {
  * o MP cria cada uma na data, então "pendente" só aparece quando ele já
  * agendou de fato.
  */
-export function StudentBillingCard({ financial, monthLabel }: StudentBillingCardProps) {
+export function StudentBillingCard({
+  financial,
+  monthLabel,
+  scholarshipPercent,
+  billingMode,
+}: StudentBillingCardProps) {
   const { subscription, pkg, currentMonthPayment, paidPayments, openPayments } = financial;
   const isPaidThisMonth = currentMonthPayment !== null;
+
+  // A plataforma não cobra este aluno. Sem esta distinção, a ausência de linhas
+  // em `payments` — que aqui é o estado NORMAL — apareceria como o alerta
+  // âmbar de "sem pagamento registrado", um alarme falso permanente.
+  const isPlatformBilled = billingMode === "MERCADO_PAGO";
+  const effectiveMonthlyCents = pkg
+    ? applyScholarshipDiscount(pkg.installmentValueCents, scholarshipPercent)
+    : null;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -38,7 +54,30 @@ export function StudentBillingCard({ financial, monthLabel }: StudentBillingCard
       </div>
 
       <div className="space-y-5 p-5">
-        {/* Mês corrente */}
+        {/* Bolsa / cobrança manual: substitui o bloco do mês corrente, que só
+            faz sentido para quem a plataforma cobra. */}
+        {!isPlatformBilled ? (
+          <div className="flex items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+            <GraduationCap className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-violet-900">
+                {scholarshipPercent === 100
+                  ? "Bolsista integral — sem mensalidade"
+                  : `Cobrança manual${scholarshipPercent > 0 ? ` — bolsa de ${scholarshipPercent}%` : ""}`}
+              </p>
+              <p className="mt-0.5 text-xs text-violet-800">
+                {scholarshipPercent === 100
+                  ? "Este aluno não é cobrado pela plataforma e não tem assinatura no Mercado Pago."
+                  : `${effectiveMonthlyCents !== null ? `${formatCents(effectiveMonthlyCents)}/mês` : "Valor combinado"}, acertado direto com a secretaria.`}
+              </p>
+              <p className="mt-1.5 text-[11px] text-violet-700">
+                A plataforma <strong>não acompanha</strong> estes pagamentos — registre os
+                recebimentos no livro-caixa em Financeiro → Visão Geral.
+              </p>
+            </div>
+          </div>
+        ) : (
+        /* Mês corrente */
         <div
           className={cn(
             "flex items-start gap-3 rounded-xl border p-4",
@@ -75,6 +114,7 @@ export function StudentBillingCard({ financial, monthLabel }: StudentBillingCard
             </p>
           </div>
         </div>
+        )}
 
         {/* Assinatura */}
         <div>
@@ -101,6 +141,12 @@ export function StudentBillingCard({ financial, monthLabel }: StudentBillingCard
                   <dt className="text-slate-400">Mensalidade</dt>
                   <dd className="font-semibold text-slate-700">
                     {formatCents(subscription.amountCents)}
+                    {scholarshipPercent > 0 && pkg && (
+                      <span className="ml-1 font-normal text-violet-600">
+                        ({scholarshipPercent}% de bolsa · cheio{" "}
+                        {formatCents(pkg.installmentValueCents)})
+                      </span>
+                    )}
                   </dd>
                 </div>
                 <div>
@@ -128,7 +174,9 @@ export function StudentBillingCard({ financial, monthLabel }: StudentBillingCard
             </div>
           ) : (
             <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
-              Nenhuma assinatura. O aluno passa pelo onboarding e contrata ao entrar na plataforma.
+              {isPlatformBilled
+                ? "Nenhuma assinatura. O aluno passa pelo onboarding e contrata ao entrar na plataforma."
+                : "Não há assinatura: este aluno não é cobrado pela plataforma."}
             </p>
           )}
         </div>

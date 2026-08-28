@@ -13,11 +13,15 @@ import {
 } from './contract.utils';
 import {
   Contract,
+  ContractBillingMode,
   ContractDetail,
+  ContractGateFields,
   ContractListItem,
   ContractStatus,
   ContractTargetRole,
   ContractTemplate,
+  ContractTemplateKind,
+  ScholarshipTerms,
   SignContractInput,
   StudentContractView,
 } from './contract.types';
@@ -39,6 +43,55 @@ const STARTER_TEMPLATE_CONTENT = `<h1>Contrato de Prestação de Serviços Educa
 <p>O CONTRATANTE pagará à CONTRATADA a quantia mensal de <strong>{{valor_mensalidade}}</strong>.</p>
 <h2>4. Do aceite</h2>
 <p>As partes declaram estar de pleno acordo com as cláusulas acima, assinado eletronicamente em {{data_assinatura}}.</p>`;
+
+/**
+ * Modelo em branco do contrato de BOLSISTA.
+ *
+ * Difere do padrão só na cláusula do valor, que é justamente o motivo de ser
+ * outro documento: cita o percentual concedido, o valor cheio de referência e
+ * a forma de cobrança. `{{valor_bolsista}}` rende "R$ 0,00" numa bolsa
+ * integral — valor real, não vazio.
+ */
+const STARTER_SCHOLARSHIP_CONTENT = `<h1>Contrato de Prestação de Serviços Educacionais — Bolsista</h1>
+<p>Por este instrumento particular, de um lado <strong>{{escola}}</strong>, doravante denominada CONTRATADA, e de outro lado <strong>{{nome}}</strong>, portador(a) do CPF nº {{documento}}, residente em {{endereco}}, doravante denominado(a) CONTRATANTE, têm entre si justo e contratado o seguinte:</p>
+<h2>1. Do objeto</h2>
+<p>A CONTRATADA prestará serviços de ensino de idiomas ao CONTRATANTE, na modalidade do pacote <strong>{{pacote}}</strong>, com {{aulas_por_semana}} aula(s) por semana.</p>
+<h2>2. Do prazo</h2>
+<p>O presente contrato vigora pelo prazo de {{duracao_meses}} meses, com início em {{data_inicio}}.</p>
+<h2>3. Da bolsa de estudos</h2>
+<p>A CONTRATADA concede ao CONTRATANTE uma bolsa de estudos de <strong>{{percentual_bolsa}}</strong> sobre o valor da mensalidade, que passa de {{valor_mensalidade}} para <strong>{{valor_bolsista}}</strong> por mês.</p>
+<p>A bolsa é pessoal e intransferível, válida exclusivamente para a vigência deste contrato, e não gera direito adquirido para renovações futuras.</p>
+<h2>4. Do pagamento</h2>
+<p>Forma de cobrança: {{forma_cobranca}}.</p>
+<h2>5. Do aceite</h2>
+<p>As partes declaram estar de pleno acordo com as cláusulas acima, assinado eletronicamente em {{data_assinatura}}.</p>`;
+
+/**
+ * Normaliza os termos de bolsa ANTES de qualquer efeito colateral.
+ *
+ * Normaliza em vez de lançar: bolsa integral com cobrança automática é um
+ * estado que não faz sentido (não há o que cobrar), e corrigi-lo aqui garante
+ * que o CHECK do banco nunca seja o mecanismo que reporta o erro ao usuário.
+ */
+function normalizeScholarshipTerms(terms?: ScholarshipTerms): ScholarshipTerms {
+  const scholarshipPercent = terms?.scholarshipPercent ?? 0;
+  return {
+    scholarshipPercent,
+    billingMode: scholarshipPercent === 100 ? 'MANUAL' : terms?.billingMode ?? 'MERCADO_PAGO',
+  };
+}
+
+/**
+ * A mensagem precisa dizer QUAL modelo falta: depois da migração todos os
+ * modelos existentes são do tipo padrão, então o primeiro bolsista da escola
+ * esbarra aqui, e "nenhum modelo ativo" sozinho não diz o que fazer.
+ */
+function describeMissingTemplate(targetRole: ContractTargetRole, isScholarship: boolean): string {
+  if (isScholarship) {
+    return 'Nenhum modelo de contrato ativo para alunos bolsistas. Crie e ative um modelo do tipo Bolsista em Financeiro → Modelos.';
+  }
+  return `Nenhum modelo de contrato ativo para ${targetRole === 'STUDENT' ? 'alunos' : 'professores'}. Crie e ative um modelo em Financeiro → Modelos.`;
+}
 
 /** Soma meses preservando o fim de mês (31/01 + 1 mês = 28/02, não 03/03). */
 function addMonths(date: Date, months: number): Date {
@@ -68,14 +121,22 @@ function renderForUser(input: {
   pkg: Package | null;
   startDate: Date;
   signedAt?: Date;
+  /** Termos do contrato sendo renderizado — alimentam `{{percentual_bolsa}}` e cia. */
+  scholarship?: { percent: number; billingMode: ContractBillingMode } | null;
 }): { html: string; unresolved: string[] } {
   const values = buildPlaceholderValues({
     user: input.user,
     pkg: input.pkg,
     startDate: input.startDate,
     signedAt: input.signedAt,
+    scholarship: input.scholarship,
   });
   return renderContractTemplate(input.templateContent, values);
+}
+
+/** Extrai os termos de bolsa de um contrato para o `renderForUser`. */
+function scholarshipOf(contract: Contract): { percent: number; billingMode: ContractBillingMode } {
+  return { percent: contract.scholarshipPercent, billingMode: contract.billingMode };
 }
 
 /**
@@ -125,15 +186,17 @@ export const contractService = {
 
   async createTemplate(
     actingRole: Role,
-    data: { name: string; targetRole: ContractTargetRole }
+    data: { name: string; targetRole: ContractTargetRole; kind?: ContractTemplateKind }
   ): Promise<ContractTemplate> {
     assertAdmin(actingRole);
 
+    const kind = data.kind ?? 'STANDARD';
     const version = await contractRepository.getNextTemplateVersion(data.targetRole);
     return await contractRepository.createTemplate({
       name: data.name,
       targetRole: data.targetRole,
-      content: STARTER_TEMPLATE_CONTENT,
+      kind,
+      content: kind === 'SCHOLARSHIP' ? STARTER_SCHOLARSHIP_CONTENT : STARTER_TEMPLATE_CONTENT,
       version,
       isActive: false,
     });
@@ -176,6 +239,10 @@ export const contractService = {
       name: data.name ?? template.name,
       content: data.content ?? template.content,
       targetRole: template.targetRole,
+      // Carregar o `kind` é obrigatório: sem isto, cada nova versão de um
+      // modelo de bolsista nasceria como STANDARD e a escola ficaria sem
+      // modelo de bolsista sem ninguém perceber.
+      kind: template.kind,
       version,
       isActive: false,
     });
@@ -184,7 +251,7 @@ export const contractService = {
     // único parcial exige que a desativação e a ativação andem juntas.
     if (template.isActive) {
       await db.batch([
-        contractRepository.deactivateTemplatesByRoleQuery(template.targetRole),
+        contractRepository.deactivateTemplatesByRoleQuery(template.targetRole, template.kind),
         contractRepository.activateTemplateQuery(newTemplate.id),
       ]);
       return { ...newTemplate, isActive: true };
@@ -193,7 +260,7 @@ export const contractService = {
     return newTemplate;
   },
 
-  /** Torna este o modelo ativo do seu papel, desativando o anterior atomicamente. */
+  /** Torna este o modelo ativo do seu papel E TIPO, desativando o anterior atomicamente. */
   async setTemplateActive(actingRole: Role, templateId: string): Promise<ContractTemplate> {
     assertAdmin(actingRole);
 
@@ -205,7 +272,7 @@ export const contractService = {
 
     // `db.batch` e não `db.transaction`: neon-http não tem sessão interativa.
     await db.batch([
-      contractRepository.deactivateTemplatesByRoleQuery(template.targetRole),
+      contractRepository.deactivateTemplatesByRoleQuery(template.targetRole, template.kind),
       contractRepository.activateTemplateQuery(templateId),
     ]);
 
@@ -289,6 +356,7 @@ export const contractService = {
           user,
           pkg: pkg ?? null,
           startDate: contract.startDate,
+          scholarship: scholarshipOf(contract),
         }).html;
 
     return {
@@ -308,7 +376,8 @@ export const contractService = {
   async createContractForUser(
     actingRole: Role,
     userId: string,
-    packageId?: string
+    packageId?: string,
+    terms?: ScholarshipTerms
   ): Promise<Contract> {
     assertAdmin(actingRole);
 
@@ -322,11 +391,13 @@ export const contractService = {
       throw new AppError('Apenas alunos e professores possuem contrato.');
     }
 
-    const template = await contractRepository.findActiveTemplateByRole(targetRole);
+    const { scholarshipPercent, billingMode } = normalizeScholarshipTerms(terms);
+    const template = await contractRepository.findActiveTemplate(
+      targetRole,
+      scholarshipPercent > 0 ? 'SCHOLARSHIP' : 'STANDARD'
+    );
     if (!template) {
-      throw new AppError(
-        `Nenhum modelo de contrato ativo para ${targetRole === 'STUDENT' ? 'alunos' : 'professores'}. Crie e ative um modelo em Financeiro → Modelos.`
-      );
+      throw new AppError(describeMissingTemplate(targetRole, scholarshipPercent > 0));
     }
 
     const pkg = packageId ? await financeService.getPackageById(packageId) : undefined;
@@ -340,6 +411,8 @@ export const contractService = {
       userId,
       packageId: pkg?.id ?? null,
       status: 'PENDING_SIGNATURE',
+      scholarshipPercent,
+      billingMode,
       startDate,
       endDate: pkg ? addMonths(startDate, pkg.durationInMonths) : null,
     });
@@ -359,7 +432,14 @@ export const contractService = {
    */
   async registerUserWithContract(
     actingRole: Role,
-    data: { name: string; email: string; role: Role; packageId?: string }
+    data: {
+      name: string;
+      email: string;
+      role: Role;
+      packageId?: string;
+      scholarshipPercent?: number;
+      billingMode?: ContractBillingMode;
+    }
   ): Promise<{ user: User; contract: Contract | null }> {
     assertAdmin(actingRole);
 
@@ -377,11 +457,19 @@ export const contractService = {
       throw new AppError('Pacote não encontrado.');
     }
 
-    const template = await contractRepository.findActiveTemplateByRole('STUDENT');
+    // Normalizado ANTES do primeiro efeito colateral, junto das outras
+    // pré-condições — ver o docblock acima.
+    const { scholarshipPercent, billingMode } = normalizeScholarshipTerms({
+      scholarshipPercent: data.scholarshipPercent ?? 0,
+      billingMode: data.billingMode ?? 'MERCADO_PAGO',
+    });
+
+    const template = await contractRepository.findActiveTemplate(
+      'STUDENT',
+      scholarshipPercent > 0 ? 'SCHOLARSHIP' : 'STANDARD'
+    );
     if (!template) {
-      throw new AppError(
-        'Nenhum modelo de contrato ativo para alunos. Crie e ative um modelo em Financeiro → Modelos antes de cadastrar alunos.'
-      );
+      throw new AppError(describeMissingTemplate('STUDENT', scholarshipPercent > 0));
     }
 
     const { user } = await userService.createUserByAdmin(actingRole, data, { skipInvite: true });
@@ -392,6 +480,8 @@ export const contractService = {
       userId: user.id,
       packageId: pkg.id,
       status: 'PENDING_SIGNATURE',
+      scholarshipPercent,
+      billingMode,
       startDate,
       endDate: addMonths(startDate, pkg.durationInMonths),
     });
@@ -425,6 +515,19 @@ export const contractService = {
    * Sem RBAC: quem chama já resolveu de quem é o `userId` (o próprio aluno, via
    * sessão, ou um admin que passou pelo `assertAdmin` do seu próprio fluxo).
    */
+  /**
+   * A fatia do contrato vigente que o PORTÃO DE ACESSO consulta a cada
+   * navegação do hub.
+   *
+   * Separado de `getCurrentContractForUser` por custo, não por permissão: aquele
+   * carrega todos os contratos do usuário com `select *`, trazendo junto o
+   * `contentSnapshot` (o HTML inteiro do contrato assinado) para ler dois
+   * inteiros. Mesma regra de "sem RBAC" do vizinho abaixo.
+   */
+  async getCurrentContractGateFieldsForUser(userId: string): Promise<ContractGateFields | null> {
+    return await contractRepository.findCurrentContractGateFieldsByUserId(userId);
+  },
+
   async getCurrentContractForUser(userId: string): Promise<Contract | null> {
     const contracts = await contractRepository.findContractsByUserId(userId);
     return (
@@ -465,6 +568,7 @@ export const contractService = {
             user,
             pkg,
             startDate: contract.startDate,
+            scholarship: scholarshipOf(contract),
           });
 
       return {
@@ -537,6 +641,7 @@ export const contractService = {
       pkg: pkg ?? null,
       startDate: contract.startDate,
       signedAt,
+      scholarship: scholarshipOf(contract),
     });
 
     if (unresolved.length > 0) {

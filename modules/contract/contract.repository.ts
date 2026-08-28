@@ -1,11 +1,13 @@
 import { db } from '@/lib/db';
 import { contractsTable, contractTemplatesTable } from './contract.schema';
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   Contract,
+  ContractGateFields,
   ContractStatus,
   ContractTargetRole,
   ContractTemplate,
+  ContractTemplateKind,
   NewContract,
   NewContractTemplate,
 } from './contract.types';
@@ -27,13 +29,27 @@ export const contractRepository = {
     });
   },
 
-  async findActiveTemplateByRole(targetRole: ContractTargetRole): Promise<ContractTemplate | undefined> {
+  /**
+   * O modelo ativo de um papel E tipo. O par é único no banco (ver o índice
+   * parcial `contract_templates_active_target_uq`), então no máximo uma linha
+   * pode voltar daqui.
+   */
+  async findActiveTemplate(
+    targetRole: ContractTargetRole,
+    kind: ContractTemplateKind
+  ): Promise<ContractTemplate | undefined> {
     return await db.query.contractTemplatesTable.findFirst({
       where: and(
         eq(contractTemplatesTable.targetRole, targetRole),
+        eq(contractTemplatesTable.kind, kind),
         eq(contractTemplatesTable.isActive, true)
       ),
     });
+  },
+
+  /** Atalho para o modelo padrão — o caso da esmagadora maioria das matrículas. */
+  async findActiveTemplateByRole(targetRole: ContractTargetRole): Promise<ContractTemplate | undefined> {
+    return await this.findActiveTemplate(targetRole, 'STANDARD');
   },
 
   /** Próxima versão para o papel — rótulo humano ("v3"), monotônico por targetRole. */
@@ -66,13 +82,22 @@ export const contractRepository = {
    * Variante que devolve a query sem executar, para compor em `db.batch([...])`.
    * `neon-http` não suporta transação interativa (ver classRepository.updateStatusQuery).
    */
-  deactivateTemplatesByRoleQuery(targetRole: ContractTargetRole) {
+  /**
+   * Desativa o modelo ativo de um papel E TIPO.
+   *
+   * O `kind` no filtro é essencial: sem ele, ativar uma nova versão do contrato
+   * padrão derrubaria junto o modelo de bolsista, e o próximo cadastro de
+   * bolsista falharia por "nenhum modelo ativo". O índice único é por
+   * (papel, tipo), então a desativação tem que ter exatamente o mesmo escopo.
+   */
+  deactivateTemplatesByRoleQuery(targetRole: ContractTargetRole, kind: ContractTemplateKind) {
     return db
       .update(contractTemplatesTable)
       .set({ isActive: false, updatedAt: new Date() })
       .where(
         and(
           eq(contractTemplatesTable.targetRole, targetRole),
+          eq(contractTemplatesTable.kind, kind),
           eq(contractTemplatesTable.isActive, true)
         )
       );
@@ -144,6 +169,37 @@ export const contractRepository = {
       where: eq(contractsTable.userId, userId),
       orderBy: [desc(contractsTable.createdAt)],
     });
+  },
+
+  /**
+   * O contrato vigente com as colunas que o PORTÃO DE ACESSO precisa — e só
+   * elas.
+   *
+   * Existe separado de `findContractsByUserId` porque roda a cada navegação do
+   * hub (ver `paymentService.getAccessState`): aquele faz `select *` de TODOS
+   * os contratos do usuário, o que traria junto o `contentSnapshot` — o HTML
+   * inteiro do contrato assinado — só para ler dois inteiros.
+   */
+  async findCurrentContractGateFieldsByUserId(userId: string): Promise<ContractGateFields | null> {
+    const [row] = await db
+      .select({
+        id: contractsTable.id,
+        status: contractsTable.status,
+        packageId: contractsTable.packageId,
+        scholarshipPercent: contractsTable.scholarshipPercent,
+        billingMode: contractsTable.billingMode,
+      })
+      .from(contractsTable)
+      .where(
+        and(
+          eq(contractsTable.userId, userId),
+          inArray(contractsTable.status, ['ACTIVE', 'PENDING_SIGNATURE'])
+        )
+      )
+      .orderBy(desc(contractsTable.createdAt))
+      .limit(1);
+
+    return row ?? null;
   },
 
   async create(data: NewContract): Promise<Contract> {

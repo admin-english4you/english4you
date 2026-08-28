@@ -105,6 +105,11 @@ export const CreateUserByAdminSchema = z
     email: z.email('Insira um e-mail válido'),
     role: RoleEnum.default('STUDENT'),
     packageId: z.uuid('ID do pacote inválido').optional(),
+    // Termos de bolsa da matrícula. Ficam gravados no CONTRATO, não no usuário
+    // (ver modules/contract/contract.schema.ts) — aqui são só o input do
+    // formulário de cadastro.
+    scholarshipPercent: z.number().int().min(0).max(100).default(0),
+    billingMode: z.enum(['MERCADO_PAGO', 'MANUAL']).default('MERCADO_PAGO'),
   })
   .superRefine((value, ctx) => {
     if (value.role === 'STUDENT' && !value.packageId) {
@@ -112,6 +117,20 @@ export const CreateUserByAdminSchema = z
         code: 'custom',
         message: 'Selecione um pacote de aulas para o aluno.',
         path: ['packageId'],
+      });
+    }
+    if (value.role !== 'STUDENT' && value.scholarshipPercent > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Apenas alunos podem ter bolsa de estudos.',
+        path: ['scholarshipPercent'],
+      });
+    }
+    if (value.scholarshipPercent === 100 && value.billingMode !== 'MANUAL') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Bolsa integral não tem cobrança — o controle é manual.',
+        path: ['billingMode'],
       });
     }
   });

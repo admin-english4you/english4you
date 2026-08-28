@@ -17,8 +17,13 @@ import {
   mapMpPreapprovalStatus,
   normalizeCardLastFour,
 } from './payment.utils';
+import {
+  applyScholarshipDiscount,
+  formatCents,
+  MIN_CHARGEABLE_CENTS,
+} from '@/modules/finance/finance.utils';
 import type { Role } from '@/modules/user/user.types';
-import type { Contract } from '@/modules/contract/contract.types';
+import type { Contract, ScholarshipTerms } from '@/modules/contract/contract.types';
 import { toDayKey, todayKey } from '@/lib/date';
 import type {
   AccessCheck,
@@ -113,7 +118,7 @@ export const paymentService = {
 
   /**
    * Decide se o aluno pode usar a plataforma. Roda no `(hub)/layout.tsx`, a cada
-   * navegação — por isso é uma única query indexada por `user_id`.
+   * navegação — por isso são queries estreitas e indexadas, disparadas juntas.
    *
    * Examina as últimas assinaturas (e não só a mais recente) porque durante a
    * troca de cartão duas coexistem de propósito: a nova `PENDING` e a antiga
@@ -121,17 +126,44 @@ export const paymentService = {
    * que está com a assinatura antiga em pleno funcionamento.
    *
    * A ordem das regras importa:
-   * 1. qualquer uma AUTHORIZED → em dia, libera;
-   * 2. qualquer uma inadimplente → bloqueia (mesmo que já exista uma nova PENDING
+   * 0. conta desativada → bloqueia tudo, antes de qualquer outra coisa;
+   * 1. contrato de cobrança MANUAL → a plataforma não cobra; assinatura é
+   *    irrelevante (ver abaixo);
+   * 2. qualquer uma AUTHORIZED → em dia, libera;
+   * 3. qualquer uma inadimplente → bloqueia (mesmo que já exista uma nova PENDING
    *    a caminho, o aluno precisa terminar o conserto em /fix-payment);
-   * 3. a mais recente PENDING/CANCELLED → precisa (re)contratar;
-   * 4. sobrou COMPLETED → o curso acabou, não é motivo para bloquear.
+   * 4. a mais recente PENDING/CANCELLED → precisa (re)contratar;
+   * 5. sobrou COMPLETED → o curso acabou, não é motivo para bloquear.
    */
   async getAccessState(userId: string): Promise<AccessCheck> {
-    const subscriptions = await paymentRepository.findRecentSubscriptionsByUserId(
-      userId,
-      ACCESS_LOOKBACK
-    );
+    const [user, contract, subscriptions] = await Promise.all([
+      userService.getUserById(userId),
+      contractService.getCurrentContractGateFieldsForUser(userId),
+      paymentRepository.findRecentSubscriptionsByUserId(userId, ACCESS_LOOKBACK),
+    ]);
+
+    // Regra 0. Desativar a conta precisa bloquear até quem não tem assinatura
+    // nenhuma para cancelar — bolsista integral e aluno de cobrança manual.
+    if (user && user.status !== 'Active') {
+      return { state: 'DEACTIVATED', subscription: null, lastFailure: null };
+    }
+
+    // Regra 1. Bolsista integral / cobrança manual: a plataforma não emite
+    // cobrança, então não há assinatura para consultar.
+    //
+    // Retorna ANTES das regras de assinatura DE PROPÓSITO. Um aluno que pagava,
+    // ficou inadimplente e depois ganhou bolsa ainda tem a linha PAYMENT_FAILED
+    // dentro da janela do lookback: a regra 3 dispararia primeiro e o mandaria
+    // para /fix-payment, uma tela cujo único botão troca o cartão de uma
+    // assinatura que não existe mais e cuja única saída nunca é alcançada.
+    // Beco sem saída. Inverter esta ordem reintroduz o bug.
+    if (contract?.billingMode === 'MANUAL') {
+      return {
+        state: contract.status === 'ACTIVE' ? 'OK' : 'NEEDS_ONBOARDING',
+        subscription: null,
+        lastFailure: null,
+      };
+    }
 
     if (subscriptions.length === 0) {
       return { state: 'NEEDS_ONBOARDING', subscription: null, lastFailure: null };
@@ -183,12 +215,24 @@ export const paymentService = {
       (s) => s.status === 'AUTHORIZED' || s.status === 'COMPLETED'
     );
 
+    const scholarshipPercent = contract?.scholarshipPercent ?? 0;
+    const billingMode = contract?.billingMode ?? 'MERCADO_PAGO';
+
     return {
       contract,
       pkg,
       needsContract: !contract || contract.status === 'PENDING_SIGNATURE',
-      needsPayment: !hasLiveBilling,
+      // Bolsista integral e cobrança manual não têm passo de pagamento nenhum:
+      // assinar o contrato conclui a matrícula.
+      needsPayment: billingMode === 'MERCADO_PAGO' && !hasLiveBilling,
       pendingSubscription,
+      scholarshipPercent,
+      billingMode,
+      // O que o aluno REALMENTE paga por mês. O wizard mostrava
+      // `pkg.installmentValueCents` direto, que para um bolsista é mentira.
+      effectiveInstallmentCents: pkg
+        ? applyScholarshipDiscount(pkg.installmentValueCents, scholarshipPercent)
+        : null,
     };
   },
 
@@ -209,6 +253,11 @@ export const paymentService = {
     if (user.role !== 'STUDENT') {
       throw new AppError('Apenas alunos possuem assinatura.');
     }
+    // Sem isto, um aluno desativado poderia se reinscrever sozinho e voltar a
+    // ter acesso, contornando a decisão do admin.
+    if (user.status !== 'Active') {
+      throw new AppError('Sua conta está desativada. Fale com a secretaria da escola.');
+    }
 
     const subscriptions = await paymentRepository.findRecentSubscriptionsByUserId(
       userId,
@@ -228,6 +277,16 @@ export const paymentService = {
     if (!contract.packageId || !contract.endDate) {
       throw new AppError('Seu contrato não tem um pacote associado. Fale com a secretaria.');
     }
+    // Este contrato não é cobrado pela plataforma. O aluno não deveria nem ver
+    // o botão (ver `needsPayment`), mas a recusa fica aqui também porque é o
+    // service que decide, não a tela.
+    if (contract.billingMode === 'MANUAL') {
+      throw new AppError(
+        contract.scholarshipPercent === 100
+          ? 'Você é bolsista integral — não há mensalidade a pagar.'
+          : 'Sua mensalidade é acertada diretamente com a secretaria da escola.'
+      );
+    }
 
     const pkg = await financeService.getPackageById(contract.packageId);
     if (!pkg) throw new AppError('Pacote não encontrado.');
@@ -246,7 +305,12 @@ export const paymentService = {
         userId,
         contractId: contract.id,
         packageId: pkg.id,
-        amountCents: pkg.installmentValueCents,
+        // Já com a bolsa aplicada. Esta coluna é o snapshot que vale: editar o
+        // pacote ou a bolsa depois não altera uma assinatura já autorizada.
+        amountCents: applyScholarshipDiscount(
+          pkg.installmentValueCents,
+          contract.scholarshipPercent
+        ),
         startDate: contract.startDate,
         endDate: contract.endDate,
         status: 'PENDING',
@@ -402,7 +466,7 @@ export const paymentService = {
     if (unusable) {
       console.error(`[MercadoPago] back_url inutilizável — ${unusable}`);
       throw new AppError(
-        'A integração de pagamentos está sem a URL pública da aplicação (NEXT_PUBLIC_APP_URL). Avise a secretaria da escola.'
+        'A integração de pagamentos está sem a URL pública da aplicação (APP_URL). Avise a secretaria da escola.'
       );
     }
 
@@ -646,7 +710,89 @@ export const paymentService = {
       await contractService.cancelContract(actingRole, current.id);
     }
 
-    return await contractService.createContractForUser(actingRole, userId, packageId);
+    // Os termos de bolsa acompanham o aluno para o contrato novo. Sem isto, o
+    // contrato reemitido nasceria com os defaults (0% / MERCADO_PAGO) e trocar
+    // o pacote de um bolsista apagaria a bolsa silenciosamente, passando a
+    // cobrar dele o valor cheio.
+    return await contractService.createContractForUser(
+      actingRole,
+      userId,
+      packageId,
+      current
+        ? {
+            scholarshipPercent: current.scholarshipPercent,
+            billingMode: current.billingMode,
+          }
+        : undefined
+    );
+  },
+
+  /**
+   * Altera os termos de bolsa do aluno.
+   *
+   * REEMITE o contrato em vez de editá-lo, pelos mesmos dois motivos de
+   * `changeStudentPackage`: o `contentSnapshot` de um contrato assinado tem o
+   * percentual e o valor antigos escritos dentro dele, e o documento em si é
+   * outro — o contrato de bolsista sai de um modelo próprio.
+   *
+   * Consequência que a UI precisa avisar: o aluno perde o acesso até assinar o
+   * contrato novo.
+   */
+  async setScholarshipTerms(
+    actingRole: Role,
+    userId: string,
+    terms: ScholarshipTerms
+  ): Promise<Contract> {
+    assertAdmin(actingRole);
+
+    const user = await userService.getUserById(userId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+    if (user.role !== 'STUDENT') {
+      throw new AppError('Apenas alunos possuem bolsa de estudos.');
+    }
+
+    const scholarshipPercent = terms.scholarshipPercent;
+    const billingMode = scholarshipPercent === 100 ? 'MANUAL' : terms.billingMode;
+
+    const current = await contractService.getCurrentContractForUser(userId);
+    if (!current) {
+      throw new AppError('O aluno não tem contrato vigente. Emita um contrato primeiro.');
+    }
+    if (!current.packageId) {
+      throw new AppError('O contrato do aluno não tem pacote associado.');
+    }
+    if (current.scholarshipPercent === scholarshipPercent && current.billingMode === billingMode) {
+      throw new AppError('O aluno já está nestes termos.');
+    }
+
+    // Um residual irrisório vira 400 opaco no Mercado Pago; melhor barrar aqui,
+    // com texto que diz o que fazer.
+    if (billingMode === 'MERCADO_PAGO') {
+      const pkg = await financeService.getPackageById(current.packageId);
+      if (!pkg) throw new AppError('Pacote não encontrado.');
+
+      const effective = applyScholarshipDiscount(pkg.installmentValueCents, scholarshipPercent);
+      if (effective < MIN_CHARGEABLE_CENTS) {
+        throw new AppError(
+          `Com esta bolsa a mensalidade fica em ${formatCents(effective)}, baixo demais para uma cobrança automática. Use bolsa integral ou controle manual.`
+        );
+      }
+    }
+
+    // Cancela no MP ANTES de mexer no contrato: se a chamada externa falhar,
+    // não sobra um contrato cancelado com cobrança viva (mesma ordem de
+    // `deactivateStudent`).
+    const subscriptions = await paymentRepository.findLiveSubscriptionsByContractId(current.id);
+    for (const subscription of subscriptions) {
+      await this.cancelSubscription(subscription, 'PACKAGE_CHANGED');
+    }
+
+    await contractService.cancelContract(actingRole, current.id);
+
+    return await contractService.createContractForUser(actingRole, userId, current.packageId, {
+      scholarshipPercent,
+      billingMode,
+    });
   },
 
   /**

@@ -163,6 +163,76 @@ describe('normalizeName', () => {
   });
 });
 
+describe('buildPlaceholderValues — bolsa de estudos', () => {
+  const startDate = new Date('2026-03-01T12:00:00Z');
+
+  function values(scholarship?: { percent: number; billingMode: 'MERCADO_PAGO' | 'MANUAL' }) {
+    return buildPlaceholderValues({
+      user: baseUser,
+      pkg: basePackage,
+      startDate,
+      scholarship,
+    });
+  }
+
+  it('sem bolsa, as variáveis de bolsa ficam vazias', () => {
+    const v = values();
+    expect(v.percentual_bolsa).toBe('');
+    expect(v.valor_bolsista).toBe('');
+    expect(v.valor_desconto).toBe('');
+  });
+
+  /**
+   * Um modelo PADRÃO que use `{{percentual_bolsa}}` por engano precisa cair em
+   * `unresolved` — é esse aviso que impede um contrato sair com um travessão
+   * no lugar de uma cláusula.
+   */
+  it('variável de bolsa num contrato sem bolsa vira travessão e é reportada', () => {
+    const { html, unresolved } = renderContractTemplate(
+      '<p>Bolsa de {{percentual_bolsa}}.</p>',
+      values()
+    );
+    expect(html).toContain('—');
+    expect(unresolved).toContain('percentual_bolsa');
+  });
+
+  it('bolsa parcial calcula o valor pago e o abatimento', () => {
+    const v = values({ percent: 50, billingMode: 'MERCADO_PAGO' });
+    expect(v.percentual_bolsa).toBe('50%');
+    expect(v.valor_bolsista).toBe(formatBRL(75));
+    expect(v.valor_desconto).toBe(formatBRL(75));
+  });
+
+  /**
+   * REGRESSÃO: "R$ 0,00" é um valor REAL numa bolsa integral. Se
+   * `valor_bolsista` devolvesse '' aqui, o contrato do bolsista sairia com um
+   * travessão no lugar do valor e ainda acusaria variável não resolvida.
+   */
+  it('bolsa integral rende "R$ 0,00" e NÃO entra em unresolved', () => {
+    const v = values({ percent: 100, billingMode: 'MANUAL' });
+    expect(v.valor_bolsista).toBe(formatBRL(0));
+
+    const { html, unresolved } = renderContractTemplate(
+      '<p>Mensalidade: {{valor_bolsista}}.</p>',
+      v
+    );
+    expect(html).toContain(formatBRL(0));
+    expect(unresolved).not.toContain('valor_bolsista');
+  });
+
+  it('forma_cobranca distingue os três casos', () => {
+    expect(values({ percent: 100, billingMode: 'MANUAL' }).forma_cobranca).toContain('Isento');
+    expect(values({ percent: 40, billingMode: 'MANUAL' }).forma_cobranca).toContain('secretaria');
+    expect(values({ percent: 40, billingMode: 'MERCADO_PAGO' }).forma_cobranca).toContain('Cartão');
+  });
+
+  it('as quatro variáveis novas são reconhecidas pelo editor de modelos', () => {
+    const template =
+      '<p>{{percentual_bolsa}} {{valor_bolsista}} {{valor_desconto}} {{forma_cobranca}}</p>';
+    expect(findUnknownPlaceholderKeys(template)).toEqual([]);
+  });
+});
+
 /** O separador de milhar/moeda do Intl varia com a versão do ICU; monta o esperado do mesmo jeito. */
 function formatBRL(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);

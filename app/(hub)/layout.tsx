@@ -24,6 +24,7 @@ export default async function HubBaseLayout({
   // Admin e professor não têm pacote nem assinatura: nem consultamos.
   if (user.role === "STUDENT") {
     const { state } = await paymentService.getAccessState(user.id);
+    if (state === "DEACTIVATED") redirect("/conta-desativada");
     if (state === "NEEDS_ONBOARDING") redirect("/onboarding");
     if (state === "BLOCKED") redirect("/fix-payment");
   }

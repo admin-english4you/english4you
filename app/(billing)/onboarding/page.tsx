@@ -15,6 +15,7 @@ export default async function OnboardingPage() {
   if (!currentUser) redirect("/login");
 
   const { state } = await paymentService.getAccessState(currentUser.id);
+  if (state === "DEACTIVATED") redirect("/conta-desativada");
   // Inadimplente não "contrata de novo": ele conserta o cartão da assinatura
   // que já existe. O layout do grupo só barra quem está em dia.
   if (state === "BLOCKED") redirect("/fix-payment");

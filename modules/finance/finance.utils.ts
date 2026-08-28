@@ -27,6 +27,36 @@ export function formatCents(cents: number): string {
 }
 
 /**
+ * Mensalidade efetiva de um bolsista: o valor do pacote menos a bolsa.
+ *
+ * Centavos inteiros dos dois lados, com UM único arredondamento — nunca
+ * derivar um total e refatiá-lo depois, senão as parcelas deixam de somar o
+ * contrato.
+ *
+ * `Math.round` e não `Math.floor`: com `floor`, 33% de bolsa sobre R$ 150,00
+ * daria R$ 100,49, um centavo a menos por mês que ninguém consegue explicar ao
+ * aluno. Arredondar para o valor redondo é o comportamento esperado.
+ */
+export function applyScholarshipDiscount(
+  installmentValueCents: number,
+  scholarshipPercent: number
+): number {
+  if (scholarshipPercent <= 0) return installmentValueCents;
+  if (scholarshipPercent >= 100) return 0;
+  return Math.round((installmentValueCents * (100 - scholarshipPercent)) / 100);
+}
+
+/**
+ * Menor valor que faz sentido mandar para uma cobrança recorrente.
+ *
+ * Existe para transformar "bolsa de 99% sobre um pacote barato" num erro nosso,
+ * com texto útil, em vez de um 400 opaco do Mercado Pago que
+ * `throwMercadoPagoError` traduziria como "a integração está mal configurada" —
+ * culpando a coisa errada.
+ */
+export const MIN_CHARGEABLE_CENTS = 100;
+
+/**
  * Lê o que o admin digitou no formulário de pacote e devolve centavos.
  * Aceita `"R$ 1.234,56"`, `"1234,56"`, `"1234.56"` e `"1234"`.
  * Devolve `null` quando não dá para interpretar — quem chama decide a mensagem.

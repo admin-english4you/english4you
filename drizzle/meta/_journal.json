@@ -43,6 +43,13 @@
       "when": 1787774601813,
       "tag": "0005_add_finance_contract_payment_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787950975087,
+      "tag": "0006_add_scholarship_to_contracts",
+      "breakpoints": true
     }
   ]
 }

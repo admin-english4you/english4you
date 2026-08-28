@@ -8,7 +8,8 @@ import { IdentityVault } from "./IdentityVault";
 import { UserContractsCard } from "./UserContractsCard";
 import { StudentBillingCard } from "./StudentBillingCard";
 import { AccountStatusCard } from "./AccountStatusCard";
-import type { Contract } from "@/modules/contract/contract.types";
+import { ScholarshipCard } from "./ScholarshipCard";
+import type { Contract, ContractBillingMode } from "@/modules/contract/contract.types";
 import type { StudentFinancialSummary } from "@/modules/payment/payment.types";
 import type { Role } from "@/modules/user/user.types";
 
@@ -27,6 +28,12 @@ interface UserDetailViewProps {
   classGroup: { id: string; name: string } | null;
   contracts: (Contract & { packageName: string | null })[];
   financial: StudentFinancialSummary | null;
+  /** Termos de bolsa do contrato vigente; `null` quando não há contrato. */
+  scholarship: {
+    scholarshipPercent: number;
+    billingMode: ContractBillingMode;
+    canEdit: boolean;
+  } | null;
   isSelf: boolean;
 }
 
@@ -47,6 +54,7 @@ export function UserDetailView({
   classGroup,
   contracts,
   financial,
+  scholarship,
   isSelf,
 }: UserDetailViewProps) {
   const isActive = user.status === "Active";
@@ -137,10 +145,28 @@ export function UserDetailView({
               hasPhone={user.hasPhone}
             />
             <UserContractsCard contracts={contracts} />
+            {isStudent && scholarship && (
+              <ScholarshipCard
+                userId={user.id}
+                userName={user.name}
+                scholarshipPercent={scholarship.scholarshipPercent}
+                billingMode={scholarship.billingMode}
+                packageName={financial?.pkg?.name ?? null}
+                installmentValueCents={financial?.pkg?.installmentValueCents ?? null}
+                canEdit={scholarship.canEdit}
+              />
+            )}
           </div>
 
           <div className="space-y-6">
-            {financial && <StudentBillingCard financial={financial} monthLabel={monthLabel} />}
+            {financial && (
+              <StudentBillingCard
+                financial={financial}
+                monthLabel={monthLabel}
+                scholarshipPercent={scholarship?.scholarshipPercent ?? 0}
+                billingMode={scholarship?.billingMode ?? "MERCADO_PAGO"}
+              />
+            )}
             <AccountStatusCard
               userId={user.id}
               userName={user.name}

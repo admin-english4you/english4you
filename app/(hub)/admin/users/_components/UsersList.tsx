@@ -17,7 +17,7 @@ import Link from "next/link";
 
 import { User } from "@/modules/user/user.types";
 import type { Package } from "@/modules/finance/finance.types";
-import { formatCents } from "@/modules/finance/finance.utils";
+import { applyScholarshipDiscount, formatCents } from "@/modules/finance/finance.utils";
 
 interface UsersListProps {
   initialUsers: User[];
@@ -38,7 +38,23 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<Role>("STUDENT");
   const [newUserPackage, setNewUserPackage] = useState("");
+  // Bolsa: "NONE" | "FULL" | "PARTIAL". Estado separado do percentual para que
+  // trocar de opção não perca o número já digitado.
+  const [scholarshipType, setScholarshipType] = useState<"NONE" | "FULL" | "PARTIAL">("NONE");
+  const [scholarshipPercentInput, setScholarshipPercentInput] = useState("50");
+  const [billingMode, setBillingMode] = useState<"MERCADO_PAGO" | "MANUAL">("MERCADO_PAGO");
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const selectedPackage = packages.find((p) => p.id === newUserPackage) ?? null;
+  const parsedPercent = Number.parseInt(scholarshipPercentInput, 10);
+  const scholarshipPercent =
+    scholarshipType === "FULL" ? 100 : scholarshipType === "PARTIAL" ? parsedPercent : 0;
+  // Bolsa integral não tem o que cobrar — o modo é forçado, não escolhido.
+  const effectiveBillingMode = scholarshipPercent === 100 ? "MANUAL" : billingMode;
+  const previewMonthlyCents =
+    selectedPackage && Number.isFinite(scholarshipPercent)
+      ? applyScholarshipDiscount(selectedPackage.installmentValueCents, scholarshipPercent)
+      : null;
 
   const [usersList, setUsersList] = useState<User[]>(initialUsers);
 
@@ -59,6 +75,10 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       setFormErrorMessage("Selecione um pacote de aulas para o aluno.");
       return;
     }
+    if (scholarshipType === "PARTIAL" && (!Number.isFinite(parsedPercent) || parsedPercent < 1 || parsedPercent > 99)) {
+      setFormErrorMessage("O percentual da bolsa deve ser um número entre 1 e 99.");
+      return;
+    }
 
     // Se estiver tudo preenchido corretamente, mostra a tela de confirmação
     setShowConfirmation(true);
@@ -74,6 +94,8 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       email: newUserEmail,
       role: newUserRole,
       ...(newUserRole === 'STUDENT' && newUserPackage ? { packageId: newUserPackage } : {}),
+      scholarshipPercent: newUserRole === 'STUDENT' ? scholarshipPercent : 0,
+      billingMode: newUserRole === 'STUDENT' ? effectiveBillingMode : 'MERCADO_PAGO',
     });
 
     setIsSubmitting(false);
@@ -91,6 +113,9 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       setNewUserEmail("");
       setNewUserRole("STUDENT");
       setNewUserPackage("");
+      setScholarshipType("NONE");
+      setScholarshipPercentInput("50");
+      setBillingMode("MERCADO_PAGO");
       setShowConfirmation(false);
       
       setTimeout(() => {
@@ -317,9 +342,29 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       <div>
                         <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Pacote de Aulas</span>
                         <span className="text-sm font-semibold text-slate-800">
-                          {packages.find((p) => p.id === newUserPackage)?.name ?? "—"}
+                          {selectedPackage?.name ?? "—"}
                         </span>
                       </div>
+                    )}
+                    {newUserRole === "STUDENT" && scholarshipType !== "NONE" && (
+                      <>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Bolsa</span>
+                          <span className="text-sm font-semibold text-emerald-700">
+                            {scholarshipPercent === 100
+                              ? "Integral (100%)"
+                              : `Parcial (${scholarshipPercent}%)`}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Mensalidade</span>
+                          <span className="text-sm font-semibold text-slate-800">
+                            {previewMonthlyCents !== null ? `${formatCents(previewMonthlyCents)}/mês` : "—"}
+                            {" · "}
+                            {effectiveBillingMode === "MANUAL" ? "Controle manual" : "Mercado Pago"}
+                          </span>
+                        </div>
+                      </>
                     )}
                   </div>
                   
@@ -385,7 +430,13 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       value={newUserRole}
                       onChange={(val) => {
                         setNewUserRole(val as Role);
-                        if (val !== 'STUDENT') setNewUserPackage("");
+                        if (val !== 'STUDENT') {
+                          setNewUserPackage("");
+                          // Bolsa é termo de matrícula de aluno — professor e
+                          // admin não têm pacote nem contrato de bolsa.
+                          setScholarshipType("NONE");
+                          setBillingMode("MERCADO_PAGO");
+                        }
                       }}
                       options={[
                         { value: "STUDENT", label: "Aluno" },
@@ -423,6 +474,93 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                             O contrato do aluno é criado automaticamente com base neste pacote.
                           </p>
                         </>
+                      )}
+                    </div>
+                  )}
+
+                  {newUserRole === "STUDENT" && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Bolsa de Estudos
+                        </label>
+                        <Select
+                          value={scholarshipType}
+                          onChange={(val) => {
+                            const next = val as "NONE" | "FULL" | "PARTIAL";
+                            setScholarshipType(next);
+                            // Integral não tem cobrança; o seletor abaixo some.
+                            if (next === "FULL") setBillingMode("MANUAL");
+                          }}
+                          options={[
+                            { value: "NONE", label: "Sem bolsa — paga o pacote cheio" },
+                            { value: "FULL", label: "Bolsa integral — não paga nada" },
+                            { value: "PARTIAL", label: "Bolsa parcial — desconto percentual" },
+                          ]}
+                        />
+                      </div>
+
+                      {scholarshipType === "PARTIAL" && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Percentual da bolsa (%)
+                          </label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={scholarshipPercentInput}
+                            onChange={(e) => setScholarshipPercentInput(e.target.value)}
+                            placeholder="50"
+                          />
+                        </div>
+                      )}
+
+                      {scholarshipType !== "NONE" && scholarshipType !== "FULL" && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Como cobrar a diferença
+                          </label>
+                          <Select
+                            value={billingMode}
+                            onChange={(val) => setBillingMode(val as "MERCADO_PAGO" | "MANUAL")}
+                            options={[
+                              { value: "MERCADO_PAGO", label: "Assinatura no Mercado Pago (automática)" },
+                              { value: "MANUAL", label: "Controle manual — a escola registra no caixa" },
+                            ]}
+                          />
+                        </div>
+                      )}
+
+                      {scholarshipType !== "NONE" && (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] text-emerald-900">
+                          {selectedPackage && previewMonthlyCents !== null ? (
+                            <>
+                              O aluno pagará{" "}
+                              <strong>{formatCents(previewMonthlyCents)}/mês</strong>
+                              {scholarshipPercent < 100 && (
+                                <>
+                                  {" "}
+                                  em vez de {formatCents(selectedPackage.installmentValueCents)}
+                                </>
+                              )}
+                              .{" "}
+                              {effectiveBillingMode === "MANUAL"
+                                ? "A plataforma não fará cobranças — a escola registra os recebimentos no caixa."
+                                : "A cobrança recorrente será criada no Mercado Pago com este valor."}
+                            </>
+                          ) : (
+                            "Selecione um pacote para ver o valor com a bolsa aplicada."
+                          )}
+                          <span className="mt-1 block text-emerald-800">
+                            O contrato sairá do modelo do tipo <strong>Bolsista</strong> — ele
+                            precisa estar ativo em{" "}
+                            <Link href="/admin/finance?tab=modelos" className="font-semibold underline">
+                              Financeiro → Modelos
+                            </Link>
+                            .
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}

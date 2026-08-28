@@ -150,8 +150,19 @@ export const InsertStudentSubscriptionSchema = createInsertSchema(studentSubscri
 export const PaymentSchema = createSelectSchema(paymentsTable);
 export const InsertPaymentSchema = createInsertSchema(paymentsTable);
 
-/** Estado de acesso do aluno, resolvido pelo service e consumido pelos layouts. */
-export const AccessStateEnum = z.enum(['OK', 'NEEDS_ONBOARDING', 'BLOCKED']);
+/**
+ * Estado de acesso do aluno, resolvido pelo service e consumido pelos layouts.
+ *
+ * OK: pode usar a plataforma.
+ * NEEDS_ONBOARDING: falta assinar contrato e/ou contratar o pagamento.
+ * BLOCKED: inadimplente numa cobrança do Mercado Pago — conserta em /fix-payment.
+ * DEACTIVATED: a escola desativou a conta. Só um admin reverte; não há tela de
+ *   autoatendimento. Existe como estado próprio porque desativar precisa
+ *   bloquear TAMBÉM quem não tem assinatura nenhuma para cancelar (bolsista
+ *   integral, aluno de cobrança manual) — antes disso, o bloqueio era só um
+ *   efeito colateral do cancelamento da assinatura.
+ */
+export const AccessStateEnum = z.enum(['OK', 'NEEDS_ONBOARDING', 'BLOCKED', 'DEACTIVATED']);
 
 /** Troca de pacote (admin): cancela a assinatura atual e reemite o contrato. */
 export const ChangeStudentPackageSchema = z.object({

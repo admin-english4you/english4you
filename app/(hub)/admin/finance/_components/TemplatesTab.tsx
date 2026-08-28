@@ -13,7 +13,11 @@ import {
   createContractTemplateAction,
   setContractTemplateActiveAction,
 } from "@/modules/contract/contract.actions";
-import type { ContractTargetRole, ContractTemplate } from "@/modules/contract/contract.types";
+import type {
+  ContractTargetRole,
+  ContractTemplate,
+  ContractTemplateKind,
+} from "@/modules/contract/contract.types";
 
 interface TemplatesTabProps {
   templates: ContractTemplate[];
@@ -24,11 +28,17 @@ const ROLE_LABELS: Record<ContractTargetRole, string> = {
   TEACHER: "Professor",
 };
 
+const KIND_LABELS: Record<ContractTemplateKind, string> = {
+  STANDARD: "Padrão",
+  SCHOLARSHIP: "Bolsista",
+};
+
 export function TemplatesTab({ templates }: TemplatesTabProps) {
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [targetRole, setTargetRole] = useState<ContractTargetRole>("STUDENT");
+  const [kind, setKind] = useState<ContractTemplateKind>("STANDARD");
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = (event: React.FormEvent) => {
@@ -36,10 +46,11 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
     setError(null);
 
     startTransition(async () => {
-      const result = await createContractTemplateAction({ name, targetRole });
+      const result = await createContractTemplateAction({ name, targetRole, kind });
       if (result.success) {
         setIsModalOpen(false);
         setName("");
+        setKind("STANDARD");
       } else {
         setError(result.error);
       }
@@ -56,8 +67,8 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
-          Só existe <strong>um modelo ativo por perfil</strong> — é ele que gera os contratos dos novos
-          cadastros.
+          Um modelo ativo <strong>por perfil e tipo</strong> — é ele que gera os contratos dos novos
+          cadastros. O contrato de quem tem bolsa sai do modelo do tipo <strong>Bolsista</strong>.
         </p>
         <Button className="shrink-0 bg-primary hover:bg-primary/80" onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Novo Modelo
@@ -83,6 +94,13 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
                   <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                     {ROLE_LABELS[template.targetRole]}
                   </span>
+                  {/* Sem este selo, dois "Contrato do Aluno" — o padrão e o de
+                      bolsista — ficam indistinguíveis na lista. */}
+                  {template.kind === "SCHOLARSHIP" && (
+                    <span className="shrink-0 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                      {KIND_LABELS.SCHOLARSHIP}
+                    </span>
+                  )}
                   <span className="shrink-0 text-[10px] font-semibold text-slate-400">
                     v{template.version}
                   </span>
@@ -149,13 +167,34 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
             </label>
             <Select
               value={targetRole}
-              onChange={(value) => setTargetRole(value as ContractTargetRole)}
+              onChange={(value) => {
+                const role = value as ContractTargetRole;
+                setTargetRole(role);
+                // Bolsa é um termo de matrícula de aluno; professor não tem.
+                if (role !== "STUDENT") setKind("STANDARD");
+              }}
               options={[
                 { value: "STUDENT", label: "Aluno" },
                 { value: "TEACHER", label: "Professor" },
               ]}
             />
           </div>
+
+          {targetRole === "STUDENT" && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Tipo de contrato
+              </label>
+              <Select
+                value={kind}
+                onChange={(value) => setKind(value as ContractTemplateKind)}
+                options={[
+                  { value: "STANDARD", label: "Padrão (aluno pagante)" },
+                  { value: "SCHOLARSHIP", label: "Bolsista (com bolsa de estudos)" },
+                ]}
+              />
+            </div>
+          )}
 
           <p className="text-[11px] text-slate-400">
             O modelo já nasce com um texto de exemplo e as variáveis mais comuns. Você edita o conteúdo na
