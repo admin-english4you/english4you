@@ -31,6 +31,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#04215d",
+  // `cover` é o que faz `env(safe-area-inset-*)` devolver valores reais em vez
+  // de zero. Sem isso, no iOS o `statusBarStyle: "black-translucent"` acima
+  // joga o conteúdo por baixo do relógio/bateria e o header fica ilegível —
+  // ver o padding de área segura em `AppHeader`.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

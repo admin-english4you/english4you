@@ -5,7 +5,11 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "English4You",
     short_name: "English4You",
     description: "Plataforma de aulas de inglês da English4You — aulas ao vivo, materiais e prática com IA.",
-    start_url: "/",
+    // O `?pwa=1` é o que permite ao servidor saber que a visita veio do app
+    // instalado, e não do navegador: quem abre pelo app nunca deve cair na
+    // landing de marketing — vai direto pro login (ou pro hub, se já estiver
+    // logado). Ver `app/page.tsx`.
+    start_url: "/?pwa=1",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#04215d",

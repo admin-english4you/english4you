@@ -77,7 +77,7 @@ export function NotificationBell() {
       width="w-64"
       trigger={
         <button
-          className="relative text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors"
+          className="relative text-slate-400 hover:text-slate-600 max-md:text-white/80 max-md:hover:text-white p-2 rounded-full hover:bg-slate-100 max-md:hover:bg-white/10 transition-colors"
           aria-label={`Notificações${unreadCount > 0 ? ` (${unreadCount} não lidas)` : ""}`}
         >
           <Bell className="w-5 h-5" />

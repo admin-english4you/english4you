@@ -47,18 +47,26 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
   const userAvatarUrl = sessionUser?.avatarUrl ?? null;
   const profilePath = `/${(sessionUser?.role ?? role).toLowerCase()}/profile`;
 
+  // No mobile/PWA o header vira a própria barra de status: pinta com a mesma
+  // cor do `themeColor` (bg-primary) e cresce pela altura da área segura, de
+  // modo que a faixa do relógio/bateria fique da mesma cor e o conteúdo do
+  // header não passe por baixo dela. No desktop segue branco, como antes.
+  //
+  // O `calc` soma a inset à altura em vez de só adicionar padding porque o
+  // box-sizing é border-box: sem somar, o padding comeria os 4rem do conteúdo
+  // em vez de empurrar o header inteiro para baixo do relógio.
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-10 shrink-0 sticky top-0">
+    <header className="h-16 max-md:h-[calc(4rem_+_env(safe-area-inset-top))] max-md:pt-[env(safe-area-inset-top)] bg-white max-md:bg-primary border-b border-slate-200 max-md:border-primary flex items-center justify-between px-4 sm:px-6 z-10 shrink-0 sticky top-0">
       {/* Mobile Toggle & Brand */}
       <div className="flex items-center gap-3 md:hidden">
         <button
           onClick={onOpenMobileMenu}
-          className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+          className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md transition-colors"
           aria-label="Abrir menu"
         >
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-bold text-lg text-primary">{MOBILE_BRAND[role]}</span>
+        <span className="font-bold text-lg text-white">{MOBILE_BRAND[role]}</span>
       </div>
 
       {/* Global Search Bar */}
@@ -75,7 +83,7 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
       <div className="flex items-center gap-4">
         <NotificationBell />
 
-        <div className="h-8 w-px bg-slate-200"></div>
+        <div className="h-8 w-px bg-slate-200 max-md:bg-white/20"></div>
 
         <Dropdown 
           trigger={
@@ -84,13 +92,13 @@ export function AppHeader({ onOpenMobileMenu, role = "ADMIN" }: AppHeaderProps) 
                 name={userName}
                 src={userAvatarUrl}
                 size="sm"
-                className="ring-2 ring-white group-hover:ring-primary/20 transition-all shadow-sm"
+                className="ring-2 ring-white max-md:ring-white/30 group-hover:ring-primary/20 transition-all shadow-sm"
               />
               <div className="hidden sm:block text-left text-sm">
-                <p className="font-semibold text-slate-800 leading-none mb-1 group-hover:text-primary transition-colors">
+                <p className="font-semibold text-slate-800 max-md:text-white leading-none mb-1 group-hover:text-primary max-md:group-hover:text-white transition-colors">
                   {userName}
                 </p>
-                <p className="text-xs text-slate-500 leading-none">{userRoleTitle}</p>
+                <p className="text-xs text-slate-500 max-md:text-white/70 leading-none">{userRoleTitle}</p>
               </div>
             </div>
           }

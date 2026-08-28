@@ -19,7 +19,10 @@ export function AppLayout({ children, role = "ADMIN" }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+    // `h-dvh` e não `h-screen`: no celular o `100vh` ignora a barra do
+    // navegador e o rodapé do app ficaria cortado abaixo da dobra. O `dvh`
+    // acompanha a altura real da viewport.
+    <div className="flex h-dvh overflow-hidden bg-slate-50 text-slate-900 font-sans">
       {/* Sidebar (Desktop & Mobile Drawer) */}
       <AppSidebar 
         role={role} 
@@ -33,7 +36,9 @@ export function AppLayout({ children, role = "ADMIN" }: AppLayoutProps) {
         <AppHeader onOpenMobileMenu={() => setMobileOpen(true)} role={role} />
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/60 p-4 sm:p-6 lg:p-8 w-full">
+        {/* O padding extra na base é a área do indicador de home do iPhone —
+            sem ele o último item da página fica embaixo da barrinha. */}
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 p-4 sm:p-6 lg:p-8 pb-[calc(1rem_+_env(safe-area-inset-bottom))] w-full">
           {children}
         </main>
       </div>
