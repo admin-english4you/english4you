@@ -27,7 +27,6 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@floating-ui/react": "^0.27.20",
-    "@google/genai": "^2.13.0",
     "@hookform/resolvers": "^5.7.1",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
@@ -63,6 +62,7 @@
     "lucide-react": "^1.26.0",
     "mercadopago": "^3.2.0",
     "next": "16.2.11",
+    "openai": "^7.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.84.0",

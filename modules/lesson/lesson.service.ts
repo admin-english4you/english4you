@@ -16,7 +16,7 @@ function assertAdmin(actingRole: Role) {
  * Travas de conteúdo para DISABLED/IN_PROGRESS -> ACTIVE: bloqueia enquanto
  * houver LearningItem/QuizQuestion PENDING, exige pelo menos 1 pergunta
  * aprovada em cada uma das 4 seções de compreensão, e mais 1 de
- * listening_choice se a lição tiver áudio/vídeo. Extraído para ser reusado
+ * listening_choice se a lição tiver áudio. Extraído para ser reusado
  * por `updateLessonStatus` (admin) e `activateLessonAsTeacher` (professor) —
  * as mesmas regras valem pros dois caminhos.
  */
@@ -39,7 +39,11 @@ async function assertLessonContentReady(actingRole: Role, lesson: Lesson): Promi
     throw new AppError(`Gere e aprove ao menos uma pergunta da seção "${missingSection}" antes de ativar a lição.`);
   }
 
-  const hasMedia = Boolean(lesson.audioUrl || lesson.videoUrl);
+  // Só `audioUrl`: a compreensão auditiva nasce da transcrição, e a
+  // transcrição só existe para áudio (ver lib/openai.ts). Cobrar a pergunta de
+  // listening de uma lição só-vídeo travaria a ativação para sempre, já que
+  // `practiceService.generateLearningItems` não geraria nenhuma.
+  const hasMedia = Boolean(lesson.audioUrl);
   if (hasMedia && coverage.listening === 0) {
     throw new AppError('Gere e aprove ao menos uma pergunta de compreensão auditiva antes de ativar a lição.');
   }

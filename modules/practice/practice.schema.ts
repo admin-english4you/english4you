@@ -111,7 +111,7 @@ export const QuizRenderModeEnum = z.enum(quizRenderModeEnumDb.enumValues);
  * Pergunta de múltipla escolha (4 alternativas) de compreensão, gerada pela
  * IA junto com os LearningItems. Cobre os renderModes `quiz_comprehensive`
  * (com `section` preenchida: vocabulary/grammar/context/comprehension) e
- * `listening_choice` (sobre trechos específicos do áudio/vídeo, `section`
+ * `listening_choice` (sobre trechos específicos do áudio, `section`
  * fica null). Mesmo padrão de revisão dos LearningItems: entra APPROVED,
  * admin remove o que não quiser. Uma lição só pode ser ativada quando
  * existir pelo menos 1 aprovada em cada seção do comprehensive (e, se a
@@ -164,7 +164,7 @@ export const AIGeneratedComprehensiveQuizSchema = z.object({
   comprehension: z.array(AIGeneratedQuizQuestionSchema).min(5).max(10),
 });
 
-/** Resposta da chamada do listening_choice: 5-10 perguntas sobre trechos específicos do áudio/vídeo. */
+/** Resposta da chamada do listening_choice: 5-10 perguntas sobre trechos específicos do áudio. */
 export const AIGeneratedListeningQuizSchema = z.array(AIGeneratedQuizQuestionSchema).min(5).max(10);
 
 export const ApproveQuizQuestionSchema = z.object({
@@ -186,7 +186,7 @@ export const InsertLearningItemSchema = createInsertSchema(learningItemsTable, {
 
 /**
  * Formato exato pedido à IA: sem id/lessonId/reviewStatus/createdAt, que são
- * sempre atribuídos pelo servidor. Usado como responseSchema do Gemini
+ * sempre atribuídos pelo servidor. Usado como response_format da OpenAI
  * (via z.toJSONSchema) e para validar a resposta antes de persistir.
  */
 export const AIGeneratedLearningItemSchema = z.object({

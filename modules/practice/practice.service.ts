@@ -8,7 +8,7 @@ import {
   RawLearningItem,
   RawComprehensiveQuiz,
   RawQuizQuestion,
-} from '@/lib/gemini';
+} from '@/lib/openai';
 import { AppError } from '@/lib/errors';
 import { Role } from '@/modules/user/user.types';
 import {
@@ -54,24 +54,24 @@ const SOLO_STRUCTURE: [number, number] = [10, STRUCTURE_CEILING];
 
 const QUIZ_SECTIONS: QuizSectionType[] = ['vocabulary', 'grammar', 'context', 'comprehension'];
 
+/**
+ * Só áudio: a transcrição roda na OpenAI (ver lib/openai.ts), cuja API não
+ * aceita vídeo. Uma lição com vídeo mas sem áudio simplesmente não gera
+ * transcrição — e, portanto, nem prática de compreensão auditiva (a mesma
+ * regra vale em `lessonService.assertLessonContentReady`).
+ */
 const AUDIO_EXTENSION_MIME: Record<string, string> = {
   mp3: 'audio/mpeg',
   wav: 'audio/wav',
   m4a: 'audio/mp4',
 };
 
-const VIDEO_EXTENSION_MIME: Record<string, string> = {
-  mp4: 'video/mp4',
-  mov: 'video/quicktime',
-  webm: 'video/webm',
-};
-
 function inferMimeType(url: string): string {
   const withoutQuery = url.split('?')[0];
   const extension = withoutQuery.split('.').pop()?.toLowerCase() ?? '';
-  const mimeType = AUDIO_EXTENSION_MIME[extension] ?? VIDEO_EXTENSION_MIME[extension];
+  const mimeType = AUDIO_EXTENSION_MIME[extension];
   if (!mimeType) {
-    throw new AppError('Formato de mídia não reconhecido para transcrição.');
+    throw new AppError('Formato de áudio não reconhecido para transcrição.');
   }
   return mimeType;
 }
@@ -222,11 +222,11 @@ export const practiceService = {
     }
 
     const plainText = stripHtml(lesson.content);
-    if (!plainText && !lesson.audioUrl && !lesson.videoUrl) {
-      throw new AppError('Adicione conteúdo escrito ou mídia à lição antes de gerar com IA.');
+    if (!plainText && !lesson.audioUrl) {
+      throw new AppError('Adicione conteúdo escrito ou áudio à lição antes de gerar com IA.');
     }
 
-    const hasMedia = Boolean(lesson.audioUrl || lesson.videoUrl);
+    const hasMedia = Boolean(lesson.audioUrl);
 
     let vocabItems: RawLearningItem[] = [];
     let comprehensiveQuiz: RawComprehensiveQuiz | null = null;
@@ -235,7 +235,7 @@ export const practiceService = {
     try {
       let transcript = lesson.transcript ?? '';
       if (hasMedia && !transcript) {
-        const mediaUrl = lesson.videoUrl ?? lesson.audioUrl!;
+        const mediaUrl = lesson.audioUrl!;
         const mimeType = inferMimeType(mediaUrl);
         transcript = await transcribeMedia(mediaUrl, mimeType);
         await lessonService.saveTranscript(actingRole, lessonId, transcript);
@@ -266,7 +266,7 @@ export const practiceService = {
         throw new Error('A geração das perguntas de compreensão falhou.');
       }
     } catch (err) {
-      console.error('Gemini generation failed:', err);
+      console.error('OpenAI generation failed:', err);
       throw new AppError('Falha ao gerar itens com IA. Tente novamente em instantes.');
     }
 
