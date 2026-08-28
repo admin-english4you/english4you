@@ -58,20 +58,20 @@ describe('getAppUrl', () => {
     vi.unstubAllEnvs();
   });
 
-  it('usa NEXT_PUBLIC_APP_URL quando existe', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.english4you.com.br');
+  it('usa APP_URL quando existe', async () => {
+    vi.stubEnv('APP_URL', 'https://app.english4you.com.br');
     const getAppUrl = await importGetAppUrl();
     expect(getAppUrl()).toBe('https://app.english4you.com.br');
   });
 
   it('remove a barra final (senão o back_url viria com barra dupla)', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.english4you.com.br/');
+    vi.stubEnv('APP_URL', 'https://app.english4you.com.br/');
     const getAppUrl = await importGetAppUrl();
     expect(getAppUrl()).toBe('https://app.english4you.com.br');
   });
 
   it('cai no domínio estável da Vercel quando a variável explícita não foi definida', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('APP_URL', '');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
     const getAppUrl = await importGetAppUrl();
     // A Vercel injeta sem protocolo.
@@ -79,7 +79,7 @@ describe('getAppUrl', () => {
   });
 
   it('prefere o domínio de produção ao domínio efêmero do deploy', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('APP_URL', '');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
     vi.stubEnv('VERCEL_URL', 'meu-app-git-abc123.vercel.app');
     const getAppUrl = await importGetAppUrl();
@@ -87,7 +87,7 @@ describe('getAppUrl', () => {
   });
 
   it('só cai em localhost fora da Vercel', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    vi.stubEnv('APP_URL', '');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', '');
     vi.stubEnv('VERCEL_URL', '');
     const getAppUrl = await importGetAppUrl();
@@ -99,22 +99,22 @@ describe('getAppUrl', () => {
    * no build, então um deploy feito com o valor de desenvolvimento carregava
    * `localhost` embutido e ignorava o domínio da Vercel.
    */
-  it('ignora uma NEXT_PUBLIC_APP_URL inutilizável e usa o domínio da Vercel', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+  it('ignora uma APP_URL inutilizável e usa o domínio da Vercel', async () => {
+    vi.stubEnv('APP_URL', 'http://localhost:3000');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
     const getAppUrl = await importGetAppUrl();
     expect(getAppUrl()).toBe('https://meu-app.vercel.app');
   });
 
   it('descarta http não-local em favor do domínio da Vercel (o MP exige https)', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://www.english4ubr.com.br');
+    vi.stubEnv('APP_URL', 'http://www.english4ubr.com.br');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'meu-app.vercel.app');
     const getAppUrl = await importGetAppUrl();
     expect(getAppUrl()).toBe('https://meu-app.vercel.app');
   });
 
   it('mantém localhost em dev, onde não há domínio da Vercel para usar', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+    vi.stubEnv('APP_URL', 'http://localhost:3000');
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', '');
     vi.stubEnv('VERCEL_URL', '');
     const getAppUrl = await importGetAppUrl();

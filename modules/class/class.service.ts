@@ -774,7 +774,7 @@ export const classService = {
             studentName: s.name,
             className: classGroup.name,
             lessonTitle,
-            recordingUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}${link}`,
+            recordingUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}${link}`,
           })
         )
     );

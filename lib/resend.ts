@@ -20,7 +20,7 @@ export async function sendUserInviteEmail({ email, name, resetLink }: SendInvite
   }
 
   try {
-    const link = resetLink || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/login`;
+    const link = resetLink || `${process.env.APP_URL || "http://localhost:3000"}/login`;
 
     await resend.emails.send({
       from: FROM,

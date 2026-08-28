@@ -42,7 +42,7 @@ export const paymentClient = mpConfig ? new Payment(mpConfig) : null;
  * URL pública da aplicação, sem barra no fim.
  *
  * Ordem de resolução:
- * 1. `NEXT_PUBLIC_APP_URL` — o domínio próprio, quando existir. Em dev, aponte
+ * 1. `APP_URL` — o domínio próprio, quando existir. Em dev, aponte
  *    para um túnel (cloudflared/ngrok); localhost não serve como `back_url`.
  * 2. `VERCEL_PROJECT_PRODUCTION_URL` — injetada pela Vercel, é o domínio
  *    ESTÁVEL de produção. Existe para que um deploy sem a variável do passo 1
@@ -55,7 +55,7 @@ export const paymentClient = mpConfig ? new Payment(mpConfig) : null;
  * isso o `https://` é acrescentado aqui.
  */
 export function getAppUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const explicit = process.env.APP_URL?.trim();
   // Só aceita a variável explícita se ela REALMENTE servir como back_url.
   //
   // A checagem existe por causa de uma armadilha do Next: `NEXT_PUBLIC_*` é
@@ -69,7 +69,7 @@ export function getAppUrl(): string {
     const normalized = stripTrailingSlash(explicit);
     if (!describeUnusableBackUrl(normalized)) return normalized;
     console.warn(
-      `[MercadoPago] NEXT_PUBLIC_APP_URL ("${normalized}") não serve como back_url — usando o domínio da Vercel.`
+      `[MercadoPago] APP_URL ("${normalized}") não serve como back_url — usando o domínio da Vercel.`
     );
   }
 
@@ -104,7 +104,7 @@ export function describeUnusableBackUrl(url: string): string | null {
 
   // O host vem ANTES do protocolo de propósito: `http://localhost:3000` viola
   // as duas regras, e "aponta para a própria máquina" é o diagnóstico que leva
-  // a pessoa a definir NEXT_PUBLIC_APP_URL — "exige https" faria ela só trocar
+  // a pessoa a definir APP_URL — "exige https" faria ela só trocar
   // o protocolo e falhar de novo.
   const host = parsed.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) {
