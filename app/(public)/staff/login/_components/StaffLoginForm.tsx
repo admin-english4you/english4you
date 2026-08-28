@@ -244,6 +244,21 @@ export function StaffLoginForm() {
                 Contate o suporte interno
               </a>
             </p>
+
+            {/* Ponte entre os dois portais: quem erra a porta descobre a certa
+                aqui, em vez de insistir numa senha que nunca vai passar (o
+                login rejeita papel trocado — ver `authenticateUser`). */}
+            <div className="mt-6 pt-5 border-t border-border">
+              <p className="text-center text-sm text-muted-foreground">
+                É aluno?{" "}
+                <Link
+                  href="/login"
+                  className="font-bold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Acesse a área do aluno
+                </Link>
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>

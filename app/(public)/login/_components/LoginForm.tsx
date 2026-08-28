@@ -242,6 +242,21 @@ export function LoginForm() {
                 Matricule-se já
               </Link>
             </p>
+
+            {/* Ponte entre os dois portais: quem erra a porta descobre a certa
+                aqui, em vez de insistir numa senha que nunca vai passar (o
+                login rejeita papel trocado — ver `authenticateUser`). */}
+            <div className="mt-6 pt-5 border-t border-border">
+              <p className="text-center text-sm text-muted-foreground">
+                É professor ou da coordenação?{" "}
+                <Link
+                  href="/staff/login"
+                  className="font-bold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Acesse o portal da equipe
+                </Link>
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>
