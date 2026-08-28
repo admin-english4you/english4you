@@ -92,11 +92,11 @@ export function InstallPwaView() {
     <div className="min-h-screen bg-gradient-to-b from-primary/10 to-white px-4 py-12 sm:py-16">
       <div className="mx-auto max-w-md text-center">
         <Image
-          src="/icon-192.png"
+          src="/android/launchericon-192x192.png"
           alt="English4You"
           width={88}
           height={88}
-          className="mx-auto rounded-2xl shadow-lg shadow-slate-900/10"
+          className="mx-auto rounded-2xl"
         />
 
         <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-primary sm:text-3xl">

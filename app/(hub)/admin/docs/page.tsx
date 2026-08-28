@@ -9,7 +9,6 @@ import {
   BookOpen,
   DollarSign,
   UserCircle,
-  AlertTriangle,
   Info,
   BellRing,
   Download,
@@ -31,15 +30,6 @@ const sections = [
   { id: "instalar-app", label: "Instalar o App", icon: Download },
   { id: "perfil", label: "Meu Perfil", icon: UserCircle },
 ];
-
-function InDevelopmentNotice({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-      <p className="text-xs text-amber-800 font-medium leading-relaxed">{children}</p>
-    </div>
-  );
-}
 
 function DocSection({
   id,
@@ -239,13 +229,6 @@ export default function AdminDocsPage() {
                 </li>
                 <li><strong>Conta desativada</strong> — visto acima.</li>
               </ul>
-              <InDevelopmentNotice>
-                Atenção: o envio de e-mail usa a conta de testes (&quot;sandbox&quot;) do Resend, que só entrega pro
-                próprio e-mail do dono da conta. Para os alunos/professores receberem esses e-mails de verdade, é
-                preciso verificar um domínio próprio em resend.com/domains e trocar o remetente em{" "}
-                <code>lib/resend.ts</code> — sem isso, os envios falham silenciosamente (só aparecem no log do
-                servidor).
-              </InDevelopmentNotice>
             </DocSection>
 
             <DocSection id="turmas" title="Turmas" icon={GraduationCap}>
@@ -365,19 +348,20 @@ export default function AdminDocsPage() {
                   </span>
                 </li>
                 <li>
-                  <strong>Áudio / Vídeo</strong> (opcional) — upload de um arquivo de áudio ou vídeo da aula.
+                  <strong>Áudio / Vídeo</strong> (opcional) — upload de um arquivo de áudio ou vídeo da aula. Só o{" "}
+                  <strong>áudio</strong> é transcrito automaticamente pela IA; se a aula estiver em vídeo e você
+                  quiser a prática de compreensão auditiva, envie também o áudio (ou cole a transcrição à mão).
                 </li>
                 <li>
                   <strong>Transcrição</strong> (opcional) — pode ser colada manualmente, ou fica em branco e a IA
-                  preenche automaticamente na primeira vez que gerar os itens de prática (usando o áudio/vídeo
-                  enviado).
+                  preenche automaticamente na primeira vez que gerar os itens de prática (usando o áudio enviado).
                 </li>
               </ul>
 
               <h3>Gerando itens de prática com IA</h3>
               <p>
                 O botão <strong>&quot;Gerar com IA&quot;</strong> analisa o conteúdo escrito (e a transcrição do
-                áudio/vídeo, se houver) e gera automaticamente entre 20–40 itens de <strong>Vocabulário</strong> e
+                áudio, se houver) e gera automaticamente entre 20–40 itens de <strong>Vocabulário</strong> e
                 10–15 de <strong>Estrutura</strong> (gramática) para a prática do aluno. Os itens já entram{" "}
                 <strong>aprovados</strong> — cabe a você <strong>remover</strong> os que não fizerem sentido, em vez
                 de aprovar um por um. Clique em qualquer item da lista para ver todos os detalhes gerados
@@ -389,11 +373,6 @@ export default function AdminDocsPage() {
                 revisão (raro, já que tudo entra aprovado por padrão, mas pode acontecer em fluxos futuros).
               </p>
 
-              <InDevelopmentNotice>
-                Em desenvolvimento: os itens de prática gerados aqui (vocabulário/estrutura) ainda não viram a tela
-                de prática do aluno — essa montagem final (flashcards, quiz, etc. a partir destes itens) é uma
-                etapa separada que ainda não foi construída.
-              </InDevelopmentNotice>
             </DocSection>
 
             <DocSection id="financeiro" title="Financeiro" icon={DollarSign}>
