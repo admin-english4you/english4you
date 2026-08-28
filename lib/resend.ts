@@ -5,7 +5,7 @@ const resendApiKey = process.env.RESEND_API_KEY;
 
 export const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const FROM = "English4You <onboarding@resend.dev>";
+const FROM = "English4You <noreply@english4ubr.com.br>";
 
 export interface SendInviteEmailParams {
   email: string;
