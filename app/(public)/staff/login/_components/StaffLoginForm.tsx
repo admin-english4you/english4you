@@ -236,7 +236,7 @@ export function StaffLoginForm() {
             <p className="mt-7 text-center text-sm text-muted-foreground">
               Problemas com seu acesso?{" "}
               <a
-                href="https://wa.me/5511999999999"
+                href="https://wa.me/5541976076410"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-bold text-primary hover:text-primary/80 transition-colors"

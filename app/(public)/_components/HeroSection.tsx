@@ -70,7 +70,7 @@ export function HeroSection() {
             className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
           >
             <a
-              href="https://wa.me/5511999999999"
+              href="https://wa.me/5541976076410"
               target="_blank"
               rel="noopener noreferrer"
               className={cn(

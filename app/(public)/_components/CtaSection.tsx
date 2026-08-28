@@ -37,7 +37,7 @@ export function CtaSection() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <a
-            href="https://wa.me/5511999999999"
+            href="https://wa.me/5541976076410"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -48,7 +48,7 @@ export function CtaSection() {
             Ver Planos de Assinatura
           </a>
           <a
-            href="https://wa.me/5511999999999"
+            href="https://wa.me/5541976076410"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
