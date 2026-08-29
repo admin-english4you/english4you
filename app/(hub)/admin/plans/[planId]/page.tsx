@@ -6,6 +6,22 @@ import { getCurrentUser } from "@/lib/auth-server";
 import { PlanDetail } from "./_components/PlanDetail";
 import { LearningItem, QuizQuestion } from "@/modules/practice/practice.types";
 
+/**
+ * Teto de execução das Server Actions desta rota, em segundos.
+ *
+ * "Gerar com IA" (`generateLearningItemsAction`) é de longe a ação mais lenta
+ * do painel: medido, a extração de vocabulário/estrutura leva ~20s, o quiz de
+ * compreensão ~13s e o de listening ~6s. Com o padrão da Vercel (10s no plano
+ * Hobby) a ação era cortada no meio e o admin via um erro genérico, sem os
+ * itens terem sido gravados.
+ *
+ * 60 é o TETO do plano Hobby — não adianta pedir mais, o deploy é recusado.
+ * Se um dia isso não bastar (lição com áudio soma a transcrição antes de
+ * disparar os lotes), o caminho não é aumentar o número: é tirar a geração do
+ * ciclo da requisição.
+ */
+export const maxDuration = 60;
+
 export const metadata: Metadata = {
   title: "Detalhes do Plano | English4You Admin",
   description: "Lições, conteúdo e itens de prática do plano de ensino.",
