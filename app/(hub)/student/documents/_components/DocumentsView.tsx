@@ -20,7 +20,6 @@ export function DocumentsView({ user, contracts }: DocumentsViewProps) {
 
   return (
     <AppLayout role={user.role}>
-      <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Documentos"
           description="Aqui ficam o seu contrato de curso e os documentos da sua matrícula."
@@ -42,7 +41,6 @@ export function DocumentsView({ user, contracts }: DocumentsViewProps) {
             ))}
           </div>
         )}
-      </div>
     </AppLayout>
   );
 }

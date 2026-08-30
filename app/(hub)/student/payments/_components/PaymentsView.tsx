@@ -68,7 +68,6 @@ export function PaymentsView({ user, billing }: PaymentsViewProps) {
 
   return (
     <AppLayout role={user.role}>
-      <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Pagamentos"
           description="Sua assinatura, o histórico de mensalidades e o cartão cadastrado."
@@ -215,7 +214,6 @@ export function PaymentsView({ user, billing }: PaymentsViewProps) {
             </Table>
           )}
         </section>
-      </div>
     </AppLayout>
   );
 }
