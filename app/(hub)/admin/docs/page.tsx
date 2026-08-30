@@ -198,6 +198,13 @@ export default function AdminDocsPage() {
                 precisa fazer ali <strong>depende de como ele é cobrado</strong> — é a pergunta que a secretaria
                 mais recebe, então vale ter isto à mão:
               </p>
+              <p>
+                Se ele demorou a abrir o convite, o link de senha pode ter expirado — a tela explica o que houve e
+                oferece um novo link, e você também pode reenviar pela ficha dele. Veja{" "}
+                <a href="#link-de-senha-expirado" className="text-primary hover:underline">
+                  Link de senha: reenviar e link expirado
+                </a>.
+              </p>
               <ul>
                 <li>
                   <strong>Aluno pagante (Mercado Pago)</strong> — dois passos: preenche os dados
@@ -387,7 +394,7 @@ export default function AdminDocsPage() {
               <DocHeading id="ficha-do-usuario">Ficha do usuário</DocHeading>
               <p>
                 Clique em qualquer linha da lista (ou no botão <strong>&quot;Ver ficha&quot;</strong>) para abrir a
-                página de detalhes do usuário, com cinco blocos:
+                página de detalhes do usuário, com seis blocos:
               </p>
               <ul>
                 <li>
@@ -417,6 +424,12 @@ export default function AdminDocsPage() {
                   que não existe, ele explica que a plataforma não cobra esse aluno.
                 </li>
                 <li>
+                  <strong>Acesso à plataforma</strong> — o botão{" "}
+                  <strong>&quot;Reenviar link de senha&quot;</strong> manda de novo o e-mail com o link para o
+                  usuário criar a senha. Use quando ele disser que não recebeu o convite ou que o link expirou. O
+                  link anterior deixa de valer na hora — detalhes na seção abaixo.
+                </li>
+                <li>
                   <strong>Ativar/Desativar conta</strong> — desativar um <strong>aluno</strong> bloqueia o acesso dele
                   à plataforma, <strong>cancela a assinatura no Mercado Pago</strong> e cancela as cobranças ainda não
                   processadas (as já pagas continuam no histórico, nada é apagado). O usuário recebe um e-mail
@@ -430,10 +443,42 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
+              <DocHeading id="link-de-senha-expirado">Link de senha: reenviar e link expirado</DocHeading>
+              <p>
+                O link para definir a senha <strong>expira</strong>, e cada um só pode ser usado uma vez. Aluno que
+                demora a abrir o convite encontra um link vencido — é a causa mais comum de &quot;não consigo
+                entrar&quot;.
+              </p>
+              <p>
+                Há duas saídas, e o aluno consegue resolver sozinho na maioria das vezes:
+              </p>
+              <ul>
+                <li>
+                  <strong>O próprio aluno</strong> — ao abrir um link vencido, ele cai numa tela da English4You que
+                  explica o que houve e traz um botão <strong>&quot;Receber um link novo&quot;</strong>. Não precisa
+                  falar com ninguém.
+                </li>
+                <li>
+                  <strong>Você, pela ficha dele</strong> — no card <strong>&quot;Acesso à plataforma&quot;</strong>{" "}
+                  há o botão <strong>&quot;Reenviar link de senha&quot;</strong>. Use quando o aluno disser que não
+                  recebeu o convite ou que o link não funciona.
+                </li>
+              </ul>
+              <p>
+                Em ambos os casos, <strong>o link anterior deixa de valer</strong> assim que um novo é enviado. Se o
+                aluno tiver dois e-mails na caixa de entrada, só o mais recente funciona — vale avisar, porque é
+                comum ele clicar no primeiro.
+              </p>
+              <p>
+                A tela de definir senha é da English4You, não a padrão do Firebase: mesma identidade visual do
+                resto da plataforma e em português.
+              </p>
+
               <DocHeading id="e-mails-automaticos">E-mails automáticos</DocHeading>
               <p>
-                Três situações disparam um e-mail com o <strong>mesmo visual padronizado</strong> (cabeçalho com a
-                marca, botão de destaque, rodapé) — antes cada um tinha um estilo próprio, digitado à parte:
+                Todos os e-mails da plataforma saem com o <strong>mesmo visual padronizado</strong> (cabeçalho com a
+                marca, botão de destaque, rodapé) e do endereço da escola — nenhum usa o modelo padrão do Firebase.
+                As situações que disparam e-mail hoje:
               </p>
               <ul>
                 <li><strong>Cadastro de usuário</strong> — link para definir a senha (visto acima).</li>
@@ -444,6 +489,19 @@ export default function AdminDocsPage() {
                   cadastrado — ninguém consegue usar essa tela pra descobrir se um e-mail tem conta na plataforma.
                 </li>
                 <li><strong>Conta desativada</strong> — visto acima.</li>
+                <li>
+                  <strong>Primeiro pagamento confirmado</strong> — avisa o aluno de que a matrícula terminou e traz
+                  o link de acesso. Existe porque a tela de conclusão do Mercado Pago é deles e às vezes falha; com
+                  o e-mail, o aluno não fica sem saber que já pode entrar. Só no primeiro pagamento.
+                </li>
+                <li>
+                  <strong>Troca de plano</strong> e <strong>mudança de bolsa</strong> — as duas reemitem o contrato e
+                  tiram o acesso até a reassinatura, então o e-mail explica o que mudou e traz o link para assinar.
+                </li>
+                <li>
+                  <strong>Gravação disponível</strong> — enviado aos alunos da turma quando a gravação fica pronta,
+                  já avisando <strong>até que data</strong> ela ficará no ar.
+                </li>
               </ul>
             </DocSection>
 
