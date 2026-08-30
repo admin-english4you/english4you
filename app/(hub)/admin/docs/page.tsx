@@ -226,6 +226,63 @@ export default function AdminDocsPage() {
                 basta escolher &quot;Sem bolsa&quot; e, na ficha dele, mudar a cobrança para manual.
               </p>
 
+              <h3>Aluno que já estuda na escola (migração)</h3>
+              <p>
+                Quem <strong>já tem aulas</strong> e já pagou a mensalidade deste mês por fora não
+                pode ser cobrado de novo ao entrar na plataforma. Há duas formas, e a escolha depende
+                de como ele vai pagar <strong>daqui pra frente</strong>.
+              </p>
+              <p>
+                <strong>1. Vai passar a pagar pelo Mercado Pago</strong> (o caso mais comum). No
+                cadastro, deixe a cobrança em <strong>Mercado Pago</strong> e, em{" "}
+                <strong>&quot;Primeira cobrança&quot;</strong>, escolha{" "}
+                <strong>&quot;Pular a primeira — cobrar a partir de uma data&quot;</strong> e informe
+                quando a próxima mensalidade vence. O aluno cadastra o cartão normalmente, mas o
+                Mercado Pago <strong>só cobra na data escolhida</strong> — as seguintes seguem o
+                ciclo mensal a partir dali.
+              </p>
+              <p>
+                <strong>2. Vai continuar pagando por fora</strong> (PIX, dinheiro). Aí escolha{" "}
+                <strong>&quot;Controle manual&quot;</strong> em &quot;Como cobrar a mensalidade&quot;:
+                o aluno não passa pelo checkout, assina o contrato e o acesso é liberado na hora. A
+                escola registra os recebimentos no livro-caixa.
+              </p>
+              <p>
+                Nos dois casos, faça a escolha <strong>no cadastro</strong>, não depois. Mudar a forma
+                de cobrança na ficha de um aluno já cadastrado <strong>reemite o contrato</strong>:
+                ele perde o acesso até assinar de novo e recebe um segundo e-mail.
+              </p>
+              <p>
+                O adiamento vale <strong>só para a primeira cobrança</strong> e só existe para quem é
+                cobrado pelo Mercado Pago — bolsista integral e aluno de controle manual não têm
+                cobrança para adiar. A data precisa ser futura; o Mercado Pago recusa data no
+                passado.
+              </p>
+
+              <h3>Registrar um pagamento recebido por fora</h3>
+              <p>
+                Mensalidade paga em PIX, dinheiro ou transferência se registra em{" "}
+                <Link href="/admin/finance" className="text-primary hover:underline">Financeiro → Visão Geral</Link>,
+                como um lançamento de <strong>entrada</strong> na categoria <strong>Mensalidade</strong>,
+                marcando <strong>&quot;Já recebido&quot;</strong> (ou deixando em aberto, se ainda vai
+                receber, e usando o botão <strong>✓</strong> quando o dinheiro entrar).
+              </p>
+              <p>
+                <strong>Uma limitação a conhecer:</strong> esse lançamento entra no caixa da escola,
+                mas <strong>não fica vinculado à ficha do aluno</strong> — o campo de contraparte é
+                texto livre, porque nem toda contraparte do caixa é usuário da plataforma. Na prática:
+                o valor aparece nos totais e no extrato do Financeiro, mas a aba
+                &quot;Situação financeira&quot; do aluno continua mostrando apenas as cobranças do
+                Mercado Pago. Escreva o nome do aluno na contraparte para conseguir localizar depois.
+              </p>
+              <p>
+                Não existe (e é proposital) um botão para marcar uma <strong>cobrança do Mercado
+                Pago</strong> como paga à mão: aquele registro é espelho do que aconteceu lá, e
+                editá-lo faria a plataforma discordar do provedor — além de liberar acesso por uma
+                porta paralela ao controle de pagamento. Quem não é cobrado pela plataforma deve
+                estar em <strong>cobrança manual</strong>.
+              </p>
+
               <h3>Inadimplência de quem paga por fora</h3>
               <p>
                 <strong>A plataforma nunca bloqueia sozinha um aluno de cobrança manual.</strong> Ela não tem como
@@ -389,6 +446,47 @@ export default function AdminDocsPage() {
                   altera o professor responsável pela turma, só aquela aula pontual.
                 </li>
               </ul>
+
+              <h3>Gravações das aulas ⚠️</h3>
+              <p>
+                As aulas ao vivo são gravadas automaticamente. Quando a gravação fica pronta, os alunos
+                da turma recebem um e-mail e uma notificação no sino, com o link para reassistir.
+              </p>
+              <p>
+                <strong>
+                  A gravação é apagada automaticamente 14 dias depois da aula, e não há como
+                  recuperá-la.
+                </strong>{" "}
+                Esse prazo é da plataforma de vídeo (Stream), não da English4You — o arquivo sai do
+                servidor deles e ninguém, nem o suporte, consegue trazê-lo de volta.
+              </p>
+              <p>
+                Por isso, <strong>se uma aula precisa ser guardada, alguém da coordenação tem que
+                baixar o arquivo dentro desse prazo</strong> e arquivá-lo onde a escola guarda seus
+                materiais (Drive, HD, o que for).
+              </p>
+              <p>
+                Para isso não depender da memória de ninguém, a própria tela de{" "}
+                <Link href="/admin/classes" className="text-primary hover:underline">Turmas</Link>{" "}
+                mostra um <strong>aviso no topo</strong> com todas as gravações ainda não baixadas,
+                cada uma com os <strong>dias restantes</strong> e a data em que será apagada. O aviso
+                fica âmbar e vira <strong>vermelho quando faltam 3 dias ou menos</strong>.
+              </p>
+              <p>
+                Cada item tem dois botões: <strong>&quot;Baixar&quot;</strong>, que abre o arquivo de
+                vídeo, e <strong>&quot;Já baixei&quot;</strong>, que dá a aula por arquivada e a tira
+                da lista. São separados de propósito — o sistema não tem como saber se o download
+                terminou de verdade, então quem confirma é você. Enquanto ninguém confirmar, a
+                pendência continua aparecendo.
+              </p>
+              <p>
+                Uma aula gravada mais de uma vez (quando a chamada cai e o professor reabre) aparece
+                com um botão de download por arquivo — baixe todos antes de confirmar.
+              </p>
+              <p>
+                O e-mail que o aluno recebe diz explicitamente até que data aquela gravação estará no
+                ar, para ele não deixar para depois.
+              </p>
 
               <h3>Status da turma: Ativa, Inativa e Arquivada</h3>
               <ul>
