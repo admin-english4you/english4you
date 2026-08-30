@@ -192,6 +192,40 @@ export default function AdminDocsPage() {
                 antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
               </p>
 
+              <DocHeading id="o-que-o-aluno-faz-no-primeiro-acesso">O que o aluno faz no primeiro acesso</DocHeading>
+              <p>
+                Depois de definir a senha pelo e-mail de convite, o aluno cai numa tela de matrícula. O que ele
+                precisa fazer ali <strong>depende de como ele é cobrado</strong> — é a pergunta que a secretaria
+                mais recebe, então vale ter isto à mão:
+              </p>
+              <ul>
+                <li>
+                  <strong>Aluno pagante (Mercado Pago)</strong> — dois passos: preenche os dados
+                  (CPF, telefone e endereço) e assina o contrato; depois cadastra o cartão no ambiente do Mercado
+                  Pago. O acesso é liberado quando o pagamento é confirmado, e ele recebe um e-mail avisando.
+                </li>
+                <li>
+                  <strong>Com a primeira cobrança adiada</strong> — o mesmo caminho, inclusive o cadastro do
+                  cartão. A diferença é que <strong>nada é cobrado na hora</strong>: a tela mostra a data da
+                  primeira cobrança, e o acesso é liberado assim que ele autoriza o cartão.
+                </li>
+                <li>
+                  <strong>Controle manual ou bolsista integral</strong> — <strong>um passo só</strong>: preenche os
+                  dados, assina o contrato e entra. Não existe etapa de pagamento nem cadastro de cartão, e a
+                  plataforma nunca vai cobrá-lo.
+                </li>
+              </ul>
+              <p>
+                Em todos os casos, os dados de <strong>CPF, telefone e endereço</strong> são preenchidos pelo
+                próprio aluno nessa tela — o cadastro feito pela secretaria pede apenas nome e e-mail. É por isso
+                que a ficha dele aparece sem esses dados até a assinatura.
+              </p>
+              <p>
+                Se o aluno disser que a tela pede pagamento e não deveria (ou o contrário), o que está errado é a{" "}
+                <strong>forma de cobrança do contrato dele</strong> — confira na ficha, em &quot;Bolsa de
+                estudos&quot;.
+              </p>
+
               <DocHeading id="bolsa-de-estudos-bolsistas">Bolsa de estudos (bolsistas)</DocHeading>
               <p>
                 Nem todo aluno paga a mensalidade cheia. No cadastro (e depois, na ficha dele) você define os
