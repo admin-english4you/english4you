@@ -1,7 +1,14 @@
 import { db } from '@/lib/db';
 import { classGroupsTable, classRecordsTable } from './class.schema';
+import { lessonsTable } from '@/modules/lesson/lesson.schema';
 import { eq, desc, asc, and, ne, lt, gte, or, isNull, sql } from 'drizzle-orm';
-import { ClassGroup, ClassRecord, NewClassGroup, NewClassRecord } from './class.types';
+import {
+  ClassGroup,
+  ClassRecord,
+  NewClassGroup,
+  NewClassRecord,
+  PendingRecording,
+} from './class.types';
 
 export const classRepository = {
   async create(data: NewClassGroup): Promise<ClassGroup> {
@@ -228,6 +235,44 @@ export const classRepository = {
   },
 
   /** Acrescenta um segmento de gravação — nunca sobrescreve os anteriores (ver doc da coluna). */
+  /**
+   * Aulas com gravação que a coordenação ainda não arquivou.
+   *
+   * Traz o nome da turma e o título da lição junto porque o aviso precisa
+   * dizer QUAL aula está prestes a sumir — uma lista de ids não faria ninguém
+   * agir. Ordena pela mais antiga: é a que vence primeiro.
+   */
+  async findPendingRecordings(): Promise<PendingRecording[]> {
+    return await db
+      .select({
+        recordId: classRecordsTable.id,
+        classGroupId: classRecordsTable.classGroupId,
+        className: classGroupsTable.name,
+        lessonTitle: lessonsTable.title,
+        date: classRecordsTable.date,
+        recordingUrls: classRecordsTable.recordingUrls,
+      })
+      .from(classRecordsTable)
+      .innerJoin(classGroupsTable, eq(classGroupsTable.id, classRecordsTable.classGroupId))
+      .innerJoin(lessonsTable, eq(lessonsTable.id, classRecordsTable.lessonId))
+      .where(
+        and(
+          isNull(classRecordsTable.recordingArchivedAt),
+          sql`array_length(${classRecordsTable.recordingUrls}, 1) > 0`
+        )
+      )
+      .orderBy(asc(classRecordsTable.date));
+  },
+
+  async markRecordingArchived(recordId: string): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ recordingArchivedAt: new Date() })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
   async appendRecordingUrl(recordId: string, url: string): Promise<ClassRecord> {
     const [record] = await db
       .update(classRecordsTable)

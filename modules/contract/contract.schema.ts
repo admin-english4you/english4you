@@ -128,6 +128,20 @@ export const contractsTable = pgTable('contracts', {
   scholarshipPercent: integer('scholarship_percent').notNull().default(0),
   billingMode: contractBillingModeEnumDb('billing_mode').notNull().default('MERCADO_PAGO'),
 
+  /**
+   * Quando a PRIMEIRA mensalidade deve ser cobrada. `null` = no aceite, que é
+   * o padrão de uma matrícula nova.
+   *
+   * Serve para migrar aluno que já estuda na escola e já pagou o mês por fora:
+   * ele cadastra o cartão agora, mas o Mercado Pago só cobra na data marcada.
+   * Sem isso, entrar na plataforma custaria uma mensalidade a mais.
+   *
+   * Vale só para a primeira cobrança — as seguintes seguem o ciclo normal do
+   * preapproval. E não é carregado numa reemissão de contrato (troca de pacote
+   * ou de bolsa): é uma concessão da matrícula, não uma característica dela.
+   */
+  firstChargeAt: timestamp('first_charge_at'),
+
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => [

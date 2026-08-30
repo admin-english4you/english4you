@@ -3,6 +3,7 @@ import { UsersList } from "./_components/UsersList";
 
 import { userService } from "@/modules/user/user.service";
 import { financeService } from "@/modules/finance/finance.service";
+import { addDaysToKey, todayKey } from "@/lib/date";
 
 export const metadata: Metadata = {
   title: "Usuários | English4You Admin",
@@ -17,5 +18,15 @@ export default async function AdminUsersPage() {
     financeService.getActivePackagesForSelect(),
   ]);
 
-  return <UsersList initialUsers={users} packages={packages} />;
+  // Amanhã no fuso da escola, e não em UTC: perto da meia-noite os dois
+  // discordam, e o admin veria o calendário barrar um dia que ainda é válido.
+  const minFirstChargeDay = addDaysToKey(todayKey(), 1);
+
+  return (
+    <UsersList
+      initialUsers={users}
+      packages={packages}
+      minFirstChargeDay={minFirstChargeDay}
+    />
+  );
 }

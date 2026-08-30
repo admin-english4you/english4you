@@ -19,6 +19,26 @@ if (apiKey && apiSecret) {
 
 export { streamClient };
 
+/**
+ * Por quantos dias o Stream guarda uma gravação antes de apagá-la sozinho.
+ *
+ * Não é escolha nossa: é a política de retenção do bucket deles, visível no
+ * cabeçalho `x-amz-expiration` da própria URL da gravação
+ * (`rule-id="DeleteRecordingsAfter14Days"`). Passado o prazo, o arquivo some —
+ * a plataforma não tem como recuperá-lo.
+ *
+ * Se o plano do Stream mudar essa retenção, é este número que precisa mudar:
+ * ele alimenta o aviso que vai no e-mail do aluno e na documentação do admin.
+ */
+export const RECORDING_RETENTION_DAYS = 14;
+
+/** Quando a gravação de uma aula deixa de existir no Stream. */
+export function recordingAvailableUntil(recordedAt: Date = new Date()): Date {
+  const limite = new Date(recordedAt);
+  limite.setDate(limite.getDate() + RECORDING_RETENTION_DAYS);
+  return limite;
+}
+
 /** Tipo de call usado por toda a plataforma — nunca provisionamos um tipo customizado no dashboard. */
 const CALL_TYPE = "default";
 

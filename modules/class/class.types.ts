@@ -92,3 +92,24 @@ export type TeacherClassRecordDetail = ClassRecordDetail & {
   effectiveTeacher: User | null;
   students: ClassmateSummary[];
 };
+
+/**
+ * Gravação que ainda não foi baixada pela coordenação — o que alimenta o aviso
+ * na tela de turmas. Ver `classRepository.findPendingRecordings`.
+ */
+export type PendingRecording = {
+  recordId: string;
+  classGroupId: string;
+  className: string;
+  lessonTitle: string;
+  date: Date;
+  recordingUrls: string[];
+};
+
+/** `PendingRecording` com o prazo já resolvido, pronto para a tela. */
+export type PendingRecordingView = PendingRecording & {
+  /** Data em que o Stream apaga a gravação. */
+  availableUntil: Date;
+  /** Dias inteiros restantes; `0` significa "vence hoje", negativo já venceu. */
+  daysLeft: number;
+};

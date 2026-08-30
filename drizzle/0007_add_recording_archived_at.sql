@@ -1,0 +1,1 @@
+ALTER TABLE "class_records" ADD COLUMN "recording_archived_at" timestamp;

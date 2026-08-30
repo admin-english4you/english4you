@@ -32,6 +32,7 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
     needsPayment,
     scholarshipPercent,
     effectiveInstallmentCents,
+    firstChargeAt,
   } = onboarding;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +184,11 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
                   </div>
                   <div>
                     <dt className="text-slate-500">Primeira cobrança</dt>
-                    <dd className="font-semibold text-slate-800">Ao autorizar</dd>
+                    <dd className="font-semibold text-slate-800">
+                      {firstChargeAt
+                        ? new Date(firstChargeAt).toLocaleDateString("pt-BR")
+                        : "Ao autorizar"}
+                    </dd>
                   </div>
                 </dl>
               </div>

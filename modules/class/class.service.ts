@@ -14,6 +14,7 @@ import {
   ClassRecordDetail,
   CreateClassGroupInput,
   NewClassRecord,
+  PendingRecordingView,
   StudentClassOverview,
   StudentClassRecordDetail,
   StudentTaughtRecord,
@@ -28,6 +29,7 @@ import {
   CallAccess,
   endStreamCall,
   ensureCallAndGenerateToken,
+  recordingAvailableUntil,
   startCallRecording,
   stopCallRecording,
 } from '@/lib/stream-server';
@@ -764,6 +766,10 @@ export const classService = {
       link,
     });
 
+    // O prazo conta do momento em que a gravação ficou pronta — é quando ela
+    // passa a existir no bucket do Stream.
+    const availableUntil = recordingAvailableUntil();
+
     const students = await userService.getUsersByIds(studentIds);
     await Promise.all(
       students
@@ -775,6 +781,7 @@ export const classService = {
             className: classGroup.name,
             lessonTitle,
             recordingUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}${link}`,
+            availableUntil,
           })
         )
     );
@@ -811,6 +818,49 @@ export const classService = {
       planId: null,
       status: 'ACTIVE',
     });
+  },
+
+  /**
+   * Gravações que a coordenação ainda não baixou, com o prazo já calculado.
+   *
+   * O prazo é derivado da DATA DA AULA, e não de quando a gravação ficou
+   * pronta: não guardamos esse instante, e a diferença é de horas — irrelevante
+   * diante de uma janela de 14 dias. Errar para menos aqui é o lado seguro,
+   * porque antecipa o aviso em vez de atrasá-lo.
+   */
+  async getPendingRecordings(actingRole: Role): Promise<PendingRecordingView[]> {
+    assertAdmin(actingRole);
+
+    const pendentes = await classRepository.findPendingRecordings();
+    const agora = Date.now();
+
+    return pendentes.map((p) => {
+      const availableUntil = recordingAvailableUntil(p.date);
+      return {
+        ...p,
+        availableUntil,
+        daysLeft: Math.ceil((availableUntil.getTime() - agora) / (24 * 60 * 60 * 1000)),
+      };
+    });
+  },
+
+  /**
+   * Marca que a gravação já foi baixada e arquivada pela escola.
+   *
+   * É uma confirmação MANUAL de propósito: não há como o servidor saber que um
+   * download no navegador do admin terminou, e fingir que sabe (marcando no
+   * clique do link) daria por resolvida uma aula que ninguém guardou.
+   */
+  async markRecordingArchived(actingRole: Role, recordId: string): Promise<void> {
+    assertAdmin(actingRole);
+
+    const record = await classRepository.findRecordById(recordId);
+    if (!record) throw new AppError('Aula não encontrada.');
+    if (record.recordingUrls.length === 0) {
+      throw new AppError('Esta aula não tem gravação.');
+    }
+
+    await classRepository.markRecordingArchived(recordId);
   },
 
   async getAllClasses(actingRole: Role): Promise<ClassGroupListItem[]> {

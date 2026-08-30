@@ -23,9 +23,15 @@ interface UsersListProps {
   initialUsers: User[];
   /** Pacotes ativos — o contrato do aluno é gerado a partir do escolhido aqui. */
   packages: Package[];
+  /**
+   * Menor data aceita para adiar a primeira cobrança (amanhã), calculada no
+   * SERVIDOR. Ler o relógio aqui seria impuro durante o render, e o relógio que
+   * vale é o do servidor — é ele que valida o campo depois.
+   */
+  minFirstChargeDay: string;
 }
 
-export function UsersList({ initialUsers, packages }: UsersListProps) {
+export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersListProps) {
   const [filterRole, setFilterRole] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,6 +49,8 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
   const [scholarshipType, setScholarshipType] = useState<"NONE" | "FULL" | "PARTIAL">("NONE");
   const [scholarshipPercentInput, setScholarshipPercentInput] = useState("50");
   const [billingMode, setBillingMode] = useState<"MERCADO_PAGO" | "MANUAL">("MERCADO_PAGO");
+  const [skipFirstCharge, setSkipFirstCharge] = useState(false);
+  const [firstChargeDay, setFirstChargeDay] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const selectedPackage = packages.find((p) => p.id === newUserPackage) ?? null;
@@ -51,6 +59,10 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
     scholarshipType === "FULL" ? 100 : scholarshipType === "PARTIAL" ? parsedPercent : 0;
   // Bolsa integral não tem o que cobrar — o modo é forçado, não escolhido.
   const effectiveBillingMode = scholarshipPercent === 100 ? "MANUAL" : billingMode;
+  // Só vale para quem a plataforma cobra; bolsa integral e cobrança manual não
+  // têm cobrança para adiar.
+  const adiaPrimeiraCobranca =
+    effectiveBillingMode === "MERCADO_PAGO" && skipFirstCharge && Boolean(firstChargeDay);
   const previewMonthlyCents =
     selectedPackage && Number.isFinite(scholarshipPercent)
       ? applyScholarshipDiscount(selectedPackage.installmentValueCents, scholarshipPercent)
@@ -79,6 +91,10 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       setFormErrorMessage("O percentual da bolsa deve ser um número entre 1 e 99.");
       return;
     }
+    if (skipFirstCharge && !firstChargeDay) {
+      setFormErrorMessage("Informe a data da primeira cobrança.");
+      return;
+    }
 
     // Se estiver tudo preenchido corretamente, mostra a tela de confirmação
     setShowConfirmation(true);
@@ -96,6 +112,9 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       ...(newUserRole === 'STUDENT' && newUserPackage ? { packageId: newUserPackage } : {}),
       scholarshipPercent: newUserRole === 'STUDENT' ? scholarshipPercent : 0,
       billingMode: newUserRole === 'STUDENT' ? effectiveBillingMode : 'MERCADO_PAGO',
+      ...(newUserRole === 'STUDENT' && adiaPrimeiraCobranca
+        ? { firstChargeDay }
+        : {}),
     });
 
     setIsSubmitting(false);
@@ -116,6 +135,8 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
       setScholarshipType("NONE");
       setScholarshipPercentInput("50");
       setBillingMode("MERCADO_PAGO");
+      setSkipFirstCharge(false);
+      setFirstChargeDay("");
       setShowConfirmation(false);
       
       setTimeout(() => {
@@ -347,15 +368,20 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                       </div>
                     )}
                     {newUserRole === "STUDENT" && scholarshipType !== "NONE" && (
-                      <>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Bolsa</span>
-                          <span className="text-sm font-semibold text-emerald-700">
-                            {scholarshipPercent === 100
-                              ? "Integral (100%)"
-                              : `Parcial (${scholarshipPercent}%)`}
-                          </span>
-                        </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Bolsa</span>
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {scholarshipPercent === 100
+                            ? "Integral (100%)"
+                            : `Parcial (${scholarshipPercent}%)`}
+                        </span>
+                      </div>
+                    )}
+                    {/* Mostrado sempre que houver desvio do padrão — bolsa OU
+                        cobrança manual —, porque as duas coisas mudam o que o
+                        aluno vai pagar e por onde. */}
+                    {newUserRole === "STUDENT" &&
+                      (scholarshipType !== "NONE" || effectiveBillingMode === "MANUAL") && (
                         <div>
                           <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Mensalidade</span>
                           <span className="text-sm font-semibold text-slate-800">
@@ -364,7 +390,14 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                             {effectiveBillingMode === "MANUAL" ? "Controle manual" : "Mercado Pago"}
                           </span>
                         </div>
-                      </>
+                      )}
+                    {newUserRole === "STUDENT" && adiaPrimeiraCobranca && (
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Primeira cobrança</span>
+                        <span className="text-sm font-semibold text-amber-700">
+                          Adiada para {new Date(`${firstChargeDay}T12:00:00`).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
                     )}
                   </div>
                   
@@ -516,10 +549,15 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                         </div>
                       )}
 
-                      {scholarshipType !== "NONE" && scholarshipType !== "FULL" && (
+                      {/* Aparece também SEM bolsa: um aluno que já estuda na
+                          escola e paga por fora precisa nascer em cobrança
+                          manual. Escondê-lo aqui obrigaria a criar no Mercado
+                          Pago e trocar na ficha depois — o que reemite o
+                          contrato e manda dois e-mails ao aluno. */}
+                      {scholarshipType !== "FULL" && (
                         <div>
                           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            Como cobrar a diferença
+                            Como cobrar a mensalidade
                           </label>
                           <Select
                             value={billingMode}
@@ -529,6 +567,47 @@ export function UsersList({ initialUsers, packages }: UsersListProps) {
                               { value: "MANUAL", label: "Controle manual — a escola registra no caixa" },
                             ]}
                           />
+                          {billingMode === "MANUAL" && (
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              O aluno <strong>não passa pelo checkout</strong>: assinar o contrato já
+                              libera o acesso. Use para quem já estuda na escola ou paga por fora.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Só para quem a plataforma cobra: adiar a estreia da
+                          cobrança é o que permite migrar um aluno que já pagou
+                          o mês por fora sem cobrá-lo de novo. */}
+                      {scholarshipType !== "FULL" && billingMode === "MERCADO_PAGO" && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Primeira cobrança
+                          </label>
+                          <Select
+                            value={skipFirstCharge ? "SKIP" : "NOW"}
+                            onChange={(val) => setSkipFirstCharge(val === "SKIP")}
+                            options={[
+                              { value: "NOW", label: "Ao cadastrar o cartão (padrão)" },
+                              { value: "SKIP", label: "Pular a primeira — cobrar a partir de uma data" },
+                            ]}
+                          />
+                          {skipFirstCharge && (
+                            <>
+                              <Input
+                                type="date"
+                                className="mt-2"
+                                min={minFirstChargeDay}
+                                value={firstChargeDay}
+                                onChange={(e) => setFirstChargeDay(e.target.value)}
+                              />
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                O aluno cadastra o cartão agora, mas a{" "}
+                                <strong>primeira cobrança só acontece nessa data</strong>. Use quando
+                                a mensalidade deste mês já foi paga por fora.
+                              </p>
+                            </>
+                          )}
                         </div>
                       )}
 

@@ -2,6 +2,7 @@ import { pgTable, uuid, varchar, timestamp, pgEnum, index } from 'drizzle-orm/pg
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { isValidCpf, normalizeCep, normalizeCpf } from '@/lib/br-document';
+import { dayKeyToDate } from '@/lib/date';
 
 export const roleEnumDb = pgEnum('user_role', ['ADMIN', 'TEACHER', 'STUDENT']);
 
@@ -110,6 +111,14 @@ export const CreateUserByAdminSchema = z
     // formulário de cadastro.
     scholarshipPercent: z.number().int().min(0).max(100).default(0),
     billingMode: z.enum(['MERCADO_PAGO', 'MANUAL']).default('MERCADO_PAGO'),
+    /**
+     * Adia a primeira mensalidade (aluno que já pagou o mês por fora).
+     * `YYYY-MM-DD` — o mesmo formato que um `<input type="date">` devolve.
+     */
+    firstChargeDay: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida')
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.role === 'STUDENT' && !value.packageId) {
@@ -132,6 +141,25 @@ export const CreateUserByAdminSchema = z
         message: 'Bolsa integral não tem cobrança — o controle é manual.',
         path: ['billingMode'],
       });
+    }
+    if (value.firstChargeDay) {
+      // Adiar só faz sentido para quem a plataforma cobra.
+      if (value.billingMode !== 'MERCADO_PAGO') {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Só faz sentido adiar a cobrança de quem paga pelo Mercado Pago.',
+          path: ['firstChargeDay'],
+        });
+      }
+      // O Mercado Pago recusa `start_date` no passado; barrar aqui dá um erro
+      // de campo em vez de um 400 opaco no meio do checkout do aluno.
+      if (dayKeyToDate(value.firstChargeDay).getTime() <= Date.now()) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'A primeira cobrança precisa ser numa data futura.',
+          path: ['firstChargeDay'],
+        });
+      }
     }
   });
 

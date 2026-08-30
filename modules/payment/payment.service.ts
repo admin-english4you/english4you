@@ -4,6 +4,11 @@ import { financeService } from '@/modules/finance/finance.service';
 import { userService } from '@/modules/user/user.service';
 import { AppError } from '@/lib/errors';
 import {
+  sendFirstPaymentConfirmedEmail,
+  sendPackageChangedEmail,
+  sendScholarshipChangedEmail,
+} from '@/lib/resend';
+import {
   describeUnusableBackUrl,
   getAppUrl,
   invoiceClient,
@@ -91,6 +96,15 @@ function throwMercadoPagoError(operation: string, error: unknown): never {
   throw new AppError(
     'Não conseguimos falar com o Mercado Pago agora. Tente novamente em alguns minutos.'
   );
+}
+
+/** Soma meses preservando o fim de mês (31/01 + 1 mês = 28/02, não 03/03). */
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  const day = result.getDate();
+  result.setMonth(result.getMonth() + months);
+  if (result.getDate() < day) result.setDate(0);
+  return result;
 }
 
 /** Quantas assinaturas recentes o portão de acesso examina — ver `getAccessState`. */
@@ -233,6 +247,12 @@ export const paymentService = {
       effectiveInstallmentCents: pkg
         ? applyScholarshipDiscount(pkg.installmentValueCents, scholarshipPercent)
         : null,
+      // Só interessa se ainda está no futuro — uma data vencida volta a ser
+      // cobrança no aceite (mesma regra de `startSubscriptionCheckout`).
+      firstChargeAt:
+        contract?.firstChargeAt && contract.firstChargeAt.getTime() > Date.now()
+          ? contract.firstChargeAt
+          : null,
     };
   },
 
@@ -316,13 +336,23 @@ export const paymentService = {
         status: 'PENDING',
       }));
 
+    // Por padrão a primeira cobrança sai no aceite (`null` = o MP usa o
+    // instante da autorização). O contrato pode adiá-la — é assim que se
+    // migra um aluno que já pagou o mês por fora: ele cadastra o cartão hoje,
+    // e a cobrança começa na data marcada.
+    //
+    // Uma data já vencida é descartada: o MP recusa `start_date` no passado, e
+    // deixar o checkout quebrar seria pior do que cobrar no aceite.
+    const firstChargeAt =
+      contract.firstChargeAt && contract.firstChargeAt.getTime() > Date.now()
+        ? contract.firstChargeAt
+        : null;
+
     const initPoint = await this.createPreapprovalForSubscription({
       subscription,
       payerEmail: user.email,
       packageName: pkg.name,
-      // Primeira cobrança na hora da autorização: sem `startDate`, o MP usa o
-      // instante do aceite.
-      startDate: null,
+      startDate: firstChargeAt,
     });
 
     return { initPoint };
@@ -372,11 +402,20 @@ export const paymentService = {
     const pkg = await financeService.getPackageById(current.packageId);
     if (!pkg) throw new AppError('Pacote não encontrado.');
 
+    // Inadimplente: cobra no aceite, porque ele realmente deve o mês.
+    // Em dia: NUNCA cobra no aceite — `null` aqui significa "cobrar agora" lá
+    // no `createPreapprovalForSubscription`, e cobrar agora quem acabou de
+    // pagar é cobrar o mesmo mês duas vezes.
     const isDelinquent = current.status !== 'AUTHORIZED';
-    const nextChargeDate =
-      !isDelinquent && current.nextPaymentDate && current.nextPaymentDate.getTime() > Date.now()
-        ? current.nextPaymentDate
-        : null;
+    const nextChargeDate = isDelinquent ? null : await this.resolveNextChargeDate(current);
+
+    // Sem mês seguinte dentro da vigência não há o que cobrar, e o MP recusaria
+    // um preapproval que termina antes de começar.
+    if (nextChargeDate && current.endDate && nextChargeDate.getTime() >= current.endDate.getTime()) {
+      throw new AppError(
+        'Seu contrato está chegando ao fim e não há próxima mensalidade a cobrar. Fale com a secretaria da escola.'
+      );
+    }
 
     const subscription =
       inFlight ??
@@ -399,6 +438,85 @@ export const paymentService = {
     });
 
     return { initPoint };
+  },
+
+  /**
+   * Quando cai a próxima mensalidade de uma assinatura EM DIA.
+   *
+   * Nunca devolve `null`, e essa é a razão de existir: em produção, um aluno
+   * que tinha acabado de pagar trocou o cartão e foi cobrado de novo na hora.
+   * O motivo era o `nextPaymentDate` local estar defasado (gravado na criação
+   * do preapproval e nunca atualizado depois da cobrança), então a data ficava
+   * no passado e o código antigo concluía "não há data futura ⇒ cobre agora".
+   *
+   * A ordem das fontes vai da mais barata para a mais confiável, e termina num
+   * cálculo que não depende de rede nenhuma.
+   */
+  async resolveNextChargeDate(subscription: StudentSubscription): Promise<Date> {
+    const now = Date.now();
+
+    if (subscription.nextPaymentDate && subscription.nextPaymentDate.getTime() > now) {
+      return subscription.nextPaymentDate;
+    }
+
+    // Nossa cópia envelheceu: o Mercado Pago é a fonte de verdade do ciclo.
+    if (preApprovalClient && subscription.mpPreapprovalId) {
+      try {
+        const preapproval = await preApprovalClient.get({ id: subscription.mpPreapprovalId });
+        const remoto = preapproval.next_payment_date
+          ? new Date(preapproval.next_payment_date)
+          : null;
+        if (remoto && remoto.getTime() > now) {
+          await paymentRepository.updateSubscription(subscription.id, { nextPaymentDate: remoto });
+          return remoto;
+        }
+      } catch (error) {
+        console.error(
+          `[MercadoPago] Não foi possível ler a próxima cobrança de ${subscription.mpPreapprovalId}:`,
+          error
+        );
+      }
+    }
+
+    // Último recurso: um ciclo à frente do último pagamento conhecido. Pior
+    // caso, o aluno é cobrado um pouco mais tarde do que o devido — o oposto
+    // (cobrar cedo demais) é que tira dinheiro de quem já pagou.
+    const pagamentos = await paymentRepository.findPaymentsByUserId(subscription.userId);
+    const ultimoPago = pagamentos
+      .filter((p) => p.status === 'PAID' && p.paidAt)
+      .sort((a, b) => b.paidAt!.getTime() - a.paidAt!.getTime())[0];
+
+    let candidato = addMonths(ultimoPago?.paidAt ?? new Date(), subscription.frequencyMonths);
+    while (candidato.getTime() <= now) {
+      candidato = addMonths(candidato, subscription.frequencyMonths);
+    }
+    return candidato;
+  },
+
+  /**
+   * Reancora a próxima cobrança depois que uma mensalidade é liquidada.
+   *
+   * Sem isto, `nextPaymentDate` guarda para sempre a data da PRIMEIRA cobrança:
+   * o webhook de `preapproval` chega antes de o pagamento ser processado, e
+   * nenhum outro evento reabre esse campo. O valor defasado aparecia como
+   * "próxima cobrança" no painel do aluno e, pior, fazia a troca de cartão
+   * cobrar em dobro. Best-effort — o chamador é um webhook.
+   */
+  async refreshNextPaymentDate(subscriptionId: string, mpPreapprovalId: string): Promise<void> {
+    if (!preApprovalClient) return;
+    try {
+      const preapproval = await preApprovalClient.get({ id: mpPreapprovalId });
+      if (preapproval.next_payment_date) {
+        await paymentRepository.updateSubscription(subscriptionId, {
+          nextPaymentDate: new Date(preapproval.next_payment_date),
+        });
+      }
+    } catch (error) {
+      console.error(
+        `[MercadoPago] Falha ao reancorar a próxima cobrança de ${mpPreapprovalId}:`,
+        error
+      );
+    }
   },
 
   /**
@@ -714,7 +832,7 @@ export const paymentService = {
     // contrato reemitido nasceria com os defaults (0% / MERCADO_PAGO) e trocar
     // o pacote de um bolsista apagaria a bolsa silenciosamente, passando a
     // cobrar dele o valor cheio.
-    return await contractService.createContractForUser(
+    const novoContrato = await contractService.createContractForUser(
       actingRole,
       userId,
       packageId,
@@ -725,6 +843,43 @@ export const paymentService = {
           }
         : undefined
     );
+
+    // O aluno acabou de perder o acesso e não tem como saber por quê: avisa,
+    // com o link para assinar o contrato novo. Depois da troca já efetivada,
+    // porque um e-mail que falha não pode desfazer nada.
+    await this.notifyPackageChanged(novoContrato, user, pkg);
+
+    return novoContrato;
+  },
+
+  /**
+   * Avisa o aluno de que o plano mudou e de que ele precisa reassinar.
+   *
+   * Best-effort: a troca já aconteceu quando isto roda, então uma falha aqui
+   * não pode estourar erro para o admin nem sugerir que a operação falhou.
+   */
+  async notifyPackageChanged(
+    contract: Contract,
+    user: { email: string; name: string },
+    pkg: { name: string; installmentValueCents: number }
+  ): Promise<void> {
+    try {
+      await sendPackageChangedEmail({
+        email: user.email,
+        name: user.name,
+        packageName: pkg.name,
+        monthlyAmountCents: applyScholarshipDiscount(
+          pkg.installmentValueCents,
+          contract.scholarshipPercent
+        ),
+        // Bolsista integral e cobrança manual não passam por checkout: para
+        // eles, assinar já conclui.
+        needsPayment: contract.billingMode === 'MERCADO_PAGO',
+        actionUrl: `${getAppUrl()}/student`,
+      });
+    } catch (error) {
+      console.error('[Pagamentos] Falha ao avisar o aluno da troca de plano:', error);
+    }
   },
 
   /**
@@ -789,10 +944,49 @@ export const paymentService = {
 
     await contractService.cancelContract(actingRole, current.id);
 
-    return await contractService.createContractForUser(actingRole, userId, current.packageId, {
-      scholarshipPercent,
-      billingMode,
-    });
+    const novoContrato = await contractService.createContractForUser(
+      actingRole,
+      userId,
+      current.packageId,
+      { scholarshipPercent, billingMode }
+    );
+
+    // Mesmo motivo do aviso de troca de plano: o aluno acabou de perder o
+    // acesso e precisa saber por quê e o que fazer.
+    await this.notifyScholarshipChanged(novoContrato, user, current.packageId);
+
+    return novoContrato;
+  },
+
+  /**
+   * Avisa o aluno de que a bolsa mudou e de que ele precisa reassinar.
+   *
+   * Best-effort: a mudança já aconteceu quando isto roda, então uma falha aqui
+   * não pode estourar erro para o admin nem sugerir que a operação falhou.
+   */
+  async notifyScholarshipChanged(
+    contract: Contract,
+    user: { email: string; name: string },
+    packageId: string
+  ): Promise<void> {
+    try {
+      const pkg = await financeService.getPackageById(packageId);
+      if (!pkg) return;
+
+      await sendScholarshipChangedEmail({
+        email: user.email,
+        name: user.name,
+        scholarshipPercent: contract.scholarshipPercent,
+        monthlyAmountCents: applyScholarshipDiscount(
+          pkg.installmentValueCents,
+          contract.scholarshipPercent
+        ),
+        needsPayment: contract.billingMode === 'MERCADO_PAGO',
+        actionUrl: `${getAppUrl()}/student`,
+      });
+    } catch (error) {
+      console.error('[Pagamentos] Falha ao avisar o aluno da mudança de bolsa:', error);
+    }
   },
 
   /**
@@ -943,6 +1137,15 @@ export const paymentService = {
       mpAuthorizedPaymentId
     );
 
+    // Lido ANTES de gravar: depois da escrita a própria linha desta cobrança
+    // entraria na contagem e nenhum pagamento pareceria ser o primeiro.
+    const jaTinhaPagamentoPago = (
+      await paymentRepository.findPaymentsByUserId(subscription.userId)
+    ).some((p) => p.status === 'PAID');
+    // Reentrega do MESMO evento (o MP manda `created` e depois `updated` para a
+    // mesma cobrança): sem isto, o aluno receberia o e-mail duas vezes.
+    const jaEstavaPaga = Boolean(existing?.paidAt);
+
     const fields = {
       status,
       statusDetail: invoice.payment?.status_detail ?? null,
@@ -975,8 +1178,47 @@ export const paymentService = {
     if (status === 'PAID') {
       await paymentRepository.updateSubscription(subscription.id, { status: 'AUTHORIZED' });
       await this.syncCardDetails(subscription.id, fields.mpPaymentId);
+      await this.refreshNextPaymentDate(subscription.id, invoice.preapproval_id);
+
+      // Rede de segurança contra a tela de conclusão do Mercado Pago, que é
+      // deles e às vezes falha: se o aluno não for redirecionado de volta, este
+      // e-mail é o que avisa que a matrícula terminou e dá o link de acesso.
+      if (!jaEstavaPaga && !jaTinhaPagamentoPago) {
+        await this.notifyFirstPaymentConfirmed(subscription, amountCents);
+      }
     } else if (status === 'FAILED') {
       await paymentRepository.updateSubscription(subscription.id, { status: 'PAYMENT_FAILED' });
+    }
+  },
+
+  /**
+   * Avisa o aluno de que a matrícula está concluída e o acesso, liberado.
+   *
+   * Best-effort de ponta a ponta: quem chama é um webhook, e uma falha aqui
+   * faria o Mercado Pago reenfileirar o evento e, depois de erros seguidos,
+   * desabilitar o webhook — perdendo confirmações de pagamento de verdade. Um
+   * e-mail não entregue é muito menos grave do que isso.
+   */
+  async notifyFirstPaymentConfirmed(
+    subscription: StudentSubscription,
+    amountCents: number
+  ): Promise<void> {
+    try {
+      const [user, pkg] = await Promise.all([
+        userService.getUserById(subscription.userId),
+        financeService.getPackageById(subscription.packageId),
+      ]);
+      if (!user?.email) return;
+
+      await sendFirstPaymentConfirmedEmail({
+        email: user.email,
+        name: user.name,
+        packageName: pkg?.name ?? 'seu pacote',
+        amountCents,
+        accessUrl: `${getAppUrl()}/student`,
+      });
+    } catch (error) {
+      console.error('[MercadoPago] Falha ao avisar o aluno do primeiro pagamento:', error);
     }
   },
 

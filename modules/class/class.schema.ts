@@ -71,6 +71,17 @@ export const classRecordsTable = pgTable('class_records', {
   // vivo agora; completed=true = encerrada. Nunca é limpo ao encerrar (fica
   // para exibir duração/histórico).
   callStartedAt: timestamp('call_started_at'),
+  // Quando a coordenação confirmou ter baixado a gravação para o arquivo da
+  // escola.
+  //
+  // Existe porque o Stream apaga a gravação em 14 dias (ver
+  // RECORDING_RETENTION_DAYS) e ninguém a recupera depois disso. Sem um estado
+  // de "já cuidei disto", o aviso na tela de turmas ou aparece para sempre
+  // (e vira ruído que todo mundo ignora) ou some sozinho (e a aula se perde
+  // em silêncio).
+  //
+  // NULL com `recordingUrls` não vazio = pendente de download.
+  recordingArchivedAt: timestamp('recording_archived_at'),
 }, (table) => [
   index('class_records_class_group_idx').on(table.classGroupId),
   index('class_records_date_idx').on(table.date),
@@ -179,6 +190,11 @@ export const MarkAttendanceSchema = z.object({
 export const GetTeacherStudentDetailSchema = z.object({
   classGroupId: z.uuid(),
   studentId: z.uuid(),
+});
+
+/** Confirmação manual de que a coordenação baixou a gravação da aula. */
+export const MarkRecordingArchivedSchema = z.object({
+  recordId: z.uuid(),
 });
 
 /** Usado pelo aluno pra saber (via poll leve) se o professor já iniciou a chamada. */

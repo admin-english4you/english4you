@@ -391,6 +391,23 @@ export const contractService = {
       throw new AppError('Apenas alunos e professores possuem contrato.');
     }
 
+    // Um usuário tem no máximo UM contrato vivo por vez.
+    //
+    // Quem reemite (troca de pacote, mudança de bolsa) cancela o anterior antes
+    // de chegar aqui, então esta trava nunca dispara para eles. Ela existe para
+    // o uso avulso: emitir um contrato para quem já tem um deixaria dois
+    // válidos ao mesmo tempo, e `getCurrentContractForUser` — que decide o que
+    // cobrar e o que o aluno assina — passaria a devolver um dos dois conforme
+    // a data de criação, silenciosamente.
+    const vigente = await this.getCurrentContractForUser(userId);
+    if (vigente) {
+      throw new AppError(
+        vigente.status === 'ACTIVE'
+          ? 'Este usuário já tem um contrato ativo. Cancele-o antes de emitir outro, ou use a troca de pacote.'
+          : 'Este usuário já tem um contrato aguardando assinatura.'
+      );
+    }
+
     const { scholarshipPercent, billingMode } = normalizeScholarshipTerms(terms);
     const template = await contractRepository.findActiveTemplate(
       targetRole,
@@ -439,6 +456,8 @@ export const contractService = {
       packageId?: string;
       scholarshipPercent?: number;
       billingMode?: ContractBillingMode;
+      /** Adia a primeira mensalidade — ver `contracts.firstChargeAt`. */
+      firstChargeAt?: Date | null;
     }
   ): Promise<{ user: User; contract: Contract | null }> {
     assertAdmin(actingRole);
@@ -482,6 +501,7 @@ export const contractService = {
       status: 'PENDING_SIGNATURE',
       scholarshipPercent,
       billingMode,
+      firstChargeAt: data.firstChargeAt ?? null,
       startDate,
       endDate: addMonths(startDate, pkg.durationInMonths),
     });

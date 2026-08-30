@@ -10,7 +10,13 @@ export const metadata: Metadata = {
 
 export default async function AdminClassesPage() {
   const user = await getCurrentUser();
-  const classes = user ? await classService.getAllClasses(user.role) : [];
 
-  return <ClassesList initialClasses={classes} />;
+  const [classes, pendingRecordings] = user
+    ? await Promise.all([
+        classService.getAllClasses(user.role),
+        classService.getPendingRecordings(user.role),
+      ])
+    : [[], []];
+
+  return <ClassesList initialClasses={classes} pendingRecordings={pendingRecordings} />;
 }

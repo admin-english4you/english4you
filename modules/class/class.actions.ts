@@ -17,6 +17,7 @@ import {
   StartCallSchema,
   StartCallRecordingSchema,
   EndCallSchema,
+  MarkRecordingArchivedSchema,
   SaveBoardContentSchema,
   ActivateLessonSchema,
   MarkAttendanceSchema,
@@ -472,6 +473,32 @@ export async function getTeacherStudentDetailAction(input: z.infer<typeof GetTea
       throw new AppError("Aluno não encontrado.");
     }
     return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Confirma que a coordenação baixou a gravação da aula.
+ *
+ * Ação manual: o servidor não tem como saber que um download terminou no
+ * navegador do admin, então quem dá a aula por arquivada é ele (ver
+ * `classService.markRecordingArchived`).
+ */
+export async function markRecordingArchivedAction(
+  input: z.infer<typeof MarkRecordingArchivedSchema>
+) {
+  const safeAction = createSafeAction(MarkRecordingArchivedSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await classService.markRecordingArchived(currentUser.role, data.recordId);
+
+    revalidatePath("/admin/classes");
+    revalidatePath("/admin");
+    return { success: true };
   });
 
   return safeAction(input);

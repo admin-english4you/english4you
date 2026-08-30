@@ -1,0 +1,1 @@
+ALTER TABLE "contracts" ADD COLUMN "first_charge_at" timestamp;

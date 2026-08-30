@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth-server";
 import { getHomeRouteForRole } from "@/lib/rbac";
 import { createSafeAction, ActionResult } from "@/lib/safe-action";
 import { AppError } from "@/lib/errors";
+import { dayKeyToDate } from "@/lib/date";
 import { User } from "./user.types";
 import { toSessionUser } from "./user.session";
 import { z } from "zod";
@@ -79,7 +80,13 @@ export async function createUserByAdminAction(input: z.infer<typeof CreateUserBy
       throw new AppError("Acesso negado. Apenas administradores podem executar esta ação.");
     }
 
-    const result = await contractService.registerUserWithContract(currentUser.role, data);
+    const result = await contractService.registerUserWithContract(currentUser.role, {
+      ...data,
+      // O formulário manda `YYYY-MM-DD`; o contrato guarda Date. `dayKeyToDate`
+      // ancora ao meio-dia UTC, que é como o resto do projeto evita que uma
+      // data escolhida caia no dia anterior por fuso horário.
+      firstChargeAt: data.firstChargeDay ? dayKeyToDate(data.firstChargeDay) : null,
+    });
     revalidatePath("/admin/users");
     revalidatePath("/admin/finance");
     return result.user;

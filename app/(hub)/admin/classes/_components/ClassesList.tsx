@@ -13,11 +13,17 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { createClassAction } from "@/modules/class/class.actions";
 import { CreateClassGroupSchema, WeekdayEnum } from "@/modules/class/class.schema";
-import { CreateClassGroupInput, ClassGroupListItem } from "@/modules/class/class.types";
+import {
+  CreateClassGroupInput,
+  ClassGroupListItem,
+  PendingRecordingView,
+} from "@/modules/class/class.types";
 import { formatScheduleSummary, WEEKDAY_LABELS, STATUS_LABELS } from "@/modules/class/class.utils";
+import { PendingRecordingsNotice } from "./PendingRecordingsNotice";
 
 interface ClassesListProps {
   initialClasses: ClassGroupListItem[];
+  pendingRecordings: PendingRecordingView[];
 }
 
 const WEEKDAY_OPTIONS = WeekdayEnum.options.map((day) => ({ value: day, label: WEEKDAY_LABELS[day] }));
@@ -50,7 +56,7 @@ function colorForClass(id: string): (typeof COLOR_CYCLE)[number] {
 
 const emptySchedule = { weekday: "MON" as const, time: "09:00" };
 
-export function ClassesList({ initialClasses }: ClassesListProps) {
+export function ClassesList({ initialClasses, pendingRecordings }: ClassesListProps) {
   const [classesList, setClassesList] = useState<ClassGroupListItem[]>(initialClasses);
   const [optimisticClasses, addOptimisticClass] = useOptimistic(
     classesList,
@@ -136,6 +142,10 @@ export function ClassesList({ initialClasses }: ClassesListProps) {
             <Plus className="w-4 h-4 mr-2" /> Criar Nova Turma
           </Button>
         </PageHeader>
+
+        {/* Antes da lista, e não no fim: é uma pendência com prazo, e o que
+            vence some da tela se ficar embaixo de tudo. */}
+        <PendingRecordingsNotice pending={pendingRecordings} />
 
         {/* Filters and Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm gap-4">

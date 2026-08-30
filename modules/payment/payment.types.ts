@@ -50,6 +50,8 @@ export interface OnboardingState {
   billingMode: ContractBillingMode;
   /** Mensalidade já com a bolsa aplicada; `null` quando não há pacote. */
   effectiveInstallmentCents: number | null;
+  /** Quando cai a primeira mensalidade; `null` = no aceite. */
+  firstChargeAt: Date | null;
 }
 
 /** Visão da aba de pagamentos do aluno. */
