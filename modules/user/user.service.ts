@@ -133,6 +133,7 @@ export const userService = {
     }
 
     return await userRepository.updateUser(userId, {
+      phone: data.phone,
       document: data.document,
       addressStreet: data.addressStreet,
       addressNumber: data.addressNumber,

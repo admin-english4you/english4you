@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LessonContentView } from "@/components/lesson/LessonContentView";
 import { cn } from "@/lib/utils";
-import { formatCep, formatCpf } from "@/lib/br-document";
+import { formatCep, formatCpf, formatPhone } from "@/lib/br-document";
 import { saveSigningIdentityAction, signContractAction } from "@/modules/contract/contract.actions";
 import { SigningIdentitySchema } from "@/modules/contract/contract.schema";
 import type { StudentContractView } from "@/modules/contract/contract.types";
@@ -31,6 +31,7 @@ interface ContractSignerProps {
 
 /** `z.input` e não `z.infer`: o schema tem `.transform()`, então a entrada do form é string crua. */
 type IdentityFormInput = {
+  phone: string;
   document: string;
   addressZipCode: string;
   addressStreet: string;
@@ -57,6 +58,7 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
   } = useForm<IdentityFormInput>({
     resolver: zodResolver(SigningIdentitySchema),
     defaultValues: {
+      phone: formatPhone(user.phone),
       document: user.document ?? "",
       addressZipCode: user.addressZipCode ?? "",
       addressStreet: user.addressStreet ?? "",
@@ -140,6 +142,17 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
                 <Field label="CPF" error={errors.document?.message}>
                   <Input placeholder="000.000.000-00" {...register("document")} />
                 </Field>
+                <Field label="Telefone" error={errors.phone?.message}>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="(11) 90000-0000"
+                    {...register("phone")}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="CEP" error={errors.addressZipCode?.message}>
                   <Input placeholder="00000-000" {...register("addressZipCode")} />
                 </Field>
@@ -184,6 +197,9 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
             <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
               <span>
                 <strong className="text-slate-500">CPF:</strong> {formatCpf(user.document)}
+              </span>
+              <span>
+                <strong className="text-slate-500">Telefone:</strong> {formatPhone(user.phone)}
               </span>
               <span className="min-w-0 flex-1 truncate">
                 <strong className="text-slate-500">Endereço:</strong> {user.addressStreet},{" "}

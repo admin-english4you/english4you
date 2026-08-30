@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/page-header";
+import { DocHeading } from "./_components/DocHeading";
+import { CopyLinkButton } from "./_components/CopyLinkButton";
 import {
   LayoutDashboard,
   Users,
@@ -44,11 +46,12 @@ function DocSection({
 }) {
   return (
     <section id={id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 scroll-mt-24 space-y-4">
-      <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+      <div className="group flex items-center gap-2.5 pb-3 border-b border-slate-100">
         <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
           <Icon className="w-4 h-4" />
         </div>
         <h2 className="font-bold text-slate-900 text-base">{title}</h2>
+        <CopyLinkButton anchorId={id} title={title} />
       </div>
       <div className="space-y-4 text-sm text-slate-600 leading-relaxed [&_h3]:font-bold [&_h3]:text-slate-800 [&_h3]:text-sm [&_h3]:pt-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_strong]:text-slate-800 [&_strong]:font-semibold [&_code]:bg-slate-100 [&_code]:text-slate-700 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
         {children}
@@ -104,6 +107,12 @@ export default function AdminDocsPage() {
                 O menu à esquerda dá acesso às páginas abaixo. Esta documentação está organizada na mesma ordem do
                 menu — use o índice ao lado para pular direto para a seção que precisar.
               </p>
+              <p>
+                <strong>Compartilhar um trecho:</strong> passe o mouse sobre o título de qualquer seção ou
+                subtítulo e clique no ícone de <strong>elo</strong> que aparece ao lado. O link do tópico é
+                copiado, e quem abrir cai direto nele em vez de ter que procurar na página. Serve para mandar a
+                explicação exata de uma dúvida por WhatsApp ou e-mail.
+              </p>
             </DocSection>
 
             <DocSection id="dashboard" title="Dashboard" icon={LayoutDashboard}>
@@ -112,7 +121,7 @@ export default function AdminDocsPage() {
                 dados em tempo real — nada aqui é fixo. Clicar em qualquer card leva à página correspondente.
               </p>
 
-              <h3>Os quatro cards</h3>
+              <DocHeading id="os-quatro-cards">Os quatro cards</DocHeading>
               <ul>
                 <li>
                   <strong>Entradas do mês</strong> — tudo que ENTROU no caixa no mês corrente: os lançamentos de
@@ -134,7 +143,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Atividades recentes</h3>
+              <DocHeading id="atividades-recentes">Atividades recentes</DocHeading>
               <p>
                 Feed com os últimos acontecimentos reais da escola, do mais novo para o mais antigo: novos cadastros
                 (aluno, professor ou administrador), contratos assinados, pagamentos confirmados e turmas criadas.
@@ -148,7 +157,7 @@ export default function AdminDocsPage() {
                 Em <code>/admin/users</code> você gerencia todas as contas da plataforma: alunos, professores e
                 administradores.
               </p>
-              <h3>Como cadastrar um novo usuário</h3>
+              <DocHeading id="como-cadastrar-um-novo-usuario">Como cadastrar um novo usuário</DocHeading>
               <ol>
                 <li>Clique em <strong>&quot;Adicionar Usuário&quot;</strong>.</li>
                 <li>Preencha nome completo e e-mail, e escolha o <strong>Perfil de Acesso</strong> (Aluno, Professor ou Administrador).</li>
@@ -183,7 +192,7 @@ export default function AdminDocsPage() {
                 antes de cadastrar o primeiro aluno — sem isso, o cadastro é recusado com um aviso.
               </p>
 
-              <h3>Bolsa de estudos (bolsistas)</h3>
+              <DocHeading id="bolsa-de-estudos-bolsistas">Bolsa de estudos (bolsistas)</DocHeading>
               <p>
                 Nem todo aluno paga a mensalidade cheia. No cadastro (e depois, na ficha dele) você define os
                 termos da bolsa, que ficam gravados <strong>no contrato daquela matrícula</strong> — não na conta
@@ -226,7 +235,7 @@ export default function AdminDocsPage() {
                 basta escolher &quot;Sem bolsa&quot; e, na ficha dele, mudar a cobrança para manual.
               </p>
 
-              <h3>Aluno que já estuda na escola (migração)</h3>
+              <DocHeading id="aluno-que-ja-estuda-na-escola-migracao">Aluno que já estuda na escola (migração)</DocHeading>
               <p>
                 Quem <strong>já tem aulas</strong> e já pagou a mensalidade deste mês por fora não
                 pode ser cobrado de novo ao entrar na plataforma. Há duas formas, e a escolha depende
@@ -259,7 +268,7 @@ export default function AdminDocsPage() {
                 passado.
               </p>
 
-              <h3>Registrar um pagamento recebido por fora</h3>
+              <DocHeading id="registrar-um-pagamento-recebido-por-fora">Registrar um pagamento recebido por fora</DocHeading>
               <p>
                 Mensalidade paga em PIX, dinheiro ou transferência se registra em{" "}
                 <Link href="/admin/finance" className="text-primary hover:underline">Financeiro → Visão Geral</Link>,
@@ -283,7 +292,7 @@ export default function AdminDocsPage() {
                 estar em <strong>cobrança manual</strong>.
               </p>
 
-              <h3>Inadimplência de quem paga por fora</h3>
+              <DocHeading id="inadimplencia-de-quem-paga-por-fora">Inadimplência de quem paga por fora</DocHeading>
               <p>
                 <strong>A plataforma nunca bloqueia sozinha um aluno de cobrança manual.</strong> Ela não tem como
                 saber se ele pagou: o dinheiro entra por PIX, dinheiro ou boleto, fora do sistema, sem nenhum aviso
@@ -341,14 +350,15 @@ export default function AdminDocsPage() {
                 mês já cobrado — se houver crédito a devolver, isso é acertado à mão no livro-caixa.
               </p>
 
-              <h3>Ficha do usuário</h3>
+              <DocHeading id="ficha-do-usuario">Ficha do usuário</DocHeading>
               <p>
                 Clique em qualquer linha da lista (ou no botão <strong>&quot;Ver ficha&quot;</strong>) para abrir a
                 página de detalhes do usuário, com cinco blocos:
               </p>
               <ul>
                 <li>
-                  <strong>Dados pessoais</strong> — CPF, telefone e endereço aparecem mascarados por padrão. Clicar em{" "}
+                  <strong>Dados pessoais</strong> — CPF, telefone e endereço são preenchidos pelo próprio usuário
+                  na hora de assinar o contrato, e aparecem mascarados por padrão. Clicar em{" "}
                   <strong>&quot;Ver dados&quot;</strong> pede a <strong>sua própria senha</strong> de administrador
                   antes de exibi-los: a senha é conferida direto pelo Firebase, nunca chega ao nosso servidor, e a
                   liberação vale só até você recarregar a página. Se o usuário ainda não preencheu CPF/endereço (ele
@@ -386,7 +396,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>E-mails automáticos</h3>
+              <DocHeading id="e-mails-automaticos">E-mails automáticos</DocHeading>
               <p>
                 Três situações disparam um e-mail com o <strong>mesmo visual padronizado</strong> (cabeçalho com a
                 marca, botão de destaque, rodapé) — antes cada um tinha um estilo próprio, digitado à parte:
@@ -409,7 +419,7 @@ export default function AdminDocsPage() {
                 responsável, plano de ensino, lista de alunos e a grade de aulas.
               </p>
 
-              <h3>Criando uma turma</h3>
+              <DocHeading id="criando-uma-turma">Criando uma turma</DocHeading>
               <p>
                 Clique em <strong>&quot;Criar Nova Turma&quot;</strong> e informe nome, nível e o horário semanal
                 (adicione quantos dias/horários forem necessários — normalmente 2x por semana, mas você pode
@@ -418,13 +428,13 @@ export default function AdminDocsPage() {
                 detalhes da turma.
               </p>
 
-              <h3>Filtrando a lista de turmas</h3>
+              <DocHeading id="filtrando-a-lista-de-turmas">Filtrando a lista de turmas</DocHeading>
               <p>
                 Use os filtros <strong>Ativas / Inativas / Arquivadas / Todas</strong> e a busca (por nome, nível ou
                 professor) no topo da página. Por padrão, apenas turmas <strong>Ativas</strong> são exibidas.
               </p>
 
-              <h3>Página de detalhes da turma</h3>
+              <DocHeading id="pagina-de-detalhes-da-turma">Página de detalhes da turma</DocHeading>
               <p>Clique em qualquer card para abrir a página da turma, onde você pode:</p>
               <ul>
                 <li><strong>Atribuir/trocar o professor responsável</strong> pela turma.</li>
@@ -447,7 +457,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Gravações das aulas ⚠️</h3>
+              <DocHeading id="gravacoes-das-aulas">Gravações das aulas ⚠️</DocHeading>
               <p>
                 As aulas ao vivo são gravadas automaticamente. Quando a gravação fica pronta, os alunos
                 da turma recebem um e-mail e uma notificação no sino, com o link para reassistir.
@@ -488,7 +498,7 @@ export default function AdminDocsPage() {
                 ar, para ele não deixar para depois.
               </p>
 
-              <h3>Status da turma: Ativa, Inativa e Arquivada</h3>
+              <DocHeading id="status-da-turma-ativa-inativa-e-arquivada">Status da turma: Ativa, Inativa e Arquivada</DocHeading>
               <ul>
                 <li>
                   <strong>Ativa</strong> — funcionamento normal, todos os campos acima podem ser editados.
@@ -514,7 +524,7 @@ export default function AdminDocsPage() {
                 <Link href="/admin/classes" className="text-primary hover:underline">Turmas</Link>.
               </p>
 
-              <h3>Criando um plano</h3>
+              <DocHeading id="criando-um-plano">Criando um plano</DocHeading>
               <p>
                 Clique em <strong>&quot;Criar Plano&quot;</strong> na página inicial e informe nome e descrição. Todo
                 plano novo começa como <strong>Rascunho</strong> — use o botão &quot;Editar Plano&quot;, na página do
@@ -522,7 +532,7 @@ export default function AdminDocsPage() {
                 <strong>Ativos</strong> aparecem no seletor de plano de ensino da página de Turmas.
               </p>
 
-              <h3>Página do plano: lições</h3>
+              <DocHeading id="pagina-do-plano-licoes">Página do plano: lições</DocHeading>
               <p>
                 Clicar num plano abre uma tela dividida em dois painéis: à esquerda, a lista de lições do plano
                 (nessa ordem que elas serão dadas); à direita, o editor da lição selecionada.
@@ -542,7 +552,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Editando uma lição</h3>
+              <DocHeading id="editando-uma-licao">Editando uma lição</DocHeading>
               <ul>
                 <li><strong>Título e Nível</strong> — campos simples de texto.</li>
                 <li>
@@ -571,7 +581,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Gerando itens de prática com IA</h3>
+              <DocHeading id="gerando-itens-de-pratica-com-ia">Gerando itens de prática com IA</DocHeading>
               <p>
                 O botão <strong>&quot;Gerar com IA&quot;</strong> analisa o conteúdo escrito (e a transcrição do
                 áudio, se houver) e gera automaticamente entre 20–40 itens de <strong>Vocabulário</strong> e
@@ -595,7 +605,7 @@ export default function AdminDocsPage() {
                 <strong>Pacotes</strong>.
               </p>
 
-              <h3>Visão Geral: o livro-caixa</h3>
+              <DocHeading id="visao-geral-o-livro-caixa">Visão Geral: o livro-caixa</DocHeading>
               <p>
                 Esta aba junta as <strong>duas</strong> origens de dinheiro da escola numa lista só:
               </p>
@@ -611,7 +621,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Lançando uma entrada ou saída</h3>
+              <DocHeading id="lancando-uma-entrada-ou-saida">Lançando uma entrada ou saída</DocHeading>
               <p>
                 Clique em <strong>&quot;Novo Lançamento&quot;</strong> e escolha o tipo:
               </p>
@@ -631,7 +641,7 @@ export default function AdminDocsPage() {
                 justamente porque nem sempre é alguém cadastrado na plataforma.
               </p>
 
-              <h3>Dívidas e valores a receber</h3>
+              <DocHeading id="dividas-e-valores-a-receber">Dívidas e valores a receber</DocHeading>
               <p>
                 A caixa <strong>&quot;Já pago&quot; / &quot;Já recebido&quot;</strong> é o que separa um lançamento
                 quitado de uma dívida:
@@ -653,7 +663,7 @@ export default function AdminDocsPage() {
                 (&quot;essa conta eu já paguei&quot;).
               </p>
 
-              <h3>Como os totais são calculados</h3>
+              <DocHeading id="como-os-totais-sao-calculados">Como os totais são calculados</DocHeading>
               <ul>
                 <li>
                   <strong>Entradas / Saídas do mês</strong> contam pela <strong>data de liquidação</strong>, não pelo
@@ -666,14 +676,14 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Filtros e exclusão</h3>
+              <DocHeading id="filtros-e-exclusao">Filtros e exclusão</DocHeading>
               <p>
                 Os botões <strong>Todos / Entradas / Saídas / Em aberto</strong> filtram a lista. Excluir um
                 lançamento manual o apaga definitivamente (há uma confirmação antes) — use quando digitou algo
                 errado; para um lançamento legítimo que foi cancelado, prefira deixá-lo registrado.
               </p>
 
-              <h3>Contratos, Modelos e Pacotes</h3>
+              <DocHeading id="contratos-modelos-e-pacotes">Contratos, Modelos e Pacotes</DocHeading>
               <ul>
                 <li>
                   <strong>Pacotes</strong> — a base comercial: duração em meses, aulas por semana e valor da
@@ -699,7 +709,7 @@ export default function AdminDocsPage() {
                 </li>
               </ul>
 
-              <h3>Criar, editar e arquivar pacotes</h3>
+              <DocHeading id="criar-editar-e-arquivar-pacotes">Criar, editar e arquivar pacotes</DocHeading>
               <p>
                 Na aba <strong>Pacotes</strong>, o botão <strong>&quot;Novo pacote&quot;</strong> pede nome, duração
                 em meses, aulas por semana e o valor da mensalidade. É preciso ter pelo menos um pacote ativo antes
@@ -742,7 +752,7 @@ export default function AdminDocsPage() {
                 arquivado.
               </p>
 
-              <h3>Trocar o pacote de um aluno</h3>
+              <DocHeading id="trocar-o-pacote-de-um-aluno">Trocar o pacote de um aluno</DocHeading>
               <p>
                 O pacote é <strong>individual por aluno</strong>: cada um tem o seu no próprio contrato, então
                 trocar o pacote de um não mexe em mais ninguém. (Editar o pacote em <strong>Pacotes</strong> é outra
@@ -787,7 +797,7 @@ export default function AdminDocsPage() {
                 dele — não a troca de pacote, e muito menos criar um pacote novo só para ele.
               </p>
 
-              <h3>Cancelar um contrato</h3>
+              <DocHeading id="cancelar-um-contrato">Cancelar um contrato</DocHeading>
               <p>
                 Também na ficha do contrato. Cancela o contrato e a cobrança recorrente de uma vez. Use quando o
                 aluno desiste do curso; para apenas suspender o acesso temporariamente, prefira{" "}
@@ -801,7 +811,7 @@ export default function AdminDocsPage() {
                 no aparelho dele (notificação push, mesmo com o navegador fechado).
               </p>
 
-              <h3>Como funciona</h3>
+              <DocHeading id="como-funciona">Como funciona</DocHeading>
               <p>
                 Todo dia, <strong>3 vezes</strong> (9h, 15h e 20h, horário de Brasília), o sistema verifica quais
                 alunos <strong>ainda não praticaram no dia</strong> e manda uma notificação puxando pra prática — o
@@ -810,7 +820,7 @@ export default function AdminDocsPage() {
                 quem já estudou.
               </p>
 
-              <h3>Como o aluno ativa</h3>
+              <DocHeading id="como-o-aluno-ativa">Como o aluno ativa</DocHeading>
               <p>
                 Em <code>/student/profile</code>, o aluno tem um cartão <strong>&quot;Lembretes de estudo&quot;</strong>{" "}
                 com um botão pra ativar — o navegador pede permissão de notificação, e a partir daí ele passa a
@@ -818,7 +828,7 @@ export default function AdminDocsPage() {
                 professores e administradores não recebem.
               </p>
 
-              <h3>O que precisa estar configurado no servidor</h3>
+              <DocHeading id="o-que-precisa-estar-configurado-no-servidor">O que precisa estar configurado no servidor</DocHeading>
               <p>
                 Isso não depende de nenhuma ação do admin no dia a dia, mas para o recurso funcionar em produção é
                 preciso, no ambiente de deploy (Vercel):
@@ -843,7 +853,7 @@ export default function AdminDocsPage() {
                 English4You como um aplicativo, sem precisar entender o que é um &quot;PWA&quot;.
               </p>
 
-              <h3>Como enviar</h3>
+              <DocHeading id="como-enviar">Como enviar</DocHeading>
               <p>
                 Em <code>/admin/users</code>, o botão <strong>&quot;Link do App&quot;</strong> copia o endereço
                 completo da página pra você colar onde quiser mandar. A própria página também detecta o

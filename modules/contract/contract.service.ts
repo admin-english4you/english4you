@@ -597,7 +597,9 @@ export const contractService = {
         html: preview.html,
         // Enquanto faltar CPF/endereço a prévia sai com "—" no lugar dos dados;
         // o formulário do passo 1 precisa aparecer antes da assinatura.
-        needsIdentity: !user.document || !user.addressStreet,
+        // Telefone entra na conta: ele é obrigatório no formulário de
+        // assinatura, então faltar telefone significa formulário incompleto.
+        needsIdentity: !user.document || !user.addressStreet || !user.phone,
       };
     });
   },

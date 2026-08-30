@@ -55,6 +55,33 @@ export function formatCpf(value: string | null | undefined): string {
 }
 
 /** CEP só com dígitos, pronto para persistir. */
+/** Telefone com só dígitos — é assim que o banco guarda (máscara é apresentação). */
+export function normalizePhone(value: string): string {
+  return onlyDigits(value);
+}
+
+/**
+ * Aceita fixo (10 dígitos) e celular (11). Não valida DDD nem o nono dígito:
+ * a plataforma usa o telefone para contato, e recusar um número real por
+ * excesso de regra atrapalha mais do que ajuda.
+ */
+export function isValidPhone(value: string): boolean {
+  const digits = onlyDigits(value);
+  return digits.length === 10 || digits.length === 11;
+}
+
+/** `11990001234` -> `(11) 99000-1234`. */
+export function formatPhone(value: string | null | undefined): string {
+  const digits = onlyDigits(value ?? "");
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return value ?? "";
+}
+
 export function normalizeCep(value: string): string {
   return onlyDigits(value).slice(0, 8);
 }

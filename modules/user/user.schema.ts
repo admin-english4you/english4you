@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, timestamp, pgEnum, index } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { isValidCpf, normalizeCep, normalizeCpf } from '@/lib/br-document';
+import { isValidCpf, isValidPhone, normalizeCep, normalizeCpf, normalizePhone } from '@/lib/br-document';
 import { dayKeyToDate } from '@/lib/date';
 
 export const roleEnumDb = pgEnum('user_role', ['ADMIN', 'TEACHER', 'STUDENT']);
@@ -170,6 +170,13 @@ export const CreateUserByAdminSchema = z
  * service e o banco nunca vejam máscara — quem digita pode formatar à vontade.
  */
 export const SigningIdentitySchema = z.object({
+  // Coletado aqui porque o contrato costuma citar `{{telefone}}` e o aluno que
+  // se matricula sozinho não tem outro lugar para informá-lo — sem isto, todo
+  // contrato saía com um travessão no lugar do número.
+  phone: z
+    .string()
+    .transform(normalizePhone)
+    .refine(isValidPhone, 'Telefone inválido — informe com DDD'),
   document: z
     .string()
     .transform(normalizeCpf)
