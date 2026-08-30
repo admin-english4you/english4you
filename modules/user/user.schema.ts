@@ -86,6 +86,9 @@ export const RevealIdentitySchema = z.object({
   idToken: z.string().min(1, 'Confirmação de senha ausente.'),
 });
 
+/** Reenvia o e-mail de definição de senha para um usuário. */
+export const ResendInviteSchema = z.object({ userId: z.uuid() });
+
 /** Ativar/desativar uma conta pelo painel do admin. */
 export const SetUserStatusSchema = z.object({
   userId: z.uuid(),

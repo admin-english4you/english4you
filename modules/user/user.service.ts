@@ -4,6 +4,8 @@ import { adminAuth } from "@/lib/firebase-admin";
 import { sendUserInviteEmail, sendPasswordResetRequestEmail, sendAccountDeactivatedEmail } from "@/lib/resend";
 import { uploadBufferToStorage, deleteStorageFileByUrl } from "@/lib/storage-upload";
 import { AppError } from "@/lib/errors";
+import { toAppPasswordSetupLink } from "@/lib/firebase-action-link";
+import { getAppUrl } from "@/lib/mercado-pago";
 import crypto from "crypto";
 
 /**
@@ -46,6 +48,16 @@ export const userService = {
 
     // 3. Criar usuário no Firebase Auth se o Firebase Admin estiver disponível
     if (adminAuth) {
+      // Falhar aqui INTERROMPE o cadastro, de propósito.
+      //
+      // O modelo depende de `uid` do Firebase === `id` do Neon: é por esse id
+      // que `authenticateUser` encontra o usuário depois do login. Se a conta
+      // de acesso não for criada e a linha do banco for gravada assim mesmo, o
+      // resultado é uma conta que autentica no Firebase e não é encontrada no
+      // Neon — o usuário recebe "credenciais inválidas" para sempre, sem que
+      // nada no painel indique o problema. Já aconteceu em produção: sobrou um
+      // acesso antigo no Firebase, o `createUser` foi recusado por e-mail
+      // duplicado, o aviso ficou só no log e o aluno não conseguia entrar.
       try {
         await adminAuth.createUser({
           uid: userId,
@@ -53,13 +65,31 @@ export const userService = {
           displayName: data.name,
           emailVerified: false,
         });
-
-        // Gerar o link oficial do Firebase para o usuário cadastrar/redefinir sua senha
-        resetLink = await adminAuth.generatePasswordResetLink(data.email);
         console.log(`[Firebase Auth] Usuário criado com UID unificado no Firebase: ${userId}`);
       } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        console.error("[Firebase Auth] Falha ao criar o acesso:", err);
+
+        if (code === "auth/email-already-exists") {
+          throw new AppError(
+            `Já existe uma conta de acesso com o e-mail ${data.email}. Se o cadastro anterior foi removido, o acesso antigo precisa ser apagado antes de cadastrar de novo.`
+          );
+        }
+        throw new AppError(
+          "Não foi possível criar o acesso deste usuário. Tente novamente em alguns minutos."
+        );
+      }
+
+      // O link, ao contrário, é best-effort: a conta já existe, e sem ele o
+      // usuário ainda entra pelo "esqueci minha senha".
+      try {
+        resetLink = toAppPasswordSetupLink(
+          await adminAuth.generatePasswordResetLink(data.email),
+          getAppUrl()
+        );
+      } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        console.warn("[Firebase Auth] Aviso ao criar usuário no Firebase Auth:", message);
+        console.warn("[Firebase Auth] Aviso ao gerar link de senha:", message);
       }
     }
 
@@ -109,7 +139,10 @@ export const userService = {
     let resetLink: string | undefined;
     if (adminAuth) {
       try {
-        resetLink = await adminAuth.generatePasswordResetLink(user.email);
+        resetLink = toAppPasswordSetupLink(
+          await adminAuth.generatePasswordResetLink(user.email),
+          getAppUrl()
+        );
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn("[Firebase Auth] Aviso ao gerar link de senha:", message);
@@ -346,7 +379,10 @@ export const userService = {
     }
 
     try {
-      const resetLink = await adminAuth.generatePasswordResetLink(email);
+      const resetLink = toAppPasswordSetupLink(
+        await adminAuth.generatePasswordResetLink(email),
+        getAppUrl()
+      );
       await sendPasswordResetRequestEmail({ email: user.email, name: user.name, resetLink });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

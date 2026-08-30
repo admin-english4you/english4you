@@ -9,6 +9,7 @@ import { UserContractsCard } from "./UserContractsCard";
 import { StudentBillingCard } from "./StudentBillingCard";
 import { AccountStatusCard } from "./AccountStatusCard";
 import { ScholarshipCard } from "./ScholarshipCard";
+import { ResendInviteCard } from "./ResendInviteCard";
 import type { Contract, ContractBillingMode } from "@/modules/contract/contract.types";
 import type { StudentFinancialSummary } from "@/modules/payment/payment.types";
 import type { Role } from "@/modules/user/user.types";
@@ -167,6 +168,7 @@ export function UserDetailView({
                 billingMode={scholarship?.billingMode ?? "MERCADO_PAGO"}
               />
             )}
+            <ResendInviteCard userId={user.id} userName={user.name} userEmail={user.email} />
             <AccountStatusCard
               userId={user.id}
               userName={user.name}

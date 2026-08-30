@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { LoginSchema, CreateUserByAdminSchema, RevealIdentitySchema, RequestPasswordResetSchema } from "./user.schema";
+import { LoginSchema, CreateUserByAdminSchema, RevealIdentitySchema, RequestPasswordResetSchema, ResendInviteSchema } from "./user.schema";
 import { userService } from "./user.service";
 import { contractService } from "@/modules/contract/contract.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -188,6 +188,27 @@ export async function revealUserIdentityAction(
       data.idToken,
       data.userId
     );
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Reenvia o e-mail de definição de senha.
+ *
+ * Os links do Firebase expiram, e aluno que demora para abrir o convite fica
+ * travado; sem isto, a única saída era ele mesmo lembrar do "esqueci minha
+ * senha". Idempotente — cada chamada gera um link novo e invalida o anterior.
+ */
+export async function resendInviteAction(input: z.infer<typeof ResendInviteSchema>) {
+  const safeAction = createSafeAction(ResendInviteSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await userService.sendInviteForUser(currentUser.role, data.userId);
+    return { success: true };
   });
 
   return safeAction(input);
