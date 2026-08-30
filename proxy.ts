@@ -5,7 +5,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Rotas públicas que não requerem verificação de sessão
-  const publicRoutes = ["/", "/login", "/staff/login", "/forgot-password", "/instalar", "/manifest.webmanifest", "/sw.js"];
+  const publicRoutes = ["/", "/login", "/staff/login", "/forgot-password", "/definir-senha", "/instalar", "/manifest.webmanifest", "/sw.js"];
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith("/_next") || pathname.startsWith("/api"));
 
   // Verificar se o usuário possui cookie de sessão
