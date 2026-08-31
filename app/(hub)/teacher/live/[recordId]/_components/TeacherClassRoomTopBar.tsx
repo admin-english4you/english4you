@@ -45,7 +45,7 @@ export function TeacherClassRoomTopBar({
   const StatusIcon = config.icon;
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 sm:px-5">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 sm:px-5 max-md:h-[calc(3.5rem_+_env(safe-area-inset-top))] max-md:pt-[env(safe-area-inset-top)]">
       <Link
         href={`/teacher/classes/${classGroupId}`}
         aria-label="Voltar para a turma"

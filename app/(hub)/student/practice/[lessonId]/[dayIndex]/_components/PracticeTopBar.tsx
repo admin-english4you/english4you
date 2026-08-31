@@ -22,7 +22,7 @@ export function PracticeTopBar({
   onExit,
 }: PracticeTopBarProps) {
   return (
-    <header className="flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6">
+    <header className="flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 max-md:pt-[calc(0.75rem_+_env(safe-area-inset-top))]">
       <button
         type="button"
         onClick={onExit}

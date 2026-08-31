@@ -4,7 +4,7 @@ export default function TeacherClassRoomLoading() {
   return (
     <div className="flex h-screen flex-col animate-in fade-in duration-500">
       {/* TeacherClassRoomTopBar */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 sm:px-5">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 sm:px-5 max-md:h-[calc(3.5rem_+_env(safe-area-inset-top))] max-md:pt-[env(safe-area-inset-top)]">
         <Skeleton className="h-8 w-8 rounded-lg bg-slate-800" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <Skeleton className="h-2.5 w-32 rounded-full bg-slate-800" />
