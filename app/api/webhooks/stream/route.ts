@@ -1,7 +1,14 @@
 import { verifyAndParseStreamWebhook, recordIdFromCallCid } from "@/lib/stream-server";
 import { webhookEventService } from "@/modules/webhook-event/webhook-event.service";
-import { classService } from "@/modules/class/class.service";
 import { isRateLimited } from "@/lib/rate-limit";
+
+/**
+ * `maxDuration` generoso: `handleRecordingReady` faz várias chamadas de rede
+ * (Resend, notificações) antes de responder, e o default de 10s é apertado
+ * numa turma grande. Não resolve cold start — só evita que a NOSSA função
+ * corte a própria execução no meio do processamento.
+ */
+export const maxDuration = 30;
 
 /**
  * Webhook do Stream — primeira rota `app/api/**` deste projeto.
@@ -68,6 +75,14 @@ export async function POST(request: Request) {
     case "call.recording_ready": {
       const recordId = recordIdFromCallCid(event.call_cid);
       if (recordId && event.call_recording?.url) {
+        // Import dinâmico: `classService` arrasta firebase-admin, Resend e
+        // storage — peso que só vale a pena pagar nestes dois eventos, não
+        // nos ~170 outros tipos que o Stream manda e que caem no `default`.
+        // O Stream dispara vários eventos quase juntos ao fim de uma aula
+        // (session_ended, stats_report_ready, call.ended...), forçando várias
+        // invocações frias em paralelo; manter o caminho comum leve reduz a
+        // chance de o cold start desses dois estourar o timeout do webhook.
+        const { classService } = await import("@/modules/class/class.service");
         await classService.handleRecordingReady(recordId, event.call_recording.url);
       }
       break;
@@ -77,6 +92,7 @@ export async function POST(request: Request) {
       // mesmo assim (ex: todos saíram), garante que completed vira true.
       const recordId = recordIdFromCallCid(event.call_cid);
       if (recordId) {
+        const { classService } = await import("@/modules/class/class.service");
         await classService.handleCallEndedWebhook(recordId);
       }
       break;
