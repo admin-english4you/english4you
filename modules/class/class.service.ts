@@ -358,16 +358,17 @@ export const classService = {
    * Aulas já ministradas cuja lição está publicada — é a partir daqui que os
    * ciclos de prática são construídos.
    *
-   * ATENÇÃO: o filtro é `date < agora` + `lesson.status === 'ACTIVE'`, e NÃO
-   * `record.completed`. A coluna `completed` nunca é marcada como true em lugar
-   * nenhum do código: não existe fluxo de "encerrar aula" do professor. Quando
-   * esse fluxo existir, este filtro deve ser revisto para usá-la.
+   * Filtro é `record.completed` + `lesson.status === 'ACTIVE'` — o professor
+   * encerra a aula (`endCall`) antes ou depois do horário previsto, então
+   * "ministrada" segue a baixa, não a data agendada (ver `getStudentClassOverview`,
+   * mesmo raciocínio).
    */
   async getStudentTaughtRecords(studentUserId: string): Promise<StudentTaughtRecord[]> {
     const student = await userService.getStudentById(studentUserId);
     if (!student.classGroupId) return [];
 
-    const records = await classRepository.findRecordsByClassGroupIdBefore(student.classGroupId, new Date());
+    const allRecords = await classRepository.findRecordsByClassGroupId(student.classGroupId);
+    const records = allRecords.filter((r) => r.completed);
     if (records.length === 0) return [];
 
     const lessons = await lessonService.getLessonsByIds(
