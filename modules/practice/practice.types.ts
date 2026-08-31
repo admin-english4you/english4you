@@ -62,7 +62,10 @@ export interface CycleSource {
   lessonTitle: string;
   lessonLevel: string;
   classRecordId: string;
-  /** Dia da aula ('YYYY-MM-DD'). O ciclo começa no dia SEGUINTE a este. */
+  /**
+   * Dia em que a aula foi de fato dada ('YYYY-MM-DD') — `completedAt` do
+   * registro, não a data agendada. O ciclo começa no dia SEGUINTE a este.
+   */
   classDateKey: string;
   /** Dia em que a lição foi publicada; o ciclo nunca começa antes disso. */
   activatedDayKey: string | null;

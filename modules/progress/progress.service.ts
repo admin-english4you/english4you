@@ -63,7 +63,11 @@ async function buildCycleSources(taught: StudentTaughtRecord[]): Promise<CycleSo
         lessonTitle: lesson.title,
         lessonLevel: lesson.level,
         classRecordId: record.id,
-        classDateKey: toDayKey(record.date),
+        // `completedAt` é quando a aula foi de fato dada — pode ser bem
+        // diferente de `date` (agendada) quando o professor encerra fora do
+        // calendário original. Cai pra `date` só em registros legados sem
+        // `completedAt` (de antes desta coluna existir).
+        classDateKey: toDayKey(record.completedAt ?? record.date),
         activatedDayKey: lesson.activatedAt ? toDayKey(lesson.activatedAt) : null,
         hasAudio: Boolean(lesson.audioUrl) && capabilities.hasListening,
       } satisfies CycleSource;

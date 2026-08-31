@@ -65,6 +65,13 @@ export const classRecordsTable = pgTable('class_records', {
   // usam a mesma lição via o plano.
   boardContent: text('board_content'),
   completed: boolean('completed').notNull().default(false),
+  // Quando a aula foi de fato encerrada (`endCall`/webhook), não a data
+  // agendada. O ciclo de prática (ver practice.engine.ts) usa isto — não
+  // `date` — pra decidir a partir de quando contar "dia seguinte à aula":
+  // um professor pode encerrar fora do calendário original (adiantada, ou
+  // aulas de reposição em sequência), e a prática não pode ficar refém de
+  // uma data agendada que ainda não chegou.
+  completedAt: timestamp('completed_at'),
   attendance: uuid('attendance').array().notNull().default([]),
   // Sinal de "chamada ao vivo", sem round-trip à API do Stream para renderizar
   // o badge de status. NULL = não iniciada; NOT NULL + completed=false = ao

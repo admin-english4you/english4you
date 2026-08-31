@@ -219,7 +219,7 @@ export const classRepository = {
   async reopenCall(recordId: string): Promise<ClassRecord> {
     const [record] = await db
       .update(classRecordsTable)
-      .set({ completed: false, callStartedAt: new Date() })
+      .set({ completed: false, completedAt: null, callStartedAt: new Date() })
       .where(eq(classRecordsTable.id, recordId))
       .returning();
     return record;
@@ -228,7 +228,7 @@ export const classRepository = {
   async updateRecordCompleted(recordId: string, completed: boolean): Promise<ClassRecord> {
     const [record] = await db
       .update(classRecordsTable)
-      .set({ completed })
+      .set({ completed, completedAt: completed ? new Date() : null })
       .where(eq(classRecordsTable.id, recordId))
       .returning();
     return record;

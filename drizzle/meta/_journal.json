@@ -64,6 +64,13 @@
       "when": 1788103645302,
       "tag": "0008_add_first_charge_at",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788192773504,
+      "tag": "0009_add_completed_at_to_class_records",
+      "breakpoints": true
     }
   ]
 }
