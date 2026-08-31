@@ -272,18 +272,23 @@ export const classService = {
     const classGroup = await classRepository.findById(student.classGroupId);
     if (!classGroup) return null;
 
-    const now = new Date();
-    const [teacher, plan, pastRaw, upcomingRaw] = await Promise.all([
+    const [teacher, plan, allRaw] = await Promise.all([
       classGroup.teacherId ? userService.getUserById(classGroup.teacherId) : Promise.resolve(undefined),
       classGroup.planId ? planService.getPlanById(classGroup.planId) : Promise.resolve(undefined),
-      classRepository.findRecordsByClassGroupIdBefore(classGroup.id, now),
-      classRepository.findRecordsByClassGroupIdFrom(classGroup.id, now),
+      classRepository.findRecordsByClassGroupId(classGroup.id),
     ]);
 
-    const [pastRecords, upcomingRecords] = await Promise.all([
-      hydrateRecords(pastRaw),
-      hydrateRecords(upcomingRaw),
-    ]);
+    const allRecords = await hydrateRecords(allRaw);
+
+    // "Anteriores" segue `completed` (o professor dá baixa), não a data
+    // agendada: uma aula encerrada antes ou depois do horário previsto ainda
+    // precisa aparecer como concluída pro aluno, e não só pro professor.
+    const pastRecords = allRecords
+      .filter((r) => r.completed)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    const upcomingRecords = allRecords
+      .filter((r) => !r.completed)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     return {
       classGroup,
