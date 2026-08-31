@@ -314,9 +314,14 @@ export const paymentService = {
     // Retoma um checkout interrompido em vez de criar um preapproval duplicado —
     // mas só se o link ainda estiver vivo. Ver `resumableInitPoint`.
     const existing = subscriptions.find((s) => s.status === 'PENDING');
-    const retomavel = existing ? await this.resumableInitPoint(existing) : null;
-    if (retomavel) {
-      return { initPoint: retomavel };
+    if (existing) {
+      const retomavel = await this.resumableInitPoint(existing);
+      if (retomavel.alreadyAuthorized) {
+        throw new AppError('Você já tem uma assinatura ativa.');
+      }
+      if (retomavel.initPoint) {
+        return { initPoint: retomavel.initPoint };
+      }
     }
 
     const subscription =
@@ -394,9 +399,14 @@ export const paymentService = {
     const inFlight = subscriptions.find(
       (s) => s.status === 'PENDING' && s.replacesSubscriptionId === current.id
     );
-    const retomavel = inFlight ? await this.resumableInitPoint(inFlight) : null;
-    if (retomavel) {
-      return { initPoint: retomavel };
+    if (inFlight) {
+      const retomavel = await this.resumableInitPoint(inFlight);
+      if (retomavel.alreadyAuthorized) {
+        throw new AppError('Seu cartão já foi atualizado.');
+      }
+      if (retomavel.initPoint) {
+        return { initPoint: retomavel.initPoint };
+      }
     }
 
     const pkg = await financeService.getPackageById(current.packageId);
@@ -521,21 +531,34 @@ export const paymentService = {
 
   /**
    * Devolve o `init_point` da linha se o checkout dela ainda puder ser
-   * concluído; senão limpa a linha para que um preapproval NOVO seja criado.
+   * concluído; sinaliza `alreadyAuthorized` se o MP já aprovou; senão limpa a
+   * linha para que um preapproval NOVO seja criado.
    *
    * Existe porque reaproveitar o link cegamente prende o aluno num laço: se o
    * cartão foi recusado, o MP recusa a mesma cobrança de novo e acaba
    * cancelando o preapproval — e mandá-lo de volta ao mesmo link só reproduz a
-   * recusa, sem nenhuma saída pela interface. Só `pending` do lado do MP
-   * significa "dá para terminar este checkout".
+   * recusa, sem nenhuma saída pela interface.
+   *
+   * `alreadyAuthorized: true` quando o MP já autorizou esta preapproval mas o
+   * webhook ainda não chegou pra atualizar nosso status local. Cobre um caso
+   * real (aluna em 30/08/2026): ela autorizou o cartão, o webhook demorou,
+   * ela achou que não tinha confirmado e clicou de novo no checkout. Tratar
+   * `status !== 'pending'` como "link morto" descartava a preapproval JÁ
+   * AUTORIZADA e criava uma segunda do zero — abandonando a assinatura que
+   * funcionava. Por isso `authorized` sincroniza em vez de descartar; só
+   * cancelled/paused/etc. são de fato mortas.
    *
    * Limpa `mpPreapprovalId`/`initPoint` em vez de cancelar a linha: o aluno
    * segue sem pagar (`PENDING` continua sendo o estado correto), e a linha é
    * reusada, sem acumular assinatura morta a cada tentativa.
    */
-  async resumableInitPoint(subscription: StudentSubscription): Promise<string | null> {
-    if (!subscription.initPoint || !subscription.mpPreapprovalId) return null;
-    if (!preApprovalClient) return null;
+  async resumableInitPoint(
+    subscription: StudentSubscription
+  ): Promise<{ initPoint: string | null; alreadyAuthorized: boolean }> {
+    if (!subscription.initPoint || !subscription.mpPreapprovalId) {
+      return { initPoint: null, alreadyAuthorized: false };
+    }
+    if (!preApprovalClient) return { initPoint: null, alreadyAuthorized: false };
 
     let status: string | undefined;
     try {
@@ -547,16 +570,23 @@ export const paymentService = {
       );
       // Na dúvida, gera um checkout novo: repetir um link possivelmente morto é
       // pior do que criar um preapproval a mais.
-      status = undefined;
+      return { initPoint: null, alreadyAuthorized: false };
     }
 
-    if (status === 'pending') return subscription.initPoint;
+    if (status === 'pending') {
+      return { initPoint: subscription.initPoint, alreadyAuthorized: false };
+    }
+
+    if (status === 'authorized') {
+      await this.syncPreapprovalFromWebhook(subscription.mpPreapprovalId);
+      return { initPoint: null, alreadyAuthorized: true };
+    }
 
     await paymentRepository.updateSubscription(subscription.id, {
       mpPreapprovalId: null,
       initPoint: null,
     });
-    return null;
+    return { initPoint: null, alreadyAuthorized: false };
   },
 
   /**
