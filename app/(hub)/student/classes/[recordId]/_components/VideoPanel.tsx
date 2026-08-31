@@ -173,6 +173,27 @@ export function VideoPanel({
     );
   }
 
+  // Aula já gravada e sem chamada ao vivo agora: mostra só a gravação, sem o
+  // placeholder de "aguardando professor" nem o grid de colegas — nenhum dos
+  // dois faz sentido pra quem só quer reassistir. Também corta bastante a
+  // altura do conteúdo, que era o que estourava o scroll no mobile (a gaveta
+  // ali é "h-fit", sem scroll interno próprio — ela só cabe se o conteúdo for
+  // curto o bastante pra não precisar rolar).
+  if (recordingUrls.length > 0) {
+    return (
+      <div className="flex h-full flex-col bg-slate-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Gravação da aula
+          </span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <RecordingsList urls={recordingUrls} />
+        </div>
+      </div>
+    );
+  }
+
   const waitingLabel = wasEverConnected || callEnded ? "Aguardando o professor voltar" : callStarted ? "Conectando..." : "Aguardando o professor";
 
   // Aguardando o professor (ainda não começou, ou caiu e ainda não voltou) —
