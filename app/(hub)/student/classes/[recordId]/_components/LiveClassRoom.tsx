@@ -120,12 +120,18 @@ export function LiveClassRoom({
             uma caixa vazia enorme mesmo recolhida, às vezes esticava além da
             viewport e empurrava os controles da chamada pra fora da tela.
             `h-0`/`h-[Xvh]` são alturas EXPLÍCITAS — resolvem a cadeia
-            corretamente nos dois estados, sem esse limbo. No desktop
-            (`lg:h-full`), nada muda: mesmo comportamento de sempre.
+            corretamente nos dois estados, sem esse limbo.
+            `overflow-hidden` também no desktop (não só mobile): o scroll de
+            verdade é o `overflow-y-auto` de dentro do VideoPanel — este `div`
+            só precisa CONTER a altura pra aquele filho poder calcular a dele.
+            Um `overflow-visible` aqui deixava "Colegas"/"Gravações desta
+            aula" vazar pra fora da viewport sem nenhum scroll alcançá-los
+            (só apareceu com uma aula com gravação de verdade pela primeira
+            vez — antes disso o conteúdo sempre cabia sem estourar).
           */}
           <div
             className={cn(
-              "overflow-hidden lg:h-full lg:overflow-visible",
+              "overflow-hidden lg:h-full",
               videoOpenMobile ? "h-fit" : "h-0"
             )}
           >
