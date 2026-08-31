@@ -68,8 +68,15 @@ export function LiveClassRoom({
 
       {/* `min-h-0` no grid E nos dois filhos é obrigatório: sem ele o
           overflow-y-auto não rola dentro da linha do grid e a página estoura
-          a viewport. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-4">
+          a viewport. Isso sozinho não bastava: sem `grid-rows-[minmax(0,1fr)]`
+          a única linha implícita do grid usa sizing `auto` (tamanho do MAIOR
+          conteúdo entre as colunas), então a altura do grid como um todo
+          cresce pra caber tudo em vez de ficar presa à viewport — e aí não
+          sobra "overflow" nenhum pro `overflow-y-auto` de cada coluna rolar.
+          É o equivalente, em grid, do `min-h-0` em flexbox. Ficou invisível
+          enquanto a coluna de vídeo era curta (sem gravação); uma aula com
+          gravação de verdade é alta o bastante pra expor isso. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-4">
         {/* Conteúdo da lição — 3/4 da largura, altura total, rolagem própria */}
         <section className="order-2 min-h-0 overflow-y-auto bg-white lg:order-1 lg:col-span-3">
           <LessonReader
