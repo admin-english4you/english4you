@@ -89,12 +89,16 @@ export function LiveClassRoom({
         </section>
 
         {/* Chamada de vídeo — 1/4 da largura, altura total. No mobile só
-            ocupa espaço quando `isCallActive` (ver comentário acima); no
-            desktop (`lg:block`) sempre aparece, independente disso. */}
+            ocupa espaço quando `isCallActive` OU já existe gravação (ver
+            comentário acima sobre a gaveta suméndo pra não atravancar a
+            leitura fora de aula) — sem o `hasRecording`, uma aula encerrada
+            NUNCA tem call ativa, e a gaveta (com a gravação dentro dela)
+            ficava escondida pra sempre no mobile. No desktop (`lg:block`)
+            sempre aparece, independente disso. */}
         <aside
           className={cn(
             "order-1 h-full border-slate-800 lg:order-2 lg:col-span-1 lg:block lg:h-full lg:border-l",
-            isCallActive ? "block border-b" : "hidden"
+            isCallActive || record.recordingUrls.length > 0 ? "block border-b" : "hidden"
           )}
         >
           <button
@@ -104,16 +108,21 @@ export function LiveClassRoom({
             className="flex w-full items-center justify-between bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-300 lg:hidden"
           >
             <span className="flex items-center gap-2">
-              Chamada de vídeo
+              {isCallActive ? "Chamada de vídeo" : "Gravação da aula"}
               {/* Sem `record.completed` aqui de propósito: é um snapshot
-                  estático do carregamento da página, e esta barra só existe
-                  quando `isCallActive` (fresco, via poll) já garante que há
+                  estático do carregamento da página, e esta barra existe
+                  quando `isCallActive` (fresco, via poll) garante que há
                   mesmo uma chamada ao vivo agora — usar o valor estático
-                  podia mostrar "Encerrada" com a call já reaberta. */}
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-                Ao vivo
-              </span>
+                  podia mostrar "Encerrada" com a call já reaberta. Mas a
+                  gaveta também abre sem call nenhuma (só pra mostrar a
+                  gravação já pronta), e nesse caso o badge "Ao vivo" seria
+                  simplesmente falso — só aparece quando é verdade. */}
+              {isCallActive && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+                  Ao vivo
+                </span>
+              )}
             </span>
             {videoOpenMobile ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
