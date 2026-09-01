@@ -22,12 +22,16 @@ export default async function OnboardingPage() {
 
   // A sessão é um snapshot em cookie e não carrega CPF/endereço — o assinador
   // precisa dos dados frescos do banco.
-  const [user, onboarding] = await Promise.all([
-    userService.getUserById(currentUser.id),
-    paymentService.getOnboardingState(currentUser.id),
-  ]);
+  //
+  // Sequencial, e não `Promise.all`: `getOnboardingState` chama
+  // `contractService.getMyContracts`, que LANÇA se o userId da sessão não
+  // existir mais no banco (conta apagada/recriada). Rodar em paralelo faz
+  // essa exceção vencer a corrida e derrubar a página antes do
+  // `if (!user) redirect` abaixo conseguir agir.
+  const user = await userService.getUserById(currentUser.id);
+  if (!user) redirect("/api/session/invalidate");
 
-  if (!user) redirect("/login");
+  const onboarding = await paymentService.getOnboardingState(currentUser.id);
 
   return <OnboardingWizard user={user} onboarding={onboarding} />;
 }

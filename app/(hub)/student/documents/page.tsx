@@ -16,12 +16,15 @@ export default async function StudentDocumentsPage() {
 
   // Relê o usuário do banco: a sessão é um snapshot em cookie e, desde a
   // proteção de PII, nem carrega mais CPF/endereço.
-  const [user, contracts] = await Promise.all([
-    userService.getUserById(currentUser.id),
-    contractService.getMyContracts(currentUser.id),
-  ]);
+  //
+  // Sequencial, e não `Promise.all`: `getMyContracts` LANÇA se o userId da
+  // sessão não existir mais no banco (conta apagada/recriada). Rodar em
+  // paralelo faz essa exceção vencer a corrida e derrubar a página antes do
+  // `if (!user) redirect` abaixo conseguir agir.
+  const user = await userService.getUserById(currentUser.id);
+  if (!user) redirect("/api/session/invalidate");
 
-  if (!user) redirect("/login");
+  const contracts = await contractService.getMyContracts(currentUser.id);
 
   return <DocumentsView user={user} contracts={contracts} />;
 }

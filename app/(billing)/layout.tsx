@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getHomeRouteForRole } from "@/lib/rbac";
 import { paymentService } from "@/modules/payment/payment.service";
+import { userService } from "@/modules/user/user.service";
 
 /**
  * Grupo das telas de cobrança: `/onboarding` e `/fix-payment`.
@@ -21,6 +22,15 @@ export default async function BillingLayout({ children }: { children: React.Reac
   // Admin e professor não têm pacote nem assinatura — nunca passam por aqui.
   if (user.role !== "STUDENT") {
     redirect(getHomeRouteForRole(user.role));
+  }
+
+  // Sessão fantasma: cookie aponta pra um userId que não existe mais (conta
+  // apagada e recriada com outro id). Sem isto, o gate abaixo trata como
+  // "precisa contratar" e manda pra /onboarding, que quebra mais fundo em
+  // `contractService.getMyContracts` — mesmo problema do (hub)/layout.tsx.
+  const freshUser = await userService.getUserById(user.id);
+  if (!freshUser) {
+    redirect("/api/session/invalidate");
   }
 
   const { state } = await paymentService.getAccessState(user.id);

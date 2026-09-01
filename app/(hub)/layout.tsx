@@ -16,6 +16,20 @@ export default async function HubBaseLayout({
     redirect("/login");
   }
 
+  // Lido do banco, e não do cookie: é a mesma leitura fresca que o `AppHeader`
+  // fazia por conta própria depois de hidratar (`getMeAction`). Trazê-la para
+  // cá elimina o round-trip pós-render — e com ele o flash do nome de exemplo.
+  //
+  // Também serve de checagem de sanidade da sessão: o cookie é um snapshot
+  // sem verificação contra o banco, então uma conta apagada (e recriada com
+  // outro id) continua "logada" para o middleware. Sem isto, o gate abaixo
+  // segue em frente com um userId fantasma e explode mais adiante (ex.:
+  // `contractService.getMyContracts` lança "Usuário não encontrado.").
+  const freshUser = await userService.getUserById(user.id);
+  if (!freshUser) {
+    redirect("/api/session/invalidate");
+  }
+
   // Portão financeiro: nenhum aluno usa a plataforma sem contrato assinado e
   // mensalidade em dia. Fica AQUI, e não em cada página, porque é o único ponto
   // por onde todo o hub passa — as telas de destino (/onboarding, /fix-payment)
@@ -28,11 +42,6 @@ export default async function HubBaseLayout({
     if (state === "NEEDS_ONBOARDING") redirect("/onboarding");
     if (state === "BLOCKED") redirect("/fix-payment");
   }
-
-  // Lido do banco, e não do cookie: é a mesma leitura fresca que o `AppHeader`
-  // fazia por conta própria depois de hidratar (`getMeAction`). Trazê-la para
-  // cá elimina o round-trip pós-render — e com ele o flash do nome de exemplo.
-  const freshUser = await userService.getUserById(user.id);
 
   return (
     <SessionProvider
