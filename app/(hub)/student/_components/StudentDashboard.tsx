@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowRight, BookOpen, Calendar, PlayCircle, Sparkles, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar, PhoneCall, PlayCircle, Sparkles, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -30,6 +30,11 @@ export function StudentDashboard({
 }: StudentDashboardProps) {
   const firstName = user.name.split(" ")[0];
   const nextClass = overview?.nextRecord ?? null;
+  // Chamada ao vivo AGORA, em qualquer aula da turma — não só a "próxima"
+  // (`nextRecord` é só a mais próxima por data agendada). Mesmo critério do
+  // servidor (`getStudentCallAccess`): não importa qual professor iniciou,
+  // nem se foi adiantada ou atrasada — se está ao vivo, aparece aqui.
+  const liveRecord = overview?.upcomingRecords.find((r) => r.callStartedAt && !r.completed) ?? null;
   const playableToday = todayPractice.filter(
     (d) => d.status === "AVAILABLE" || d.status === "REPLAYABLE"
   );
@@ -43,6 +48,34 @@ export function StudentDashboard({
   return (
     <AppLayout role="STUDENT">
       <div className="mx-auto space-y-8">
+        {/* Aula ao vivo agora — topo da tela de propósito, acima até das
+            boas-vindas: é o aviso que faltava em todo o app fora da própria
+            página da aula (ver ClassRecordCard, mesmo critério). */}
+        {liveRecord && (
+          <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border-2 border-rose-400 bg-rose-50 p-5 shadow-sm sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
+              </span>
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wide text-rose-600">
+                  Sua aula está ao vivo agora
+                </p>
+                <p className="text-sm font-semibold text-slate-800">
+                  {liveRecord.lesson?.title ?? "Aula"}
+                </p>
+              </div>
+            </div>
+            <Button
+              render={<Link href={`/student/classes/${liveRecord.id}`} />}
+              className="w-full bg-rose-600 font-bold hover:bg-rose-700 sm:w-auto"
+            >
+              <PhoneCall className="mr-2 h-4 w-4" /> Entrar agora
+            </Button>
+          </div>
+        )}
+
         {/* Boas-vindas */}
         <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-gradient-to-r from-primary to-violet-600 p-6 text-white shadow-md sm:flex-row sm:items-center sm:p-8">
           <div>

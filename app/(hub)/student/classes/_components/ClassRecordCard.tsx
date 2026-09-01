@@ -27,22 +27,42 @@ export function ClassRecordCard({
   const isToday = dayKey === todayKey;
   const teacherName = record.teacher?.name ?? headTeacherName;
 
+  // Chamada ao vivo AGORA — não depende de "hoje"/horário agendado nem de
+  // qual professor a iniciou (titular ou substituto): é o mesmo critério
+  // que `getStudentCallAccess` usa no servidor pra decidir se o aluno pode
+  // entrar. Sem isso, uma aula que o professor abre fora do horário previsto
+  // (adiantada, atrasada, ou reaberta depois de cair a internet) não tinha
+  // NENHUM sinal visual em lugar nenhum do app fora da própria página da
+  // aula — o aluno só via o botão de entrar se já estivesse exatamente
+  // naquela tela no momento certo.
+  const isLiveNow = Boolean(record.callStartedAt) && !record.completed;
+
   // A lição só é legível quando publicada; DISABLED significa "o aluno ainda
-  // não chegou aqui", então o card fica sem link.
-  const isOpenable = Boolean(record.lesson && record.lesson.status !== "DISABLED");
+  // não chegou aqui", então o card fica sem link — EXCETO se a chamada já
+  // está ao vivo: aí a barreira de conteúdo não pode impedir a aluna de
+  // entrar na aula que está acontecendo agora.
+  const isOpenable = isLiveNow || Boolean(record.lesson && record.lesson.status !== "DISABLED");
 
   const body = (
     <div
       className={cn(
         "group flex items-center gap-4 rounded-xl border bg-white p-4 transition-all",
-        isToday ? "border-primary ring-2 ring-primary/20" : "border-slate-200",
+        isLiveNow
+          ? "border-rose-400 ring-2 ring-rose-200"
+          : isToday
+            ? "border-primary ring-2 ring-primary/20"
+            : "border-slate-200",
         isOpenable ? "hover:border-primary hover:shadow-sm" : "opacity-75"
       )}
     >
       <div
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-          variant === "past" ? "bg-emerald-50 text-emerald-600" : "bg-primary/10 text-primary"
+          isLiveNow
+            ? "bg-rose-50 text-rose-600"
+            : variant === "past"
+              ? "bg-emerald-50 text-emerald-600"
+              : "bg-primary/10 text-primary"
         )}
       >
         {isOpenable ? <PlayCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
@@ -50,6 +70,15 @@ export function ClassRecordCard({
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-2">
+          {isLiveNow && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
+              </span>
+              AO VIVO AGORA
+            </span>
+          )}
           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
             <CalendarDays className="h-3 w-3" />
             {formatRelativeDayKey(dayKey, todayKey)}
