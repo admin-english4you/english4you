@@ -213,6 +213,37 @@ export const DeleteLearningItemSchema = z.object({
 });
 
 /**
+ * Edição manual de um item pelo admin.
+ *
+ * `metadata` reusa o schema completo (VocabMetadata | StructureMetadata) em vez
+ * de aceitar um recorte: o que é salvo aqui vai direto para o mesmo campo que a
+ * IA preenche, e o motor de prática lê os dois sem distinguir a origem. Validar
+ * com um schema mais frouxo abriria a porta para um item editado à mão quebrar
+ * um render mode que o item gerado nunca quebraria.
+ */
+export const UpdateLearningItemSchema = z.object({
+  itemId: z.uuid(),
+  planId: z.uuid(),
+  lemma: z.string().trim().min(1, 'O termo não pode ficar vazio.'),
+  metadata: LearningItemMetadataSchema,
+});
+
+/** Edição manual de uma pergunta de quiz pelo admin. */
+export const UpdateQuizQuestionSchema = z
+  .object({
+    questionId: z.uuid(),
+    planId: z.uuid(),
+    question: z.string().trim().min(1, 'A pergunta não pode ficar vazia.'),
+    options: z.array(z.string().trim().min(1, 'Alternativa vazia.')).length(4, 'A pergunta precisa ter exatamente 4 alternativas'),
+    correctIndex: z.number().int().min(0).max(3),
+    explanation: z.string().trim().optional(),
+  })
+  .refine((data) => new Set(data.options.map((o) => o.toLowerCase())).size === data.options.length, {
+    message: 'As alternativas não podem se repetir.',
+    path: ['options'],
+  });
+
+/**
  * A ESTRUTURA FINAL DA PRÁTICA
  * Isso não é gerado pela IA. O backend/frontend monta isso em tempo real já que os dados já existem
  * e seus metadados (metadata.examples, metadata.forms) para os 7 renderModes.

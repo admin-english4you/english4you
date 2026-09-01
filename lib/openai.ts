@@ -341,6 +341,18 @@ function buildExtractionPrompt(params: ExtractItemsParams): string {
     `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
     `A partir do texto abaixo (conteúdo de uma aula de inglês), extraia itens de aprendizagem para prática do aluno.`,
     ``,
+    // Regra de idioma explícita: o aluno é brasileiro aprendendo INGLÊS, e os
+    // campos de conteúdo viram o exercício em si (frente do flashcard, banco
+    // de palavras do "monte a frase"). Preenchê-los em português inverte o
+    // exercício — o aluno monta a frase em português. Ver a guarda em
+    // `modules/practice/practice.language.ts`, que derruba o item se isso
+    // acontecer mesmo assim.
+    `REGRA DE IDIOMA (obrigatória, a mais importante de todas):`,
+    `- EM INGLÊS, sempre: "lemma", "forms" (base/past/participle/plural), "examples[].text", "examples[].word_order[].word", "meanings[].definition", "explanation" e "key_image_words".`,
+    `- EM PORTUGUÊS, sempre: "translation" e "meanings[].translation" — e SOMENTE esses.`,
+    `- "word_order" tem que ser a decomposição do "text" EM INGLÊS, palavra por palavra, nunca da tradução. Exemplo correto para text="They are students.": [{word:"They"},{word:"are"},{word:"students"}]. Seria ERRADO devolver [{word:"Eles"},{word:"são"},{word:"estudantes"}].`,
+    `- Nunca preencha um campo em inglês repetindo a tradução em português.`,
+    ``,
     `Existem exatamente dois tipos de item, e a distinção entre eles é importante:`,
     ``,
     `VOCABULARY = uma palavra ou expressão fixa (chunk lexical) que o aluno precisa memorizar o SIGNIFICADO. Isso inclui palavras isoladas (substantivos, verbos, adjetivos), phrasal verbs, e expressões/coleções fixas de palavras — INCLUINDO preposições e locuções prepositivas de lugar/tempo como "next to", "in front of", "close to", "near", "under", "at 3 o'clock". Se a dúvida é "o que essa palavra/expressão SIGNIFICA?", é VOCABULARY.`,

@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
+import { Pencil } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { LearningItem, VocabMetadata, StructureMetadata } from "@/modules/practice/practice.types";
+import { LearningItemEditForm } from "./LearningItemEditForm";
 
 interface LearningItemDetailModalProps {
   item: LearningItem | null;
+  planId: string;
   onClose: () => void;
 }
 
@@ -115,28 +120,61 @@ function StructureDetails({ metadata }: { metadata: StructureMetadata }) {
   );
 }
 
-export function LearningItemDetailModal({ item, onClose }: LearningItemDetailModalProps) {
+export function LearningItemDetailModal({ item, planId, onClose }: LearningItemDetailModalProps) {
   return (
     <Modal isOpen={Boolean(item)} onClose={onClose} title={item?.lemma ?? ""}>
-      {item && (
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          <span
-            className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border mb-4 ${
-              item.type === "VOCABULARY"
-                ? "bg-primary/10 text-primary border-primary/20"
-                : "bg-violet-50 text-violet-700 border-violet-200"
-            }`}
-          >
-            {item.type === "VOCABULARY" ? "Vocabulário" : "Estrutura"}
-          </span>
-
-          {item.type === "VOCABULARY" ? (
-            <VocabDetails metadata={item.metadata as VocabMetadata} />
-          ) : (
-            <StructureDetails metadata={item.metadata as StructureMetadata} />
-          )}
-        </div>
-      )}
+      {/* `key`: reabrir o modal em outro item precisa recomeçar o formulário
+          do zero, senão o admin editaria o item novo com o rascunho do
+          anterior ainda em tela. */}
+      {item && <DetailBody key={item.id} item={item} planId={planId} onClose={onClose} />}
     </Modal>
+  );
+}
+
+function DetailBody({
+  item,
+  planId,
+  onClose,
+}: {
+  item: LearningItem;
+  planId: string;
+  onClose: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <div className="p-6 max-h-[70vh] overflow-y-auto">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <span
+          className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+            item.type === "VOCABULARY"
+              ? "bg-primary/10 text-primary border-primary/20"
+              : "bg-violet-50 text-violet-700 border-violet-200"
+          }`}
+        >
+          {item.type === "VOCABULARY" ? "Vocabulário" : "Estrutura"}
+        </span>
+
+        {!editing && (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+            Editar
+          </Button>
+        )}
+      </div>
+
+      {editing ? (
+        <LearningItemEditForm
+          item={item}
+          planId={planId}
+          onCancel={() => setEditing(false)}
+          onSaved={onClose}
+        />
+      ) : item.type === "VOCABULARY" ? (
+        <VocabDetails metadata={item.metadata as VocabMetadata} />
+      ) : (
+        <StructureDetails metadata={item.metadata as StructureMetadata} />
+      )}
+    </div>
   );
 }

@@ -67,7 +67,10 @@ export function SentenceUnscrambleCard({
             Toque nas palavras abaixo para começar
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          // `lang="en"`/`translate="no"`: são as palavras da frase em inglês
+          // que o aluno tem que ordenar — um tradutor automático as reescreve
+          // em português e o exercício deixa de fazer sentido.
+          <div lang="en" translate="no" className="flex flex-wrap gap-2">
             {built.map((token) => (
               <motion.button
                 key={token.id}
@@ -94,7 +97,7 @@ export function SentenceUnscrambleCard({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           Banco de palavras
         </p>
-        <div className="flex min-h-14 flex-wrap gap-2">
+        <div lang="en" translate="no" className="flex min-h-14 flex-wrap gap-2">
           {bank.map((token) => (
             <motion.button
               key={token.id}

@@ -596,8 +596,12 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
         </div>
       </div>
 
-      <LearningItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
-      <QuizQuestionDetailModal question={detailQuestion} onClose={() => setDetailQuestion(null)} />
+      <LearningItemDetailModal item={detailItem} planId={planId} onClose={() => setDetailItem(null)} />
+      <QuizQuestionDetailModal
+        question={detailQuestion}
+        planId={planId}
+        onClose={() => setDetailQuestion(null)}
+      />
     </div>
   );
 }

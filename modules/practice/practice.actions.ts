@@ -6,8 +6,10 @@ import {
   GenerateLearningItemsSchema,
   ApproveLearningItemSchema,
   DeleteLearningItemSchema,
+  UpdateLearningItemSchema,
   ApproveQuizQuestionSchema,
   DeleteQuizQuestionSchema,
+  UpdateQuizQuestionSchema,
 } from "./practice.schema";
 import { practiceService } from "./practice.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -63,6 +65,50 @@ export async function deleteLearningItemAction(input: z.infer<typeof DeleteLearn
     await practiceService.deleteItem(currentUser.role, data.itemId);
     revalidatePath(`/admin/plans/${data.planId}`);
     return { itemId: data.itemId };
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para o admin corrigir manualmente um item de prática.
+ */
+export async function updateLearningItemAction(input: z.infer<typeof UpdateLearningItemSchema>) {
+  const safeAction = createSafeAction(UpdateLearningItemSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await practiceService.updateItem(currentUser.role, data.itemId, {
+      lemma: data.lemma,
+      metadata: data.metadata,
+    });
+    revalidatePath(`/admin/plans/${data.planId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para o admin corrigir manualmente uma pergunta de compreensão.
+ */
+export async function updateQuizQuestionAction(input: z.infer<typeof UpdateQuizQuestionSchema>) {
+  const safeAction = createSafeAction(UpdateQuizQuestionSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await practiceService.updateQuizQuestion(currentUser.role, data.questionId, {
+      question: data.question,
+      options: data.options,
+      correctIndex: data.correctIndex,
+      explanation: data.explanation,
+    });
+    revalidatePath(`/admin/plans/${data.planId}`);
+    return result;
   });
 
   return safeAction(input);

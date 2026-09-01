@@ -10,6 +10,7 @@ import {
   RawQuizQuestion,
 } from '@/lib/openai';
 import { AppError } from '@/lib/errors';
+import { partitionByLanguage, findLanguageViolations } from './practice.language';
 import { Role } from '@/modules/user/user.types';
 import {
   LearningItem,
@@ -270,7 +271,23 @@ export const practiceService = {
       throw new AppError('Falha ao gerar itens com IA. Tente novamente em instantes.');
     }
 
-    const mergedVocab = mergeDedupeAndCap(vocabItems);
+    // Guarda de idioma antes de persistir: um item com o conteúdo em
+    // português ensina a coisa errada (o aluno monta "Eles são estudantes"
+    // num exercício que pede a frase em inglês). Prompt não é garantia — ver
+    // `practice.language.ts`. Os descartados vão pro log com o campo exato,
+    // porque item sumindo em silêncio vira "a IA gerou menos hoje".
+    const { valid: languageChecked, rejected } = partitionByLanguage(vocabItems);
+    if (rejected.length > 0) {
+      console.warn(
+        `[Prática] ${rejected.length} item(ns) descartado(s) por idioma na lição ${lessonId}:`,
+        rejected.map(({ item, violations }) => ({
+          lemma: item.lemma,
+          campos: violations.map((v) => `${v.field} (${v.reason})`),
+        }))
+      );
+    }
+
+    const mergedVocab = mergeDedupeAndCap(languageChecked);
     const quizQuestions = [...flattenComprehensiveQuiz(lessonId, comprehensiveQuiz), ...mapListeningQuiz(lessonId, listeningQuiz)];
 
     await practiceRepository.deletePendingByLessonId(lessonId);
@@ -305,6 +322,43 @@ export const practiceService = {
     await practiceRepository.deleteById(itemId);
   },
 
+  /**
+   * Correção manual de um item pelo admin.
+   *
+   * A guarda de idioma aqui AVISA, mas não bloqueia: diferente da geração por
+   * IA (onde um item ruim é lixo descartável e sempre dá pra gerar de novo),
+   * aqui há uma pessoa decidindo conscientemente, e ela pode ter um motivo
+   * legítimo que o detector não conhece — um cognato, uma expressão que se
+   * escreve igual nos dois idiomas, uma lição sobre falsos cognatos. Bloquear
+   * transformaria a tela de correção numa briga contra a heurística.
+   */
+  async updateItem(
+    actingRole: Role,
+    itemId: string,
+    data: { lemma: string; metadata: LearningItem['metadata'] }
+  ): Promise<LearningItem> {
+    assertAdmin(actingRole);
+
+    const existing = await practiceRepository.findById(itemId);
+    if (!existing) {
+      throw new AppError('Item não encontrado.');
+    }
+
+    const violations = findLanguageViolations({
+      type: existing.type,
+      lemma: data.lemma,
+      metadata: data.metadata,
+    });
+    if (violations.length > 0) {
+      console.warn(
+        `[Prática] Item ${itemId} salvo pelo admin com possível conteúdo em português:`,
+        violations.map((v) => `${v.field} (${v.reason}) = "${v.value}"`)
+      );
+    }
+
+    return await practiceRepository.updateItemContent(itemId, data);
+  },
+
   async approveQuizQuestion(actingRole: Role, questionId: string): Promise<QuizQuestion> {
     assertAdmin(actingRole);
     return await practiceRepository.updateQuizQuestionReviewStatus(questionId, 'APPROVED');
@@ -313,5 +367,29 @@ export const practiceService = {
   async deleteQuizQuestion(actingRole: Role, questionId: string): Promise<void> {
     assertAdmin(actingRole);
     await practiceRepository.deleteQuizQuestionById(questionId);
+  },
+
+  /** Correção manual de uma pergunta de quiz pelo admin. */
+  async updateQuizQuestion(
+    actingRole: Role,
+    questionId: string,
+    data: { question: string; options: string[]; correctIndex: number; explanation?: string }
+  ): Promise<QuizQuestion> {
+    assertAdmin(actingRole);
+
+    // `correctIndex` é índice de array: se ele apontasse para fora das
+    // alternativas, o dia de prática abriria com uma pergunta sem resposta
+    // certa possível. O schema já cobre 0-3, mas a checagem contra o tamanho
+    // real fecha o caso de uma edição futura mudar a quantidade.
+    if (data.correctIndex >= data.options.length) {
+      throw new AppError('A alternativa correta precisa ser uma das alternativas informadas.');
+    }
+
+    return await practiceRepository.updateQuizQuestionContent(questionId, {
+      question: data.question,
+      options: data.options,
+      correctIndex: data.correctIndex,
+      explanation: data.explanation?.trim() ? data.explanation.trim() : null,
+    });
   },
 };

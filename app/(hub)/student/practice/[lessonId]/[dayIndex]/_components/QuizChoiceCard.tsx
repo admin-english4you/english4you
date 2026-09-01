@@ -30,11 +30,16 @@ export function QuizChoiceCard({
     <div className="mx-auto w-full max-w-xl">
       {header}
 
-      <p className="mb-6 text-lg font-semibold leading-snug text-slate-900 sm:text-xl">
+      {/* `translate="no"` sem `lang="en"`: o quiz é conteúdo MISTO de
+          propósito — a maioria é inglês, mas existem perguntas de tradução
+          ("What is the meaning of 'eraser'?" com alternativas em português).
+          Traduzir automaticamente quebra os dois casos, e nas perguntas de
+          tradução chega a entregar a resposta. */}
+      <p translate="no" className="mb-6 text-lg font-semibold leading-snug text-slate-900 sm:text-xl">
         {quiz.question}
       </p>
 
-      <div className="flex flex-col gap-3">
+      <div translate="no" className="flex flex-col gap-3">
         {quiz.options.map((option, index) => {
           const isSelected = selectedIndex === index;
           const isRight = index === quiz.correctIndex;

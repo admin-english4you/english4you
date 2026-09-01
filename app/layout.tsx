@@ -60,7 +60,14 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      // A interface inteira é em português. Declarar `en` aqui fazia o Chrome
+      // no Android tratar a página como inglesa e TRADUZIR tudo pro português
+      // automaticamente — inclusive o conteúdo das atividades, que é o que o
+      // aluno tem que aprender: "a teacher" virava "um professor", "They are
+      // students" virava "Eles são estudantes", e o exercício perdia o sentido.
+      // O conteúdo em inglês de dentro das atividades é protegido à parte com
+      // `translate="no"` (ver os cards em student/practice).
+      lang="pt-BR"
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
     >
       <body className="min-h-full flex flex-col">

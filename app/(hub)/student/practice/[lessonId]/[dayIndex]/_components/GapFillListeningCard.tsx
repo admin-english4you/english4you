@@ -86,7 +86,9 @@ export function GapFillListeningCard({
         ) : (
           <div className="rounded-lg bg-amber-50 px-3 py-2 text-center">
             <p className="text-xs text-amber-800">Seu navegador não reproduz áudio.</p>
-            <p className="mt-0.5 text-sm font-bold text-amber-900">{gapFill.correctAnswer}</p>
+            <p lang="en" translate="no" className="mt-0.5 text-sm font-bold text-amber-900">
+              {gapFill.correctAnswer}
+            </p>
           </div>
         )}
       </div>
@@ -96,7 +98,10 @@ export function GapFillListeningCard({
           Complete a frase
         </p>
 
-        <p className="text-lg leading-relaxed text-slate-800 sm:text-xl">
+        {/* A frase é o conteúdo em inglês do exercício — sem `translate="no"`
+            um tradutor automático a reescreve em português e a lacuna deixa
+            de corresponder à palavra que o aluno ouviu. */}
+        <p lang="en" translate="no" className="text-lg leading-relaxed text-slate-800 sm:text-xl">
           <span>{before}</span>
           <input
             ref={inputRef}

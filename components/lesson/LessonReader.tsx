@@ -40,7 +40,13 @@ export function LessonReader({ title, level, html, audioUrl, videoUrl }: LessonR
       <hr className="my-6 border-slate-200" />
 
       {hasContent ? (
-        <LessonContentView html={html} />
+        // O material da aula é escrito em inglês pelo professor (com apoio em
+        // português no meio). É conteúdo de estudo: tradutor automático
+        // ligado transformava a aula inteira em português e o aluno lia a
+        // tradução em vez do original. Ver `app/layout.tsx`.
+        <div translate="no">
+          <LessonContentView html={html} />
+        </div>
       ) : (
         <p className="rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
           O professor ainda não publicou o material desta aula.

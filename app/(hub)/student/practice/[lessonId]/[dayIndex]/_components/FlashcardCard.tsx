@@ -72,7 +72,11 @@ export function FlashcardCard({ item, onResult }: FlashcardCardProps) {
               </div>
             )}
 
+            {/* No modo visual a frente é a palavra em INGLÊS (no recall é a
+                tradução) — só ela leva a marcação anti-tradução. */}
             <p
+              lang={isRecall ? undefined : "en"}
+              translate={isRecall ? undefined : "no"}
               className={cn(
                 "text-center font-bold text-slate-900",
                 isRecall ? "text-2xl" : "text-3xl sm:text-4xl"
@@ -106,7 +110,12 @@ export function FlashcardCard({ item, onResult }: FlashcardCardProps) {
             className="card-face absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-primary/30 bg-primary/10 p-6 shadow-sm"
             style={{ transform: "rotateY(180deg)" }}
           >
-            <p className="text-center text-2xl font-bold text-primary sm:text-3xl">
+            {/* Espelho da frente: no recall é o verso que traz o inglês. */}
+            <p
+              lang={isRecall ? "en" : undefined}
+              translate={isRecall ? "no" : undefined}
+              className="text-center text-2xl font-bold text-primary sm:text-3xl"
+            >
               {flashcard.back}
             </p>
 

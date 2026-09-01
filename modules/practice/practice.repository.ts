@@ -108,6 +108,19 @@ export const practiceRepository = {
     await db.delete(learningItemsTable).where(eq(learningItemsTable.id, id));
   },
 
+  /** Edição manual do admin: substitui termo e metadados de uma vez. */
+  async updateItemContent(
+    id: string,
+    data: { lemma: string; metadata: LearningItem['metadata'] }
+  ): Promise<LearningItem> {
+    const [item] = await db
+      .update(learningItemsTable)
+      .set({ lemma: data.lemma, metadata: data.metadata })
+      .where(eq(learningItemsTable.id, id))
+      .returning();
+    return item;
+  },
+
   async findQuizQuestionsByLessonId(lessonId: string): Promise<QuizQuestion[]> {
     return await db.query.quizQuestionsTable.findMany({
       where: eq(quizQuestionsTable.lessonId, lessonId),
@@ -137,6 +150,24 @@ export const practiceRepository = {
 
   async deleteQuizQuestionById(id: string): Promise<void> {
     await db.delete(quizQuestionsTable).where(eq(quizQuestionsTable.id, id));
+  },
+
+  /** Edição manual do admin: enunciado, alternativas, gabarito e explicação. */
+  async updateQuizQuestionContent(
+    id: string,
+    data: { question: string; options: string[]; correctIndex: number; explanation: string | null }
+  ): Promise<QuizQuestion> {
+    const [question] = await db
+      .update(quizQuestionsTable)
+      .set({
+        question: data.question,
+        options: data.options,
+        correctIndex: data.correctIndex,
+        explanation: data.explanation,
+      })
+      .where(eq(quizQuestionsTable.id, id))
+      .returning();
+    return question;
   },
 
   async countPendingQuizQuestions(lessonId: string): Promise<number> {
