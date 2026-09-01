@@ -56,6 +56,13 @@ const SOLO_STRUCTURE: [number, number] = [10, STRUCTURE_CEILING];
 const QUIZ_SECTIONS: QuizSectionType[] = ['vocabulary', 'grammar', 'context', 'comprehension'];
 
 /**
+ * Abaixo disto, os dias de "completar a frase" e "monte a frase" ficam curtos
+ * o bastante para o aluno perceber (são um exercício por item STRUCTURE).
+ * É limiar de AVISO no log, não de erro — ver o uso em `generateLearningItems`.
+ */
+const MIN_EXPECTED_STRUCTURES = 6;
+
+/**
  * Só áudio: a transcrição roda na OpenAI (ver lib/openai.ts), cuja API não
  * aceita vídeo. Uma lição com vídeo mas sem áudio simplesmente não gera
  * transcrição — e, portanto, nem prática de compreensão auditiva (a mesma
@@ -290,24 +297,49 @@ export const practiceService = {
     const mergedVocab = mergeDedupeAndCap(languageChecked);
     const quizQuestions = [...flattenComprehensiveQuiz(lessonId, comprehensiveQuiz), ...mapListeningQuiz(lessonId, listeningQuiz)];
 
+    // Sem item nenhum não adianta gravar só o quiz: a lição fica pela metade
+    // (dias 1 a 4 da prática saem vazios, porque flashcard/gap fill/monte a
+    // frase saem TODOS dos learning items) e, como a geração devolvia
+    // "sucesso", ninguém ficava sabendo. Foi assim que uma lição terminou com
+    // 59 perguntas e zero itens. Melhor falhar aqui e o admin gerar de novo.
+    if (mergedVocab.length === 0) {
+      throw new AppError(
+        'A IA não devolveu nenhum item de vocabulário ou estrutura para esta lição. Nada foi salvo — tente gerar novamente.'
+      );
+    }
+
     await practiceRepository.deletePendingByLessonId(lessonId);
     await practiceRepository.deletePendingQuizQuestions(lessonId);
 
-    if (mergedVocab.length > 0) {
-      // Itens já entram APPROVED: o fluxo é o admin remover os que não quiser,
-      // não aprovar um a um. PENDING continua existindo no schema para casos em
-      // que se queira reintroduzir uma etapa de revisão explícita no futuro.
-      const toInsert: NewLearningItem[] = mergedVocab.map((item) => ({
-        lessonId,
-        type: item.type,
-        lemma: item.lemma,
-        metadata: item.metadata,
-        reviewStatus: 'APPROVED',
-      }));
-      await practiceRepository.createMany(toInsert);
-    }
+    // Itens já entram APPROVED: o fluxo é o admin remover os que não quiser,
+    // não aprovar um a um. PENDING continua existindo no schema para casos em
+    // que se queira reintroduzir uma etapa de revisão explícita no futuro.
+    const toInsert: NewLearningItem[] = mergedVocab.map((item) => ({
+      lessonId,
+      type: item.type,
+      lemma: item.lemma,
+      metadata: item.metadata,
+      reviewStatus: 'APPROVED',
+    }));
+    await practiceRepository.createMany(toInsert);
 
     await practiceRepository.createQuizQuestions(quizQuestions);
+
+    // Os dias 2 e 3 da prática (gap fill e monte a frase) saem SÓ de itens
+    // STRUCTURE, um exercício por item — então a contagem de estruturas é
+    // literalmente quantos exercícios o aluno recebe nesses dias. Poucas
+    // estruturas passavam despercebidas até o aluno abrir a prática e achar
+    // dois exercícios. O aviso é log, não erro: um texto de aula que é uma
+    // lista de vocabulário pode legitimamente não ter 10 padrões gramaticais,
+    // e forçar o número faria a IA inventar conteúdo — pior e mais difícil de
+    // perceber do que ter poucos.
+    const structureCount = mergedVocab.filter((item) => item.type === 'STRUCTURE').length;
+    if (structureCount < MIN_EXPECTED_STRUCTURES) {
+      console.warn(
+        `[Prática] Lição ${lessonId}: só ${structureCount} estrutura(s) geradas (esperado ~${MIN_EXPECTED_STRUCTURES}). ` +
+          `Os dias de "completar a frase" e "monte a frase" terão ${structureCount} exercício(s).`
+      );
+    }
 
     return await practiceRepository.findByLessonId(lessonId);
   },

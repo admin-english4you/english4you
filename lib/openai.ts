@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import {
+  AIGeneratedLearningItemSchema,
   AIGeneratedLearningItemsSchema,
   AIGeneratedComprehensiveQuizSchema,
   AIGeneratedListeningQuizSchema,
@@ -238,12 +239,46 @@ export async function extractLearningItems(params: ExtractItemsParams): Promise<
   });
 
   const items = (parsed as { items?: unknown } | null)?.items ?? [];
-  const result = AIGeneratedLearningItemsSchema.safeParse(items);
-  if (!result.success) {
-    console.error("[OpenAI] Resposta não bate com o formato esperado:", result.error);
+  if (!Array.isArray(items)) {
+    console.error("[OpenAI] Resposta de itens não é uma lista.");
     return [];
   }
-  return result.data;
+
+  // Validação ITEM A ITEM, e não do array inteiro.
+  //
+  // Antes era `Schema.safeParse(items)` seguido de `return []`: um único item
+  // fora do formato reprovava a resposta toda e o lote inteiro ia pro lixo em
+  // silêncio (a função devolvia lista vazia, e o service tratava isso como
+  // "não veio nada" — sem erro pro admin). Isso não é hipotético: o schema
+  // exige 2 exemplos por vocabulário e 3 por estrutura, e TODO item que o
+  // modelo produz vem com exatamente o mínimo. Um item com um exemplo a menos
+  // derrubava as outras dezenas junto — foi assim que uma lição terminou com
+  // 59 perguntas de quiz e ZERO itens de aprendizagem.
+  const valid: RawLearningItem[] = [];
+  const problems: string[] = [];
+
+  for (const [index, item] of items.entries()) {
+    const result = AIGeneratedLearningItemSchema.safeParse(item);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      const lemma = (item as { lemma?: unknown })?.lemma;
+      problems.push(
+        `#${index}${typeof lemma === "string" ? ` "${lemma}"` : ""}: ${result.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`
+      );
+    }
+  }
+
+  if (problems.length > 0) {
+    console.warn(
+      `[OpenAI] ${problems.length} de ${items.length} item(ns) descartado(s) por formato:`,
+      problems
+    );
+  }
+
+  return valid;
 }
 
 export interface ComprehensiveQuizParams {
