@@ -107,3 +107,24 @@ export interface PracticeSession {
   xpReward: number;
   isReplay: boolean;
 }
+
+/**
+ * Resultado de "gerar mais" para um tipo de conteúdo.
+ *
+ * `requested` e `inserted` vêm separados porque quase nunca são iguais: o
+ * modelo devolve o que o texto da aula comporta, e o prompt manda entregar
+ * menos em vez de inventar. `duplicates` conta o que a IA repetiu do que já
+ * existia e foi barrado — sem esse número, "pedi 10 e vieram 3" não distingue
+ * "o texto não dá mais" de "a IA repetiu 7 vezes o que já tinha".
+ */
+export interface GenerateMoreCount {
+  requested: number;
+  inserted: number;
+  duplicates: number;
+}
+
+export interface GenerateMoreReport {
+  vocab: GenerateMoreCount;
+  structure: GenerateMoreCount;
+  quiz: GenerateMoreCount;
+}

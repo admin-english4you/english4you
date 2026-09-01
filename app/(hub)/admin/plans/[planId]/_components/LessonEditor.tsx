@@ -39,6 +39,7 @@ import {
   approveQuizQuestionAction,
   deleteQuizQuestionAction,
 } from "@/modules/practice/practice.actions";
+import { GenerateMorePanel } from "./GenerateMorePanel";
 import { LearningItemDetailModal } from "./LearningItemDetailModal";
 import { QuizQuestionDetailModal } from "./QuizQuestionDetailModal";
 
@@ -482,13 +483,27 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   {learningItems.length} gerados{pendingCount > 0 ? ` • ${pendingCount} pendente${pendingCount > 1 ? "s" : ""} de revisão` : ""}
                 </p>
               </div>
-              <Button type="button" size="sm" onClick={handleGenerate} loading={isGeneratePending} className="bg-primary hover:bg-primary/80">
-                {!isGeneratePending && <Sparkles className="w-4 h-4 mr-1.5" />}
-                {isGeneratePending ? "Gerando... até 60s" : "Gerar com IA"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* "Gerar mais" só faz sentido quando já existe algo pra
+                    complementar; numa lição vazia o caminho é o botão abaixo. */}
+                {learningItems.length > 0 && (
+                  <GenerateMorePanel
+                    lessonId={lesson.id}
+                    planId={planId}
+                    vocabTotal={learningItems.filter((i) => i.type === "VOCABULARY").length}
+                    structureTotal={learningItems.filter((i) => i.type === "STRUCTURE").length}
+                    quizTotal={quizQuestions.length}
+                  />
+                )}
+                <Button type="button" size="sm" onClick={handleGenerate} loading={isGeneratePending} className="bg-primary hover:bg-primary/80">
+                  {!isGeneratePending && <Sparkles className="w-4 h-4 mr-1.5" />}
+                  {isGeneratePending ? "Gerando... até 60s" : "Gerar com IA"}
+                </Button>
+              </div>
             </div>
             <p className="text-[11px] text-slate-400 -mt-2">
               Gera vocabulário, estrutura e as perguntas de compreensão (abaixo) de uma vez só.
+              {learningItems.length > 0 && " Como a lição já tem conteúdo, isso ACRESCENTA um lote novo — use \"Gerar mais\" para complementar sem duplicar."}
             </p>
 
             {generateError && (

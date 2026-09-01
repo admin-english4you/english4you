@@ -167,6 +167,29 @@ export const AIGeneratedComprehensiveQuizSchema = z.object({
 /** Resposta da chamada do listening_choice: 5-10 perguntas sobre trechos específicos do áudio. */
 export const AIGeneratedListeningQuizSchema = z.array(AIGeneratedQuizQuestionSchema).min(5).max(10);
 
+/**
+ * Pergunta com a seção declarada pela própria IA.
+ *
+ * O `AIGeneratedComprehensiveQuizSchema` acima existe para a geração INICIAL,
+ * onde as 4 seções são preenchidas de uma vez e cada uma exige 5-10 perguntas.
+ * Esse formato não serve para "gerar mais N": pedir 3 perguntas extras
+ * esbarraria no mínimo de 5 por seção, e pedir as 4 seções de novo devolveria
+ * 20-40 quando o admin queria 3. Aqui a lista é plana e a seção vem em cada
+ * item, então a quantidade pedida é a quantidade recebida.
+ */
+export const AIGeneratedSectionedQuizQuestionSchema = z.object({
+  question: z.string(),
+  options: QuizQuestionOptionsSchema,
+  correctIndex: z.number().int().min(0).max(3),
+  explanation: z.string().optional(),
+  section: QuizSectionTypeEnum,
+}).refine((data) => data.correctIndex < data.options.length, {
+  message: 'correctIndex fora do intervalo de opções',
+  path: ['correctIndex'],
+});
+
+export const AIGeneratedSectionedQuizSchema = z.array(AIGeneratedSectionedQuizQuestionSchema);
+
 export const ApproveQuizQuestionSchema = z.object({
   questionId: z.uuid(),
   planId: z.uuid(),
@@ -201,6 +224,31 @@ export const GenerateLearningItemsSchema = z.object({
   lessonId: z.uuid(),
   planId: z.uuid(),
 });
+
+/**
+ * "Gerar mais" — acréscimo incremental, decidido pelo admin por lição.
+ *
+ * Separado por tipo de propósito: o que falta na prática é ESTRUTURA (é dela
+ * que saem os dias 2 e 3, um exercício por item), enquanto vocabulário e quiz
+ * já batem no teto de 10/dia em praticamente toda lição. Um campo único
+ * gastaria chamada de API devolvendo justamente o tipo que já sobra.
+ *
+ * Os números são ALVO, não garantia: o modelo entrega o que o texto da aula
+ * comporta, e o service devolve quanto veio de fato para a tela poder dizer
+ * "vieram 3 das 10 pedidas" em vez de fingir sucesso.
+ */
+export const GenerateMoreContentSchema = z
+  .object({
+    lessonId: z.uuid(),
+    planId: z.uuid(),
+    vocabCount: z.number().int().min(0).max(20).default(0),
+    structureCount: z.number().int().min(0).max(20).default(0),
+    quizCount: z.number().int().min(0).max(20).default(0),
+  })
+  .refine((data) => data.vocabCount + data.structureCount + data.quizCount > 0, {
+    message: 'Escolha ao menos um item para gerar.',
+    path: ['vocabCount'],
+  });
 
 export const ApproveLearningItemSchema = z.object({
   itemId: z.uuid(),

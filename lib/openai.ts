@@ -5,6 +5,8 @@ import {
   AIGeneratedLearningItemsSchema,
   AIGeneratedComprehensiveQuizSchema,
   AIGeneratedListeningQuizSchema,
+  AIGeneratedSectionedQuizQuestionSchema,
+  AIGeneratedSectionedQuizSchema,
 } from "@/modules/practice/practice.schema";
 
 const apiKey = process.env.OPENAI_API_KEY;
@@ -281,6 +283,87 @@ export async function extractLearningItems(params: ExtractItemsParams): Promise<
   return valid;
 }
 
+export interface ExtractMoreItemsParams {
+  text: string;
+  levelHint: string;
+  vocabCount: number;
+  structureCount: number;
+  /** Termos que a lição já tem — a IA é instruída a não repetir nenhum. */
+  existingLemmas: string[];
+}
+
+/**
+ * Acréscimo incremental de itens a uma lição que já tem conteúdo.
+ *
+ * A lista de exclusão vai no prompt, mas o dedupe contra o que já existe é
+ * refeito no service: instrução de prompt reduz repetição, não elimina — e um
+ * item duplicado que passe vira dois flashcards idênticos para o aluno.
+ */
+export async function extractMoreLearningItems(
+  params: ExtractMoreItemsParams
+): Promise<RawLearningItem[]> {
+  const parsed = await requestJson({
+    prompt: buildMoreItemsPrompt(params),
+    schemaName: "more_learning_items",
+    schema: arrayRootSchema(AIGeneratedLearningItemsSchema),
+  });
+
+  const items = (parsed as { items?: unknown } | null)?.items ?? [];
+  if (!Array.isArray(items)) return [];
+
+  // Mesma validação item a item da extração inicial — ver `extractLearningItems`.
+  const valid: RawLearningItem[] = [];
+  for (const item of items) {
+    const result = AIGeneratedLearningItemSchema.safeParse(item);
+    if (result.success) valid.push(result.data);
+  }
+  if (valid.length < items.length) {
+    console.warn(`[OpenAI] ${items.length - valid.length} item(ns) extra descartado(s) por formato.`);
+  }
+  return valid;
+}
+
+export interface MoreQuizParams {
+  text: string;
+  transcript: string;
+  levelHint: string;
+  count: number;
+  /** Enunciados já existentes, para a IA não repetir pergunta. */
+  existingQuestions: string[];
+}
+
+export type RawSectionedQuizQuestion = z.infer<typeof AIGeneratedSectionedQuizSchema>[number];
+
+/**
+ * Acréscimo incremental de perguntas do `quiz_comprehensive`.
+ *
+ * Usa a lista plana com `section` em cada pergunta (e não o formato de 4
+ * seções da geração inicial), porque aquele exige 5-10 por seção — pedir 3
+ * perguntas extras seria impossível de expressar ali.
+ */
+export async function generateMoreQuizQuestions(
+  params: MoreQuizParams
+): Promise<RawSectionedQuizQuestion[]> {
+  const parsed = await requestJson({
+    prompt: buildMoreQuizPrompt(params),
+    schemaName: "more_quiz_questions",
+    schema: arrayRootSchema(AIGeneratedSectionedQuizSchema),
+  });
+
+  const items = (parsed as { items?: unknown } | null)?.items ?? [];
+  if (!Array.isArray(items)) return [];
+
+  const valid: RawSectionedQuizQuestion[] = [];
+  for (const item of items) {
+    const result = AIGeneratedSectionedQuizQuestionSchema.safeParse(item);
+    if (result.success) valid.push(result.data);
+  }
+  if (valid.length < items.length) {
+    console.warn(`[OpenAI] ${items.length - valid.length} pergunta(s) extra descartada(s) por formato.`);
+  }
+  return valid;
+}
+
 export interface ComprehensiveQuizParams {
   text: string;
   transcript: string;
@@ -370,6 +453,82 @@ function buildListeningQuizPrompt(params: { transcript: string; levelHint: strin
   ].join("\n");
 }
 
+/** Trecho de regra de idioma, idêntico em toda geração de itens. */
+const LANGUAGE_RULES = [
+  `REGRA DE IDIOMA (obrigatória, a mais importante de todas):`,
+  `- EM INGLÊS, sempre: "lemma", "forms" (base/past/participle/plural), "examples[].text", "examples[].word_order[].word", "meanings[].definition", "explanation" e "key_image_words".`,
+  `- EM PORTUGUÊS, sempre: "translation" e "meanings[].translation" — e SOMENTE esses.`,
+  `- "word_order" tem que ser a decomposição do "text" EM INGLÊS, palavra por palavra, nunca da tradução. Exemplo correto para text="They are students.": [{word:"They"},{word:"are"},{word:"students"}]. Seria ERRADO devolver [{word:"Eles"},{word:"são"},{word:"estudantes"}].`,
+  `- Nunca preencha um campo em inglês repetindo a tradução em português.`,
+];
+
+/** Lista de exclusão — cortada para não estourar o prompt em lição grande. */
+function buildExclusionBlock(label: string, values: string[], limit = 120): string[] {
+  if (values.length === 0) return [];
+  const shown = values.slice(0, limit);
+  return [
+    ``,
+    `${label} (NÃO repita nenhum destes, nem uma variação trivial deles):`,
+    shown.map((value) => `- ${value}`).join("\n"),
+    ...(values.length > shown.length ? [`(e mais ${values.length - shown.length} outros)`] : []),
+  ];
+}
+
+function buildMoreItemsPrompt(params: ExtractMoreItemsParams): string {
+  const { text, levelHint, vocabCount, structureCount, existingLemmas } = params;
+
+  const pedidos: string[] = [];
+  if (vocabCount > 0) pedidos.push(`${vocabCount} itens do tipo VOCABULARY`);
+  if (structureCount > 0) pedidos.push(`${structureCount} itens do tipo STRUCTURE`);
+
+  return [
+    `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
+    `Esta lição JÁ TEM itens de prática cadastrados. Sua tarefa é gerar itens ADICIONAIS, complementares aos que já existem.`,
+    ``,
+    `Gere ${pedidos.join(" e ")}, todos NOVOS.`,
+    ``,
+    `VOCABULARY = palavra ou expressão fixa cujo SIGNIFICADO o aluno precisa memorizar (inclui phrasal verbs e locuções como "next to", "in front of").`,
+    `STRUCTURE = PADRÃO GRAMATICAL aplicável a várias frases (tempos verbais, formação de perguntas, voz passiva, ordem das palavras). Uma preposição isolada NUNCA é STRUCTURE.`,
+    ``,
+    `Cada VOCABULARY precisa de no MÍNIMO 2 exemplos; cada STRUCTURE, de no MÍNIMO 3 exemplos, cada um com seu "word_order".`,
+    `Não invente conteúdo fora do que está implícito no texto. Se o texto não comportar a quantidade pedida, devolva MENOS itens — é melhor devolver 3 itens bons do que completar o número com repetição ou invenção.`,
+    ``,
+    ...LANGUAGE_RULES,
+    ...buildExclusionBlock("TERMOS JÁ CADASTRADOS NESTA LIÇÃO", existingLemmas),
+    ``,
+    `Campos que não se aplicam ao item devem vir como null.`,
+    `Responda estritamente no formato JSON solicitado, sem texto adicional. Devolva os itens no campo "items".`,
+    `--- TEXTO DA AULA ---`,
+    text,
+  ].join("\n");
+}
+
+function buildMoreQuizPrompt(params: MoreQuizParams): string {
+  const { text, transcript, levelHint, count, existingQuestions } = params;
+  return [
+    `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
+    `Esta lição JÁ TEM perguntas de compreensão cadastradas. Gere ${count} pergunta(s) ADICIONAIS de múltipla escolha (4 alternativas, exatamente 1 correta).`,
+    ``,
+    `Cada pergunta precisa declarar a que seção pertence, no campo "section":`,
+    `- "vocabulary": significado/tradução de palavras e expressões do conteúdo.`,
+    `- "grammar": estruturas gramaticais do conteúdo.`,
+    `- "context": uso prático ou nuance cultural/situacional.`,
+    `- "comprehension": entendimento GERAL do conteúdo.`,
+    `Distribua as ${count} pergunta(s) entre as seções que fizerem mais sentido para o conteúdo.`,
+    ``,
+    `As 4 alternativas precisam ser plausíveis (sem "todas as anteriores" nem pegadinha ambígua), "correctIndex" aponta a única correta (0 a 3), e "explanation" é uma justificativa curta.`,
+    `As alternativas de uma mesma pergunta não podem se repetir.`,
+    `Se o conteúdo não comportar a quantidade pedida sem repetir o que já existe, devolva MENOS perguntas.`,
+    ...buildExclusionBlock("PERGUNTAS JÁ CADASTRADAS", existingQuestions),
+    ``,
+    `Responda estritamente no formato JSON solicitado, sem texto adicional. Devolva as perguntas no campo "items".`,
+    ``,
+    `--- TEXTO DA AULA ---`,
+    text || "(sem conteúdo escrito)",
+    ...(transcript ? ["", "--- TRANSCRIÇÃO DO ÁUDIO ---", transcript] : []),
+  ].join("\n");
+}
+
 function buildExtractionPrompt(params: ExtractItemsParams): string {
   const { text, levelHint, vocabRange, structureRange } = params;
   return [
@@ -382,11 +541,7 @@ function buildExtractionPrompt(params: ExtractItemsParams): string {
     // exercício — o aluno monta a frase em português. Ver a guarda em
     // `modules/practice/practice.language.ts`, que derruba o item se isso
     // acontecer mesmo assim.
-    `REGRA DE IDIOMA (obrigatória, a mais importante de todas):`,
-    `- EM INGLÊS, sempre: "lemma", "forms" (base/past/participle/plural), "examples[].text", "examples[].word_order[].word", "meanings[].definition", "explanation" e "key_image_words".`,
-    `- EM PORTUGUÊS, sempre: "translation" e "meanings[].translation" — e SOMENTE esses.`,
-    `- "word_order" tem que ser a decomposição do "text" EM INGLÊS, palavra por palavra, nunca da tradução. Exemplo correto para text="They are students.": [{word:"They"},{word:"are"},{word:"students"}]. Seria ERRADO devolver [{word:"Eles"},{word:"são"},{word:"estudantes"}].`,
-    `- Nunca preencha um campo em inglês repetindo a tradução em português.`,
+    ...LANGUAGE_RULES,
     ``,
     `Existem exatamente dois tipos de item, e a distinção entre eles é importante:`,
     ``,

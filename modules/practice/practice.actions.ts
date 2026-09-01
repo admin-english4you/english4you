@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   GenerateLearningItemsSchema,
+  GenerateMoreContentSchema,
   ApproveLearningItemSchema,
   DeleteLearningItemSchema,
   UpdateLearningItemSchema,
@@ -29,6 +30,30 @@ export async function generateLearningItemsAction(input: z.infer<typeof Generate
     const result = await practiceService.generateLearningItems(currentUser.role, data.lessonId);
     revalidatePath(`/admin/plans/${data.planId}`);
     return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para gerar conteúdo ADICIONAL numa lição que já tem itens,
+ * sem duplicar o que existe. O admin escolhe a quantidade por tipo.
+ */
+export async function generateMoreContentAction(input: z.infer<typeof GenerateMoreContentSchema>) {
+  const safeAction = createSafeAction(GenerateMoreContentSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const report = await practiceService.generateMoreContent(currentUser.role, {
+      lessonId: data.lessonId,
+      vocabCount: data.vocabCount,
+      structureCount: data.structureCount,
+      quizCount: data.quizCount,
+    });
+    revalidatePath(`/admin/plans/${data.planId}`);
+    return report;
   });
 
   return safeAction(input);

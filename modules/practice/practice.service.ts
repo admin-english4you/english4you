@@ -3,16 +3,20 @@ import { lessonService } from '@/modules/lesson/lesson.service';
 import {
   transcribeMedia,
   extractLearningItems,
+  extractMoreLearningItems,
   generateComprehensiveQuiz,
   generateListeningQuiz,
+  generateMoreQuizQuestions,
   RawLearningItem,
   RawComprehensiveQuiz,
   RawQuizQuestion,
+  RawSectionedQuizQuestion,
 } from '@/lib/openai';
 import { AppError } from '@/lib/errors';
 import { partitionByLanguage, findLanguageViolations } from './practice.language';
 import { Role } from '@/modules/user/user.types';
 import {
+  GenerateMoreReport,
   LearningItem,
   NewLearningItem,
   QuizQuestion,
@@ -342,6 +346,165 @@ export const practiceService = {
     }
 
     return await practiceRepository.findByLessonId(lessonId);
+  },
+
+  /**
+   * Gera conteúdo ADICIONAL para uma lição que já tem itens, sem duplicar.
+   *
+   * Existe porque `generateLearningItems` só apaga o que está PENDING, e tudo
+   * entra APPROVED: rodar de novo acrescentava um lote inteiro por cima do que
+   * já havia. Foi assim que uma lição acumulou 59 perguntas em duas execuções,
+   * com uma repetida. Aqui a duplicata é barrada duas vezes — a IA recebe a
+   * lista do que já existe, e o que ela devolver é conferido contra o banco.
+   *
+   * Devolve o pedido e o recebido lado a lado: o modelo entrega o que o texto
+   * da aula comporta, e é comum vir menos. Quem chama precisa poder dizer
+   * "vieram 3 das 10" em vez de recarregar a tela como se tudo tivesse dado
+   * certo.
+   */
+  async generateMoreContent(
+    actingRole: Role,
+    input: { lessonId: string; vocabCount: number; structureCount: number; quizCount: number }
+  ): Promise<GenerateMoreReport> {
+    assertAdmin(actingRole);
+
+    const { lessonId, vocabCount, structureCount, quizCount } = input;
+    const lesson = await lessonService.getLessonById(actingRole, lessonId);
+    if (!lesson) throw new AppError('Lição não encontrada.');
+
+    const plainText = stripHtml(lesson.content);
+    const transcript = lesson.transcript ?? '';
+    if (!plainText && !transcript) {
+      throw new AppError('Adicione conteúdo escrito ou áudio à lição antes de gerar com IA.');
+    }
+
+    const [existingItems, existingQuestions] = await Promise.all([
+      practiceRepository.findByLessonId(lessonId),
+      practiceRepository.findQuizQuestionsByLessonId(lessonId),
+    ]);
+
+    const report: GenerateMoreReport = {
+      vocab: { requested: vocabCount, inserted: 0, duplicates: 0 },
+      structure: { requested: structureCount, inserted: 0, duplicates: 0 },
+      quiz: { requested: quizCount, inserted: 0, duplicates: 0 },
+    };
+
+    // --- Itens de aprendizagem ---
+    if (vocabCount > 0 || structureCount > 0) {
+      let raw: RawLearningItem[] = [];
+      try {
+        raw = await extractMoreLearningItems({
+          text: plainText || transcript,
+          levelHint: lesson.level,
+          vocabCount,
+          structureCount,
+          existingLemmas: existingItems.map((item) => item.lemma),
+        });
+      } catch (err) {
+        console.error('OpenAI (gerar mais itens) falhou:', err);
+        throw new AppError('Falha ao gerar itens com IA. Tente novamente em instantes.');
+      }
+
+      const { valid, rejected } = partitionByLanguage(raw);
+      if (rejected.length > 0) {
+        console.warn(
+          `[Prática] ${rejected.length} item(ns) extra descartado(s) por idioma na lição ${lessonId}:`,
+          rejected.map(({ item, violations }) => ({
+            lemma: item.lemma,
+            campos: violations.map((v) => `${v.field} (${v.reason})`),
+          }))
+        );
+      }
+
+      // Dedupe contra o BANCO, não só dentro do lote: a exclusão via prompt
+      // reduz repetição, não elimina.
+      const known = new Set(existingItems.map((item) => `${item.type}::${item.lemma.trim().toLowerCase()}`));
+      const novos: RawLearningItem[] = [];
+      for (const item of valid) {
+        const key = `${item.type}::${item.lemma.trim().toLowerCase()}`;
+        if (known.has(key)) {
+          if (item.type === 'VOCABULARY') report.vocab.duplicates += 1;
+          else report.structure.duplicates += 1;
+          continue;
+        }
+        known.add(key);
+        novos.push(item);
+      }
+
+      // Respeita o teto total da lição, contando o que já existe.
+      const vocabRoom = Math.max(0, VOCAB_CEILING - existingItems.filter((i) => i.type === 'VOCABULARY').length);
+      const structureRoom = Math.max(0, STRUCTURE_CEILING - existingItems.filter((i) => i.type === 'STRUCTURE').length);
+      const toInsert = [
+        ...novos.filter((i) => i.type === 'VOCABULARY').slice(0, Math.min(vocabCount, vocabRoom)),
+        ...novos.filter((i) => i.type === 'STRUCTURE').slice(0, Math.min(structureCount, structureRoom)),
+      ];
+
+      if (toInsert.length > 0) {
+        await practiceRepository.createMany(
+          toInsert.map((item) => ({
+            lessonId,
+            type: item.type,
+            lemma: item.lemma,
+            metadata: item.metadata,
+            reviewStatus: 'APPROVED' as const,
+          }))
+        );
+      }
+      report.vocab.inserted = toInsert.filter((i) => i.type === 'VOCABULARY').length;
+      report.structure.inserted = toInsert.filter((i) => i.type === 'STRUCTURE').length;
+    }
+
+    // --- Perguntas de quiz ---
+    if (quizCount > 0) {
+      let raw: RawSectionedQuizQuestion[] = [];
+      try {
+        raw = await generateMoreQuizQuestions({
+          text: plainText,
+          transcript,
+          levelHint: lesson.level,
+          count: quizCount,
+          existingQuestions: existingQuestions.map((q) => q.question),
+        });
+      } catch (err) {
+        console.error('OpenAI (gerar mais perguntas) falhou:', err);
+        throw new AppError('Falha ao gerar perguntas com IA. Tente novamente em instantes.');
+      }
+
+      const knownQuestions = new Set(existingQuestions.map((q) => q.question.trim().toLowerCase()));
+      const novas: NewQuizQuestion[] = [];
+      for (const question of raw) {
+        const key = question.question.trim().toLowerCase();
+        if (knownQuestions.has(key)) {
+          report.quiz.duplicates += 1;
+          continue;
+        }
+        // Alternativa repetida dentro da própria pergunta deixa o aluno com
+        // duas opções idênticas — já aconteceu em produção.
+        if (new Set(question.options.map((o) => o.trim().toLowerCase())).size !== question.options.length) {
+          report.quiz.duplicates += 1;
+          continue;
+        }
+        knownQuestions.add(key);
+        novas.push({
+          lessonId,
+          renderMode: 'quiz_comprehensive',
+          section: question.section,
+          question: question.question,
+          options: question.options,
+          correctIndex: question.correctIndex,
+          explanation: question.explanation ?? null,
+          reviewStatus: 'APPROVED',
+        });
+      }
+
+      const limitadas = novas.slice(0, quizCount);
+      if (limitadas.length > 0) {
+        await practiceRepository.createQuizQuestions(limitadas);
+      }
+      report.quiz.inserted = limitadas.length;
+    }
+
+    return report;
   },
 
   async approveItem(actingRole: Role, itemId: string): Promise<LearningItem> {
