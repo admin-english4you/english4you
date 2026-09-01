@@ -171,6 +171,19 @@ export const ChangeStudentPackageSchema = z.object({
 });
 
 /**
+ * Apaga a conta PERMANENTEMENTE (Neon + Firebase Auth), depois de cancelar
+ * qualquer assinatura viva no Mercado Pago.
+ *
+ * `confirmEmail` é validado no SERVIÇO contra o e-mail real do usuário — não
+ * é só UX de "digite pra confirmar" na tela; é a última trava antes de uma
+ * operação irreversível, e não pode depender só do que o cliente mandou.
+ */
+export const DeleteUserAccountSchema = z.object({
+  userId: z.uuid(),
+  confirmEmail: z.string().trim().min(1, 'Digite o e-mail da conta para confirmar.'),
+});
+
+/**
  * Payload do webhook do Mercado Pago. Dado externo — validação estrita, como
  * manda `.agents/skills/route-writer.md`.
  *

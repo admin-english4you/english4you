@@ -360,6 +360,81 @@ export const userService = {
   },
 
   /**
+   * Apaga a conta PERMANENTEMENTE — Neon + Firebase Auth. Irreversível: ao
+   * contrário de `setUserStatus('Inactive')`, não sobra nada pra reativar.
+   *
+   * Não cancela assinatura nenhuma — quem chama isto (`paymentService.
+   * deleteStudentAccount`) faz isso ANTES, porque cancelar cobrança é coisa de
+   * `payment`, não de `user` (módulo-folha, sem dependência de outro service).
+   *
+   * ORDEM: banco primeiro, Firebase depois — o INVERSO da criação
+   * (`createUserByAdmin`, que cria o acesso primeiro). Ali, falhar depois de
+   * criar o acesso deixa uma conta fantasma que autentica e nunca é
+   * encontrada — o pior caso possível. Aqui, o pior caso é o oposto: apagar o
+   * banco funciona ou não (o delete falha inteiro se alguma tabela ainda
+   * referenciar essa linha sem cascade — ex: professor titular de turma —, e
+   * aí NADA foi alterado, seguro pra tentar de novo). Apagar o Firebase depois
+   * é o passo com menos consequência se falhar: na pior hipótese sobra um
+   * acesso órfão que autentica mas não acha ninguém no Neon — chato, mas
+   * detectável e sem perda de dado nenhuma, ao contrário de apagar o Firebase
+   * primeiro e travar no banco com o acesso já removido sem viés de retomar.
+   */
+  async deleteUserPermanently(actingRole: Role, userId: string): Promise<void> {
+    if (actingRole !== 'ADMIN') {
+      throw new AppError('Apenas administradores podem apagar contas.');
+    }
+
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+
+    // Best-effort, ANTES do delete: uma vez apagada a linha, `user.avatarUrl`
+    // não existe mais em lugar nenhum pra tentar de novo depois.
+    if (user.avatarUrl) {
+      try {
+        await deleteStorageFileByUrl(user.avatarUrl);
+      } catch (err) {
+        console.warn(`[Storage] Falha ao apagar avatar de ${userId}, seguindo mesmo assim:`, err);
+      }
+    }
+
+    try {
+      await userRepository.deleteUser(userId);
+    } catch (err: unknown) {
+      const pgCode = (err as { code?: string } | null)?.code;
+      // 23503 = foreign_key_violation. Alguma tabela ainda aponta pra esta
+      // linha sem `onDelete: cascade` — hoje, só `class_groups.teacherId` e
+      // `class_records.teacherId` (de propósito: apagar um professor não
+      // pode arrastar turmas/aulas inteiras junto).
+      if (pgCode === '23503') {
+        throw new AppError(
+          'Não foi possível apagar: esta conta ainda está referenciada em outro lugar do sistema (ex: professor titular de uma turma ou substituto em alguma aula). Reatribua isso antes de apagar.'
+        );
+      }
+      throw err;
+    }
+
+    if (adminAuth) {
+      try {
+        await adminAuth.deleteUser(userId);
+      } catch (err: unknown) {
+        const code = (err as { code?: string } | null)?.code;
+        // Já não existia lá (ex: nunca chegou a ter Firebase configurado
+        // quando foi criada, ou já tinha sido removida manualmente) — não é
+        // erro, o objetivo (não existir mais acesso) já está cumprido.
+        if (code !== 'auth/user-not-found') {
+          console.error(
+            `[Firebase Auth] Conta ${userId} apagada do Neon, mas falhou ao apagar o acesso no Firebase:`,
+            err
+          );
+          throw new AppError(
+            'A conta foi apagada do banco, mas não foi possível remover o acesso no Firebase. Verifique manualmente no console do Firebase Auth.'
+          );
+        }
+      }
+    }
+  },
+
+  /**
    * Fluxo público de "esqueci minha senha" — chamado sem sessão, por
    * qualquer visitante. NUNCA revela se o e-mail existe: tanto para um
    * e-mail cadastrado quanto para um desconhecido, o retorno é o mesmo

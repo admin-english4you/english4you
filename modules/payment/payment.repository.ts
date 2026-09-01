@@ -58,6 +58,22 @@ export const paymentRepository = {
     });
   },
 
+  /**
+   * TODAS as assinaturas do aluno, sem limite — ao contrário de
+   * `findRecentSubscriptionsByUserId`, que corta nas N mais recentes de
+   * propósito (é a query do portão de acesso, a cada navegação).
+   *
+   * Existe só para apagar conta: cancelar "as últimas 5" e apagar a conta
+   * mesmo assim deixaria uma assinatura antiga, fora do lookback, cobrando no
+   * Mercado Pago um aluno que não existe mais no nosso banco — sem nenhuma
+   * linha aqui para o admin sequer descobrir que ela existe.
+   */
+  async findAllSubscriptionsByUserId(userId: string): Promise<StudentSubscription[]> {
+    return await db.query.studentSubscriptionsTable.findMany({
+      where: eq(studentSubscriptionsTable.userId, userId),
+    });
+  },
+
   async createSubscription(data: NewStudentSubscription): Promise<StudentSubscription> {
     const [subscription] = await db.insert(studentSubscriptionsTable).values(data).returning();
     return subscription;

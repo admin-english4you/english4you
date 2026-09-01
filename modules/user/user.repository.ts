@@ -130,4 +130,19 @@ export const userRepository = {
       .returning();
     return user;
   },
+
+  /**
+   * Apaga a linha DE VERDADE — não confundir com `updateUser(id, { status:
+   * 'Inactive' })`, que é reversível e não tira nada do banco.
+   *
+   * `onDelete: 'cascade'` nas tabelas de contrato/assinatura/pagamento/
+   * progresso/notificação faz o resto ir junto sozinho. `class_groups.teacherId`
+   * NÃO tem cascade (é `restrict` por padrão) — apagar um professor ainda
+   * titular de turma falha aqui com erro de FK, e é assim que tem que ser:
+   * `userService.deleteUserPermanently` precisa checar isso ANTES de chamar
+   * isto, pra devolver um erro que faça sentido em vez do erro cru do Postgres.
+   */
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+  },
 };

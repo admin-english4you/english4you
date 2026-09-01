@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ChangeStudentPackageSchema } from "./payment.schema";
+import { ChangeStudentPackageSchema, DeleteUserAccountSchema } from "./payment.schema";
 import { SetScholarshipTermsSchema } from "@/modules/contract/contract.schema";
 import { paymentService } from "./payment.service";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -158,6 +158,38 @@ export async function reactivateStudentAction(input: z.infer<typeof StudentIdSch
     revalidatePath("/admin/users");
     revalidatePath("/admin");
     return { success: true };
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Apaga a conta PERMANENTEMENTE (Neon + Firebase Auth). Irreversível — ver
+ * `paymentService.deleteStudentAccount`. Depois disto a ficha em
+ * `/admin/users/[userId]` deixa de existir; por isso o redirect pra lista em
+ * vez do `revalidatePath` de sempre (`revalidatePath` numa página que já era
+ * a atual só re-renderizaria um 404, sem levar o admin pra lugar nenhum).
+ */
+export async function deleteUserAccountAction(input: z.infer<typeof DeleteUserAccountSchema>) {
+  const safeAction = createSafeAction(DeleteUserAccountSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+    if (currentUser.id === data.userId) {
+      throw new AppError("Você não pode apagar a própria conta.");
+    }
+
+    const result = await paymentService.deleteStudentAccount(
+      currentUser.role,
+      data.userId,
+      data.confirmEmail
+    );
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/finance");
+    revalidatePath("/admin");
+    return result;
   });
 
   return safeAction(input);

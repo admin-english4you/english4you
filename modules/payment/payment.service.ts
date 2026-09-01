@@ -794,6 +794,54 @@ export const paymentService = {
   },
 
   /**
+   * Apaga a conta PERMANENTEMENTE — cadastro criado errado, não um aluno que
+   * saiu da escola (esse caso é `deactivateStudent`, reversível). Existe
+   * SEPARADO de desativar de propósito: apagar não pode ser a ação padrão de
+   * "aluno cancelou", porque destrói o histórico financeiro que a lei manda
+   * guardar.
+   *
+   * `confirmEmail` é conferido aqui, no server, contra o e-mail real da
+   * conta — a tela até pode pedir "digite o e-mail" antes de chamar isto,
+   * mas a trava de verdade é esta, não o formulário.
+   *
+   * Ordem: cancela QUALQUER assinatura viva no Mercado Pago (todas, sem
+   * lookback — ver `findAllSubscriptionsByUserId`) e as cobranças pendentes
+   * ANTES de apagar. Ao contrário de `deactivateStudent`, aqui não sobra
+   * segunda chance: depois de `userService.deleteUserPermanently`, a linha
+   * do aluno (e a assinatura junto, por cascade) não existe mais pra
+   * descobrir que ficou cobrando sozinha no Mercado Pago.
+   */
+  async deleteStudentAccount(
+    actingRole: Role,
+    userId: string,
+    confirmEmail: string
+  ): Promise<{ canceledSubscriptions: number; canceledPayments: number }> {
+    assertAdmin(actingRole);
+
+    const user = await userService.getUserById(userId);
+    if (!user) throw new AppError('Usuário não encontrado.');
+
+    if (confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
+      throw new AppError('O e-mail digitado não confere com o da conta. Nada foi apagado.');
+    }
+
+    const subscriptions = await paymentRepository.findAllSubscriptionsByUserId(userId);
+    const live = subscriptions.filter((s) => !isTerminal(s.status));
+    for (const subscription of live) {
+      await this.cancelSubscription(subscription, 'ADMIN');
+    }
+
+    const canceledPayments = await paymentRepository.cancelPendingPaymentsByUserId(userId);
+
+    // Contrato/assinatura/pagamento/progresso/notificação vão junto por
+    // cascade — não precisam de um passo de "cancelar" separado aqui: em
+    // instantes a linha inteira deixa de existir.
+    await userService.deleteUserPermanently(actingRole, userId);
+
+    return { canceledSubscriptions: live.length, canceledPayments };
+  },
+
+  /**
    * Cancela o contrato E a cobrança, nesta ordem. Mora aqui (e não em
    * `contractService`) porque `payment` já depende de `contract` — pôr a
    * chamada do lado de lá fecharia um ciclo de imports.

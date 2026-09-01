@@ -8,6 +8,7 @@ import { IdentityVault } from "./IdentityVault";
 import { UserContractsCard } from "./UserContractsCard";
 import { StudentBillingCard } from "./StudentBillingCard";
 import { AccountStatusCard } from "./AccountStatusCard";
+import { DeleteAccountCard } from "./DeleteAccountCard";
 import { ScholarshipCard } from "./ScholarshipCard";
 import { ResendInviteCard } from "./ResendInviteCard";
 import type { Contract, ContractBillingMode } from "@/modules/contract/contract.types";
@@ -177,6 +178,13 @@ export function UserDetailView({
               isSelf={isSelf}
               hasLiveSubscription={hasLiveSubscription}
               openPaymentsCount={financial?.openPayments.length ?? 0}
+            />
+            <DeleteAccountCard
+              userId={user.id}
+              userName={user.name}
+              userEmail={user.email}
+              isStudent={isStudent}
+              isSelf={isSelf}
             />
           </div>
         </div>
