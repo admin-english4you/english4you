@@ -39,6 +39,7 @@ import {
   approveQuizQuestionAction,
   deleteQuizQuestionAction,
 } from "@/modules/practice/practice.actions";
+import { runAction } from "@/lib/run-action";
 import { GenerateMorePanel } from "./GenerateMorePanel";
 import { LearningItemDetailModal } from "./LearningItemDetailModal";
 import { QuizQuestionDetailModal } from "./QuizQuestionDetailModal";
@@ -346,7 +347,11 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
   const handleGenerate = () => {
     setGenerateError(null);
     startGenerateTransition(async () => {
-      const result = await generateLearningItemsAction({ lessonId: lesson.id, planId });
+      // `runAction`, e não a Action direto: geração por IA é a chamada mais
+      // sujeita a estourar o `maxDuration` da Vercel (504) — sem isso, a
+      // exceção de transporte sobe crua e derruba a página inteira em vez de
+      // aparecer aqui embaixo como um erro normal.
+      const result = await runAction(() => generateLearningItemsAction({ lessonId: lesson.id, planId }));
       if (result.success) {
         router.refresh();
       } else {

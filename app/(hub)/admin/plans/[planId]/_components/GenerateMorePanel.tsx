@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateMoreContentAction } from "@/modules/practice/practice.actions";
+import { runAction } from "@/lib/run-action";
 import type { GenerateMoreReport } from "@/modules/practice/practice.types";
 
 /**
@@ -47,14 +48,20 @@ export function GenerateMorePanel({
     setError(null);
     setReport(null);
     startTransition(async () => {
-      const result = await generateMoreContentAction({
-        lessonId,
-        planId,
-        vocabCount,
-        structureCount,
-        quizCount,
-        allowInvented,
-      });
+      // `runAction`: mesmo motivo do botão "Gerar com IA" — geração é a
+      // chamada mais sujeita a estourar o `maxDuration` da Vercel (504), e
+      // sem isso a exceção de transporte derruba a página em vez de aparecer
+      // como erro normal aqui embaixo.
+      const result = await runAction(() =>
+        generateMoreContentAction({
+          lessonId,
+          planId,
+          vocabCount,
+          structureCount,
+          quizCount,
+          allowInvented,
+        })
+      );
       if (result.success) {
         setReport(result.data ?? null);
         router.refresh();
