@@ -7,6 +7,7 @@ import { ContractSigner } from "@/components/contract/ContractSigner";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/modules/finance/finance.utils";
 import { startSubscriptionCheckoutAction } from "@/modules/payment/payment.actions";
+import { runAction } from "@/lib/run-action";
 import type { OnboardingState } from "@/modules/payment/payment.types";
 import type { User } from "@/modules/user/user.types";
 import { BillingShell } from "../../_components/BillingShell";
@@ -43,7 +44,9 @@ export function OnboardingWizard({ user, onboarding }: OnboardingWizardProps) {
   const handleCheckout = () => {
     setError(null);
     startTransition(async () => {
-      const result = await startSubscriptionCheckoutAction();
+      // `runAction`: mesmo motivo do ContractSigner — uma falha de transporte
+      // não pode crashar a página inteira no meio da matrícula.
+      const result = await runAction(() => startSubscriptionCheckoutAction());
       if (result.success && result.data) {
         // Redirect fora da action: `redirect()` do Next lança uma exceção de
         // controle que o createSafeAction mascararia como erro interno.

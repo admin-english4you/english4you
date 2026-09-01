@@ -11,6 +11,7 @@ import { LessonContentView } from "@/components/lesson/LessonContentView";
 import { cn } from "@/lib/utils";
 import { formatCep, formatCpf, formatPhone } from "@/lib/br-document";
 import { saveSigningIdentityAction, signContractAction } from "@/modules/contract/contract.actions";
+import { runAction } from "@/lib/run-action";
 import { SigningIdentitySchema } from "@/modules/contract/contract.schema";
 import type { StudentContractView } from "@/modules/contract/contract.types";
 import type { User } from "@/modules/user/user.types";
@@ -73,7 +74,12 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
   const onSaveIdentity = (data: IdentityFormInput) => {
     setError(null);
     startTransition(async () => {
-      const result = await saveSigningIdentityAction(data);
+      // `runAction`: sem isso, uma falha de transporte (ex: função que
+      // demorou demais e a Vercel derrubou a conexão) lança uma exceção fora
+      // de qualquer try/catch nosso e crasha a página inteira pro Error
+      // Boundary genérico, em vez de aparecer aqui embaixo como um erro
+      // normal que dá pra tentar de novo sem perder o que já foi digitado.
+      const result = await runAction(() => saveSigningIdentityAction(data));
       if (result.success) {
         setShowIdentityForm(false);
         // Recarrega para que a prévia do contrato venha do servidor já com os
@@ -88,11 +94,13 @@ export function ContractSigner({ contract, user }: ContractSignerProps) {
   const handleSign = () => {
     setError(null);
     startTransition(async () => {
-      const result = await signContractAction({
-        contractId: contract.id,
-        signedName,
-        acceptedTerms: true,
-      });
+      const result = await runAction(() =>
+        signContractAction({
+          contractId: contract.id,
+          signedName,
+          acceptedTerms: true,
+        })
+      );
       if (result.success) {
         router.refresh();
       } else {
