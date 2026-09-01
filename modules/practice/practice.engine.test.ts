@@ -529,6 +529,118 @@ describe('assemblePracticeItems — sentence_unscramble', () => {
   });
 });
 
+describe('assemblePracticeItems — divisão de exemplos entre gap_fill e unscramble', () => {
+  // Regressão do bug em produção: os dois dias sorteavam o exemplo de forma
+  // independente e caíam no MESMO exemplo por acaso em quase metade dos
+  // itens de estrutura, deixando o terceiro exemplo cadastrado inatingível
+  // para sempre (mesma lição/dia sempre produz o mesmo resultado).
+  const item = makeStructure('s1');
+
+  it('gap_fill_listening e sentence_unscramble usam frases DIFERENTES do mesmo item', () => {
+    const gapFillItem = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 2,
+      renderMode: 'gap_fill_listening',
+      items: [item],
+    })[0];
+    const unscrambleItem = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 3,
+      renderMode: 'sentence_unscramble',
+      items: [item],
+    })[0];
+
+    expect(gapFillItem.mainText).not.toBe(unscrambleItem.mainText);
+  });
+
+  it('a divisão é estável entre execuções (não é sorteio a cada request)', () => {
+    const rodada1 = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 2,
+      renderMode: 'gap_fill_listening',
+      items: [item],
+    })[0].mainText;
+    const rodada2 = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 2,
+      renderMode: 'gap_fill_listening',
+      items: [item],
+    })[0].mainText;
+
+    expect(rodada1).toBe(rodada2);
+  });
+
+  it('com só 1 exemplo (mínimo abaixo do normal), os dois dias ainda funcionam usando o único disponível', () => {
+    const umExemplo = makeStructure('s1', {
+      examples: [
+        {
+          text: 'I drink coffee.',
+          translation: 'Eu bebo café.',
+          word_order: [
+            { word: 'I', index: 0, role: 'subject' },
+            { word: 'drink', index: 1, role: 'verb' },
+            { word: 'coffee.', index: 2, role: 'object' },
+          ],
+        },
+      ],
+    });
+
+    const gapFillItem = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 2,
+      renderMode: 'gap_fill_listening',
+      items: [umExemplo],
+    })[0];
+    const unscrambleItem = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 3,
+      renderMode: 'sentence_unscramble',
+      items: [umExemplo],
+    })[0];
+
+    expect(gapFillItem.mainText).toBe('I drink coffee.');
+    expect(unscrambleItem.mainText).toBe('I drink coffee.');
+  });
+
+  it('quando o exemplo do slot não serve pro gap fill, tenta outro exemplo em vez de descartar o item', () => {
+    // Antes: sorteava só este exemplo (sem palavra útil pra virar lacuna) e o
+    // item sumia do dia inteiro. Agora precisa tentar os outros exemplos.
+    const primeiroSemCandidato = makeStructure('s1', {
+      examples: [
+        {
+          // Só palavras de 1 letra depois de stripar pontuação: nenhuma
+          // serve de alvo de lacuna (o filtro exige length > 1).
+          text: 'I a.',
+          translation: '(inválido de propósito)',
+          word_order: [
+            { word: 'I', index: 0, role: 'subject' },
+            { word: 'a.', index: 1, role: 'article' },
+          ],
+        },
+        {
+          text: 'She reads books.',
+          translation: 'Ela lê livros.',
+          word_order: [
+            { word: 'She', index: 0, role: 'subject' },
+            { word: 'reads', index: 1, role: 'verb' },
+            { word: 'books.', index: 2, role: 'object' },
+          ],
+        },
+      ],
+    });
+
+    const result = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 2,
+      renderMode: 'gap_fill_listening',
+      items: [primeiroSemCandidato],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].data.gapFill?.correctAnswer).toBeTruthy();
+  });
+});
+
 describe('assemblePracticeItems — quizzes', () => {
   it('mapeia pergunta, opções e resposta', () => {
     const [item] = assemblePracticeItems({

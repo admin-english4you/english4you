@@ -205,6 +205,43 @@ function stripPunctuation(word: string): string {
   return word.replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '');
 }
 
+/**
+ * Escolhe, para UM item, o exemplo do "slot" pedido — sem repetir entre slots.
+ *
+ * Um item de estrutura entra em dois exercícios diferentes (gap fill no dia 2,
+ * monte a frase no dia 3), cada um consumindo um exemplo. Antes, cada dia
+ * sorteava o exemplo de forma independente (seed própria por dia) — o que faz
+ * sentido para variar a ORDEM dos itens no dia, mas não coordena os dois dias
+ * entre si, e em produção isso fazia os dois caírem no MESMO exemplo por puro
+ * acaso em quase metade dos itens, deixando um terço do conteúdo cadastrado
+ * (o outro exemplo) inatingível para sempre — o mesmo (lição, dia) sempre
+ * produz o mesmo resultado, então não é falta de sorte do aluno, é permanente.
+ *
+ * A ordem é embaralhada só pelo id do item (não pelo dia): é o que garante
+ * slot 0 ≠ slot 1 sempre que houver 2+ exemplos, em vez de dependerem de sorte
+ * combinada de duas seeds independentes.
+ *
+ * `isUsable` cobre o caso do gap fill, onde um exemplo pode não ter palavra
+ * elegível pra virar lacuna: antes, cair nesse exemplo por sorteio fazia o
+ * item inteiro sumir do dia (sem tentar os outros exemplos). Agora percorre a
+ * ordem a partir do slot pedido até achar um que sirva.
+ */
+function pickExampleForSlot<E>(
+  examples: readonly E[],
+  itemId: string,
+  slot: number,
+  isUsable: (example: E) => boolean
+): E | null {
+  if (examples.length === 0) return null;
+
+  const order = seededShuffle(examples, createRng(`example-order:${itemId}`));
+  for (let offset = 0; offset < order.length; offset += 1) {
+    const candidate = order[(slot + offset) % order.length];
+    if (isUsable(candidate)) return candidate;
+  }
+  return null;
+}
+
 interface AssembleInput {
   lessonId: string;
   dayIndex: number;
@@ -277,15 +314,30 @@ export function assemblePracticeItems(input: AssembleInput): PracticeItem[] {
     case 'gap_fill_listening': {
       const pool = input.items.filter((item) => !isVocab(item));
 
+      // Slot 0: divide os exemplos com o slot 1 do sentence_unscramble (ver
+      // `pickExampleForSlot`) — os dois exercícios que consomem exemplos de
+      // uma mesma estrutura, um por dia.
+      const hasGapCandidate = (example: StructureMetadata['examples'][number]) => {
+        const words = example.word_order ?? [];
+        const usable = words.filter((w) => stripPunctuation(w.word).length > 1);
+        if (usable.length === 0) return false;
+        // A palavra-alvo real pode variar (preferida vs. fallback), mas para
+        // saber se o exemplo SERVE basta saber se existe alguma candidata cujo
+        // texto stripado realmente aparece na frase como palavra inteira.
+        return usable.some((w) => {
+          const stripped = stripPunctuation(w.word);
+          return new RegExp(`\\b${stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(example.text);
+        });
+      };
+
       return seededShuffle(pool, orderRng)
         .slice(0, maxItems)
         .map((item): PracticeItem | null => {
           const meta = structureMeta(item);
           const rng = itemRng(item.id);
-          const examples = meta.examples ?? [];
-          if (examples.length === 0) return null;
+          const example = pickExampleForSlot(meta.examples ?? [], item.id, 0, hasGapCandidate);
+          if (!example) return null;
 
-          const example = seededPick(examples, rng);
           const words = example.word_order ?? [];
 
           // Preferimos apagar uma palavra de conteúdo; só caímos para
@@ -330,15 +382,21 @@ export function assemblePracticeItems(input: AssembleInput): PracticeItem[] {
     case 'sentence_unscramble': {
       const pool = input.items.filter((item) => !isVocab(item));
 
+      // Slot 1: complementa o slot 0 do gap_fill_listening — ver
+      // `pickExampleForSlot`.
       return seededShuffle(pool, orderRng)
         .slice(0, maxItems)
         .map((item): PracticeItem | null => {
           const meta = structureMeta(item);
           const rng = itemRng(item.id);
-          const examples = (meta.examples ?? []).filter((e) => (e.word_order?.length ?? 0) >= 2);
-          if (examples.length === 0) return null;
+          const example = pickExampleForSlot(
+            meta.examples ?? [],
+            item.id,
+            1,
+            (e) => (e.word_order?.length ?? 0) >= 2
+          );
+          if (!example) return null;
 
-          const example = seededPick(examples, rng);
           const correctOrder = [...example.word_order]
             .sort((a, b) => a.index - b.index)
             .map((w) => w.word);
