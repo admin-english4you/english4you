@@ -51,6 +51,7 @@ export async function generateMoreContentAction(input: z.infer<typeof GenerateMo
       vocabCount: data.vocabCount,
       structureCount: data.structureCount,
       quizCount: data.quizCount,
+      allowInvented: data.allowInvented,
     });
     revalidatePath(`/admin/plans/${data.planId}`);
     return report;

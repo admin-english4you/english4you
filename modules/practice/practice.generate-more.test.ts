@@ -36,6 +36,30 @@ describe('GenerateMoreContentSchema', () => {
     });
     expect(parsed.success).toBe(false);
   });
+
+  it('o modo livre é desligado por padrão', () => {
+    // Importa: gerar além do texto é o único caminho em que a IA pode inventar
+    // inglês errado sem nada contradizendo. Só pode ser ligado por escolha
+    // explícita do admin, nunca por omissão.
+    const parsed = GenerateMoreContentSchema.parse({
+      ...base,
+      vocabCount: 0,
+      structureCount: 3,
+      quizCount: 0,
+    });
+    expect(parsed.allowInvented).toBe(false);
+  });
+
+  it('aceita o modo livre quando pedido explicitamente', () => {
+    const parsed = GenerateMoreContentSchema.parse({
+      ...base,
+      vocabCount: 0,
+      structureCount: 3,
+      quizCount: 0,
+      allowInvented: true,
+    });
+    expect(parsed.allowInvented).toBe(true);
+  });
 });
 
 describe('AIGeneratedSectionedQuizQuestionSchema', () => {

@@ -140,6 +140,29 @@ function arrayRootSchema(schema: z.ZodType): JsonSchema {
 }
 
 /**
+ * Como `arrayRootSchema`, mas com um campo de justificativa junto.
+ *
+ * Serve às gerações incrementais: quando o modelo devolve menos do que foi
+ * pedido, a contagem sozinha não diz ao admin se o problema é o texto da aula,
+ * se já está tudo extraído, ou se ele pediu demais. Pedir o motivo na MESMA
+ * chamada custa zero a mais do que só contar — e evita a chamada extra de
+ * "dá pra gerar?", que o modelo responde mal no abstrato (tende a dizer que
+ * sim e depois entregar um item).
+ */
+function arrayWithReasonSchema(schema: z.ZodType): JsonSchema {
+  const inner = toStrictSchema(z.toJSONSchema(schema)) as JsonSchema;
+  return {
+    type: "object",
+    properties: {
+      items: inner,
+      reason: { type: ["string", "null"] },
+    },
+    required: ["items", "reason"],
+    additionalProperties: false,
+  };
+}
+
+/**
  * Remove chaves nulas antes de validar com Zod.
  *
  * Necessário porque o campo que no nosso schema é `.optional()` foi enviado à
@@ -290,6 +313,20 @@ export interface ExtractMoreItemsParams {
   structureCount: number;
   /** Termos que a lição já tem — a IA é instruída a não repetir nenhum. */
   existingLemmas: string[];
+  /**
+   * Libera a IA a criar conteúdo NÃO presente no texto da aula.
+   *
+   * Desligado por padrão, e é assim que tem que ser: o modo livre é o único
+   * caminho em que a IA pode inventar inglês errado sem nada no texto para
+   * contradizê-la. Quem chama precisa gravar o resultado como PENDING.
+   */
+  allowInvented?: boolean;
+}
+
+export interface MoreItemsResult {
+  items: RawLearningItem[];
+  /** Explicação curta de por que veio menos do que o pedido. */
+  reason: string | null;
 }
 
 /**
@@ -301,15 +338,17 @@ export interface ExtractMoreItemsParams {
  */
 export async function extractMoreLearningItems(
   params: ExtractMoreItemsParams
-): Promise<RawLearningItem[]> {
+): Promise<MoreItemsResult> {
   const parsed = await requestJson({
     prompt: buildMoreItemsPrompt(params),
     schemaName: "more_learning_items",
-    schema: arrayRootSchema(AIGeneratedLearningItemsSchema),
+    schema: arrayWithReasonSchema(AIGeneratedLearningItemsSchema),
   });
 
-  const items = (parsed as { items?: unknown } | null)?.items ?? [];
-  if (!Array.isArray(items)) return [];
+  const root = parsed as { items?: unknown; reason?: unknown } | null;
+  const items = root?.items ?? [];
+  const reason = typeof root?.reason === "string" && root.reason.trim() ? root.reason.trim() : null;
+  if (!Array.isArray(items)) return { items: [], reason };
 
   // Mesma validação item a item da extração inicial — ver `extractLearningItems`.
   const valid: RawLearningItem[] = [];
@@ -320,7 +359,7 @@ export async function extractMoreLearningItems(
   if (valid.length < items.length) {
     console.warn(`[OpenAI] ${items.length - valid.length} item(ns) extra descartado(s) por formato.`);
   }
-  return valid;
+  return { items: valid, reason };
 }
 
 export interface MoreQuizParams {
@@ -330,6 +369,13 @@ export interface MoreQuizParams {
   count: number;
   /** Enunciados já existentes, para a IA não repetir pergunta. */
   existingQuestions: string[];
+  /** Ver `ExtractMoreItemsParams.allowInvented`. */
+  allowInvented?: boolean;
+}
+
+export interface MoreQuizResult {
+  questions: RawSectionedQuizQuestion[];
+  reason: string | null;
 }
 
 export type RawSectionedQuizQuestion = z.infer<typeof AIGeneratedSectionedQuizSchema>[number];
@@ -341,17 +387,17 @@ export type RawSectionedQuizQuestion = z.infer<typeof AIGeneratedSectionedQuizSc
  * seções da geração inicial), porque aquele exige 5-10 por seção — pedir 3
  * perguntas extras seria impossível de expressar ali.
  */
-export async function generateMoreQuizQuestions(
-  params: MoreQuizParams
-): Promise<RawSectionedQuizQuestion[]> {
+export async function generateMoreQuizQuestions(params: MoreQuizParams): Promise<MoreQuizResult> {
   const parsed = await requestJson({
     prompt: buildMoreQuizPrompt(params),
     schemaName: "more_quiz_questions",
-    schema: arrayRootSchema(AIGeneratedSectionedQuizSchema),
+    schema: arrayWithReasonSchema(AIGeneratedSectionedQuizSchema),
   });
 
-  const items = (parsed as { items?: unknown } | null)?.items ?? [];
-  if (!Array.isArray(items)) return [];
+  const root = parsed as { items?: unknown; reason?: unknown } | null;
+  const items = root?.items ?? [];
+  const reason = typeof root?.reason === "string" && root.reason.trim() ? root.reason.trim() : null;
+  if (!Array.isArray(items)) return { questions: [], reason };
 
   const valid: RawSectionedQuizQuestion[] = [];
   for (const item of items) {
@@ -361,7 +407,7 @@ export async function generateMoreQuizQuestions(
   if (valid.length < items.length) {
     console.warn(`[OpenAI] ${items.length - valid.length} pergunta(s) extra descartada(s) por formato.`);
   }
-  return valid;
+  return { questions: valid, reason };
 }
 
 export interface ComprehensiveQuizParams {
@@ -475,11 +521,20 @@ function buildExclusionBlock(label: string, values: string[], limit = 120): stri
 }
 
 function buildMoreItemsPrompt(params: ExtractMoreItemsParams): string {
-  const { text, levelHint, vocabCount, structureCount, existingLemmas } = params;
+  const { text, levelHint, vocabCount, structureCount, existingLemmas, allowInvented } = params;
 
   const pedidos: string[] = [];
   if (vocabCount > 0) pedidos.push(`${vocabCount} itens do tipo VOCABULARY`);
   if (structureCount > 0) pedidos.push(`${structureCount} itens do tipo STRUCTURE`);
+
+  const regraDeEscopo = allowInvented
+    ? [
+        `MODO EXPANDIDO: você PODE criar conteúdo que não está no texto da aula, desde que seja coerente com o TEMA dela e apropriado ao nível ${levelHint}.`,
+        `Priorize o que se conecta ao texto; só depois amplie para o tema geral. Todo inglês precisa ser correto e natural — este conteúdo vai direto para o aluno estudar.`,
+      ]
+    : [
+        `Não invente conteúdo fora do que está implícito no texto. Se o texto não comportar a quantidade pedida, devolva MENOS itens — é melhor devolver 3 itens bons do que completar o número com repetição ou invenção.`,
+      ];
 
   return [
     `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
@@ -491,11 +546,14 @@ function buildMoreItemsPrompt(params: ExtractMoreItemsParams): string {
     `STRUCTURE = PADRÃO GRAMATICAL aplicável a várias frases (tempos verbais, formação de perguntas, voz passiva, ordem das palavras). Uma preposição isolada NUNCA é STRUCTURE.`,
     ``,
     `Cada VOCABULARY precisa de no MÍNIMO 2 exemplos; cada STRUCTURE, de no MÍNIMO 3 exemplos, cada um com seu "word_order".`,
-    `Não invente conteúdo fora do que está implícito no texto. Se o texto não comportar a quantidade pedida, devolva MENOS itens — é melhor devolver 3 itens bons do que completar o número com repetição ou invenção.`,
+    ...regraDeEscopo,
     ``,
     ...LANGUAGE_RULES,
     ...buildExclusionBlock("TERMOS JÁ CADASTRADOS NESTA LIÇÃO", existingLemmas),
     ``,
+    // O motivo vem na mesma resposta para o admin saber SE vale editar a aula
+    // ou se o assunto simplesmente se esgotou — contagem sozinha não diz isso.
+    `No campo "reason", explique em UMA frase curta, em português, por que você devolveu menos itens do que o pedido (ex: "o texto é uma lista de vocabulário, sem frases completas de onde extrair padrões gramaticais novos"). Se devolveu a quantidade pedida, use null.`,
     `Campos que não se aplicam ao item devem vir como null.`,
     `Responda estritamente no formato JSON solicitado, sem texto adicional. Devolva os itens no campo "items".`,
     `--- TEXTO DA AULA ---`,
@@ -504,7 +562,7 @@ function buildMoreItemsPrompt(params: ExtractMoreItemsParams): string {
 }
 
 function buildMoreQuizPrompt(params: MoreQuizParams): string {
-  const { text, transcript, levelHint, count, existingQuestions } = params;
+  const { text, transcript, levelHint, count, existingQuestions, allowInvented } = params;
   return [
     `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
     `Esta lição JÁ TEM perguntas de compreensão cadastradas. Gere ${count} pergunta(s) ADICIONAIS de múltipla escolha (4 alternativas, exatamente 1 correta).`,
@@ -518,9 +576,16 @@ function buildMoreQuizPrompt(params: MoreQuizParams): string {
     ``,
     `As 4 alternativas precisam ser plausíveis (sem "todas as anteriores" nem pegadinha ambígua), "correctIndex" aponta a única correta (0 a 3), e "explanation" é uma justificativa curta.`,
     `As alternativas de uma mesma pergunta não podem se repetir.`,
-    `Se o conteúdo não comportar a quantidade pedida sem repetir o que já existe, devolva MENOS perguntas.`,
+    ...(allowInvented
+      ? [
+          `MODO EXPANDIDO: você PODE criar perguntas sobre o TEMA da aula mesmo que o detalhe não esteja no texto, desde que apropriadas ao nível ${levelHint} e com inglês correto.`,
+        ]
+      : [
+          `Se o conteúdo não comportar a quantidade pedida sem repetir o que já existe, devolva MENOS perguntas.`,
+        ]),
     ...buildExclusionBlock("PERGUNTAS JÁ CADASTRADAS", existingQuestions),
     ``,
+    `No campo "reason", explique em UMA frase curta, em português, por que devolveu menos perguntas do que o pedido. Se devolveu tudo, use null.`,
     `Responda estritamente no formato JSON solicitado, sem texto adicional. Devolva as perguntas no campo "items".`,
     ``,
     `--- TEXTO DA AULA ---`,

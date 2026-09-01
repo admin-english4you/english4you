@@ -127,4 +127,15 @@ export interface GenerateMoreReport {
   vocab: GenerateMoreCount;
   structure: GenerateMoreCount;
   quiz: GenerateMoreCount;
+  /**
+   * Explicação da própria IA para ter devolvido menos do que o pedido.
+   *
+   * Vem na MESMA chamada da geração, e não de uma pergunta prévia do tipo
+   * "dá pra gerar mais?": modelo responde mal a isso no abstrato (tende a
+   * dizer que sim e entregar um item). É o motivo que diz ao admin se vale
+   * editar o texto da aula ou se o assunto simplesmente se esgotou.
+   */
+  reason: string | null;
+  /** Conteúdo entrou como PENDENTE (modo livre) e precisa de revisão. */
+  pendingReview: boolean;
 }

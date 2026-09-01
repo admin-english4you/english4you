@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Sparkles } from "lucide-react";
+import { AlertTriangle, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateMoreContentAction } from "@/modules/practice/practice.actions";
 import type { GenerateMoreReport } from "@/modules/practice/practice.types";
@@ -43,7 +43,7 @@ export function GenerateMorePanel({
 
   const total = vocabCount + structureCount + quizCount;
 
-  const handleGenerate = () => {
+  const handleGenerate = (allowInvented: boolean) => {
     setError(null);
     setReport(null);
     startTransition(async () => {
@@ -53,6 +53,7 @@ export function GenerateMorePanel({
         vocabCount,
         structureCount,
         quizCount,
+        allowInvented,
       });
       if (result.success) {
         setReport(result.data ?? null);
@@ -118,7 +119,7 @@ export function GenerateMorePanel({
       <Button
         type="button"
         size="sm"
-        onClick={handleGenerate}
+        onClick={() => handleGenerate(false)}
         loading={pending}
         disabled={total === 0}
         className="w-full"
@@ -130,7 +131,13 @@ export function GenerateMorePanel({
         <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>
       )}
 
-      {report && <ReportView report={report} />}
+      {report && (
+        <ReportView
+          report={report}
+          pending={pending}
+          onGenerateFree={() => handleGenerate(true)}
+        />
+      )}
     </div>
   );
 }
@@ -171,7 +178,15 @@ function CountField({
  * instruído a devolver menos em vez de inventar conteúdo que não está no texto
  * da aula. Esconder isso faria o admin clicar de novo achando que falhou.
  */
-function ReportView({ report }: { report: GenerateMoreReport }) {
+function ReportView({
+  report,
+  pending,
+  onGenerateFree,
+}: {
+  report: GenerateMoreReport;
+  pending: boolean;
+  onGenerateFree: () => void;
+}) {
   const linhas = [
     { label: "Vocabulário", data: report.vocab },
     { label: "Estruturas", data: report.structure },
@@ -198,12 +213,51 @@ function ReportView({ report }: { report: GenerateMoreReport }) {
         </div>
       ))}
 
-      {faltou && (
-        <p className="text-[11px] text-slate-500 pt-1.5 border-t border-slate-100">
-          Veio menos do que o pedido. Isso costuma significar que o texto da aula não comporta
-          mais conteúdo novo — a IA é instruída a devolver menos em vez de inventar. Para render
-          mais, enriqueça o material da lição.
-        </p>
+      {report.pendingReview && report.vocab.inserted + report.structure.inserted + report.quiz.inserted > 0 && (
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-900">
+          <strong>Entrou como pendente de revisão.</strong> Este conteúdo foi criado além do texto
+          da aula — revise item por item antes de liberar. A lição não pode ser ativada enquanto
+          houver pendências.
+        </div>
+      )}
+
+      {faltou && !report.pendingReview && (
+        <div className="pt-1.5 border-t border-slate-100 space-y-2">
+          {/* O motivo vem da própria IA, na mesma chamada da geração — é ele
+              que diz ao admin se vale editar a aula ou se o assunto acabou. */}
+          {report.reason ? (
+            <p className="text-[11px] text-slate-600">
+              <span className="font-semibold">Por que veio menos:</span> {report.reason}
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-500">
+              Veio menos do que o pedido — normalmente porque o texto da aula não comporta mais
+              conteúdo novo.
+            </p>
+          )}
+
+          <p className="text-[11px] text-slate-500">
+            O melhor caminho é <strong>enriquecer o texto da lição</strong> e gerar de novo. Se
+            preferir, a IA pode criar conteúdo além do texto:
+          </p>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            loading={pending}
+            onClick={onGenerateFree}
+            className="w-full border-amber-300 text-amber-800 hover:bg-amber-50"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+            Gerar além do texto da aula
+          </Button>
+          <p className="text-[10px] text-slate-400 leading-relaxed">
+            Sem base no texto, a IA pode inventar inglês incorreto — e este conteúdo é treinado por
+            repetição com alunos iniciantes, que não têm como perceber o erro. Por isso o que sair
+            daqui entra <strong>pendente</strong> e só chega ao aluno depois da sua revisão.
+          </p>
+        </div>
       )}
     </div>
   );

@@ -244,6 +244,15 @@ export const GenerateMoreContentSchema = z
     vocabCount: z.number().int().min(0).max(20).default(0),
     structureCount: z.number().int().min(0).max(20).default(0),
     quizCount: z.number().int().min(0).max(20).default(0),
+    /**
+     * Modo livre: a IA pode criar conteúdo além do texto da aula.
+     *
+     * Default `false` — só é ligado quando o admin escolhe explicitamente,
+     * depois de a geração normal render menos do que o pedido. O que entra
+     * por aqui é gravado como PENDENTE e precisa de revisão antes de chegar
+     * ao aluno (ver `practiceService.generateMoreContent`).
+     */
+    allowInvented: z.boolean().default(false),
   })
   .refine((data) => data.vocabCount + data.structureCount + data.quizCount > 0, {
     message: 'Escolha ao menos um item para gerar.',

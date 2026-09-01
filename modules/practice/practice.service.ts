@@ -364,11 +364,29 @@ export const practiceService = {
    */
   async generateMoreContent(
     actingRole: Role,
-    input: { lessonId: string; vocabCount: number; structureCount: number; quizCount: number }
+    input: {
+      lessonId: string;
+      vocabCount: number;
+      structureCount: number;
+      quizCount: number;
+      /**
+       * Libera a IA a criar conteúdo além do texto da aula.
+       *
+       * O que entra por aqui vai para PENDING, não APPROVED — e essa é a
+       * diferença que importa. Sem base no texto, não há nada contradizendo
+       * uma frase errada, e este conteúdo é treinado por repetição espaçada
+       * em aluno iniciante, que é justamente quem não tem repertório para
+       * desconfiar. `assertLessonContentReady` já impede ativar a lição
+       * enquanto houver pendência, então a revisão vira portão, não aviso.
+       */
+      allowInvented?: boolean;
+    }
   ): Promise<GenerateMoreReport> {
     assertAdmin(actingRole);
 
-    const { lessonId, vocabCount, structureCount, quizCount } = input;
+    const { lessonId, vocabCount, structureCount, quizCount, allowInvented = false } = input;
+    const reviewStatus = allowInvented ? ('PENDING' as const) : ('APPROVED' as const);
+    const reasons: string[] = [];
     const lesson = await lessonService.getLessonById(actingRole, lessonId);
     if (!lesson) throw new AppError('Lição não encontrada.');
 
@@ -387,19 +405,24 @@ export const practiceService = {
       vocab: { requested: vocabCount, inserted: 0, duplicates: 0 },
       structure: { requested: structureCount, inserted: 0, duplicates: 0 },
       quiz: { requested: quizCount, inserted: 0, duplicates: 0 },
+      reason: null,
+      pendingReview: allowInvented,
     };
 
     // --- Itens de aprendizagem ---
     if (vocabCount > 0 || structureCount > 0) {
       let raw: RawLearningItem[] = [];
       try {
-        raw = await extractMoreLearningItems({
+        const result = await extractMoreLearningItems({
           text: plainText || transcript,
           levelHint: lesson.level,
           vocabCount,
           structureCount,
           existingLemmas: existingItems.map((item) => item.lemma),
+          allowInvented,
         });
+        raw = result.items;
+        if (result.reason) reasons.push(result.reason);
       } catch (err) {
         console.error('OpenAI (gerar mais itens) falhou:', err);
         throw new AppError('Falha ao gerar itens com IA. Tente novamente em instantes.');
@@ -446,7 +469,7 @@ export const practiceService = {
             type: item.type,
             lemma: item.lemma,
             metadata: item.metadata,
-            reviewStatus: 'APPROVED' as const,
+            reviewStatus,
           }))
         );
       }
@@ -458,13 +481,16 @@ export const practiceService = {
     if (quizCount > 0) {
       let raw: RawSectionedQuizQuestion[] = [];
       try {
-        raw = await generateMoreQuizQuestions({
+        const result = await generateMoreQuizQuestions({
           text: plainText,
           transcript,
           levelHint: lesson.level,
           count: quizCount,
           existingQuestions: existingQuestions.map((q) => q.question),
+          allowInvented,
         });
+        raw = result.questions;
+        if (result.reason) reasons.push(result.reason);
       } catch (err) {
         console.error('OpenAI (gerar mais perguntas) falhou:', err);
         throw new AppError('Falha ao gerar perguntas com IA. Tente novamente em instantes.');
@@ -493,7 +519,7 @@ export const practiceService = {
           options: question.options,
           correctIndex: question.correctIndex,
           explanation: question.explanation ?? null,
-          reviewStatus: 'APPROVED',
+          reviewStatus,
         });
       }
 
@@ -504,6 +530,7 @@ export const practiceService = {
       report.quiz.inserted = limitadas.length;
     }
 
+    report.reason = reasons.length > 0 ? reasons.join(' ') : null;
     return report;
   },
 
