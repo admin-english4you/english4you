@@ -19,8 +19,21 @@ export default async function StudentClassRoomPage({ params }: StudentClassRoomP
   const record = await classService.getStudentClassRecord(currentUser.id, recordId);
   if (!record) notFound();
 
-  // A lição bloqueada não deve ser lida, mesmo sendo da turma do aluno.
-  if (!record.lesson || record.lesson.status === "DISABLED") notFound();
+  // Mesmo critério de "ao vivo agora" do card na lista (ver
+  // ClassRecordCard/StudentDashboard) — não depende de horário agendado nem
+  // de qual professor iniciou.
+  const isLiveNow = Boolean(record.callStartedAt) && !record.completed;
+
+  // A lição bloqueada não deve ser lida — EXCETO se a aula está ao vivo
+  // agora: bloquear pelo conteúdo impediria a aluna de sequer ENTRAR na
+  // chamada que está acontecendo neste exato momento. Faltou isto quando o
+  // card da lista ganhou o mesmo escape (`isOpenable = isLiveNow || ...`) —
+  // o clique passou a funcionar, mas a página de destino continuava batendo
+  // a porta com "não encontrada" assim que o professor abre uma sala cuja
+  // lição ainda não foi publicada.
+  if (!isLiveNow && (!record.lesson || record.lesson.status === "DISABLED")) {
+    notFound();
+  }
 
   // Só busca acesso à call se ela já estava ao vivo no momento da request —
   // se o professor ainda não iniciou, o painel entra em modo de espera e faz
