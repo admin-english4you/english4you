@@ -249,6 +249,19 @@ export interface ExtractItemsParams {
   levelHint: string;
   vocabRange: [number, number];
   structureRange: [number, number];
+  /**
+   * Restringe a chamada a UM tipo — quem chama faz vocabulário e estrutura em
+   * chamadas paralelas separadas, e não uma pedindo os dois juntos.
+   *
+   * Existe por causa de um 504 real em produção: uma lição de 9.372 chars fez
+   * a extração combinada (27 itens, vocab+estrutura na mesma resposta) levar
+   * 90,7s — bem acima do teto de 60s do plano Hobby da Vercel. Geração
+   * estruturada é essencialmente serial (token a token), então o tempo escala
+   * com o VOLUME TOTAL de saída pedido numa chamada só. Duas chamadas menores
+   * em paralelo (Promise.all) ficam limitadas pela mais lenta das duas, não
+   * pela soma — na prática, perto de metade do tempo.
+   */
+  only?: 'VOCABULARY' | 'STRUCTURE';
 }
 
 /**
@@ -303,6 +316,20 @@ export async function extractLearningItems(params: ExtractItemsParams): Promise<
     );
   }
 
+  // Rede de segurança: `only` pede um tipo só no prompt, mas prompt não é
+  // garantia (ver a mesma lição sobre idioma em practice.language.ts). Se a
+  // IA devolver o outro tipo mesmo assim, descarta em vez de deixar a chamada
+  // paralela de STRUCTURE também trazer VOCABULARY e duplicar a extração.
+  if (params.only) {
+    const wrongType = valid.filter((item) => item.type !== params.only);
+    if (wrongType.length > 0) {
+      console.warn(
+        `[OpenAI] ${wrongType.length} item(ns) do tipo errado descartado(s) (pedi só ${params.only}).`
+      );
+    }
+    return valid.filter((item) => item.type === params.only);
+  }
+
   return valid;
 }
 
@@ -321,6 +348,8 @@ export interface ExtractMoreItemsParams {
    * contradizê-la. Quem chama precisa gravar o resultado como PENDING.
    */
   allowInvented?: boolean;
+  /** Ver `ExtractItemsParams.only` — mesmo motivo, mesmo remédio. */
+  only?: 'VOCABULARY' | 'STRUCTURE';
 }
 
 export interface MoreItemsResult {
@@ -359,7 +388,13 @@ export async function extractMoreLearningItems(
   if (valid.length < items.length) {
     console.warn(`[OpenAI] ${items.length - valid.length} item(ns) extra descartado(s) por formato.`);
   }
-  return { items: valid, reason };
+
+  // Mesma rede de segurança da extração inicial: `only` restringe no prompt,
+  // mas a resposta é filtrada de novo caso a IA devolva o outro tipo assim
+  // mesmo (relevante aqui porque o service chama esta função duas vezes em
+  // paralelo — uma por tipo — quando ambos os contadores são pedidos juntos).
+  const filtered = params.only ? valid.filter((item) => item.type === params.only) : valid;
+  return { items: filtered, reason };
 }
 
 export interface MoreQuizParams {
@@ -595,7 +630,16 @@ function buildMoreQuizPrompt(params: MoreQuizParams): string {
 }
 
 function buildExtractionPrompt(params: ExtractItemsParams): string {
-  const { text, levelHint, vocabRange, structureRange } = params;
+  const { text, levelHint, vocabRange, structureRange, only } = params;
+
+  const wantsVocab = only !== 'STRUCTURE';
+  const wantsStructure = only !== 'VOCABULARY';
+
+  const pedido = [
+    wantsVocab ? `entre ${vocabRange[0]} e ${vocabRange[1]} itens do tipo VOCABULARY` : null,
+    wantsStructure ? `entre ${structureRange[0]} e ${structureRange[1]} itens do tipo STRUCTURE` : null,
+  ].filter((s): s is string => s !== null);
+
   return [
     `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
     `A partir do texto abaixo (conteúdo de uma aula de inglês), extraia itens de aprendizagem para prática do aluno.`,
@@ -613,7 +657,9 @@ function buildExtractionPrompt(params: ExtractItemsParams): string {
     `VOCABULARY = uma palavra ou expressão fixa (chunk lexical) que o aluno precisa memorizar o SIGNIFICADO. Isso inclui palavras isoladas (substantivos, verbos, adjetivos), phrasal verbs, e expressões/coleções fixas de palavras — INCLUINDO preposições e locuções prepositivas de lugar/tempo como "next to", "in front of", "close to", "near", "under", "at 3 o'clock". Se a dúvida é "o que essa palavra/expressão SIGNIFICA?", é VOCABULARY.`,
     `STRUCTURE = um PADRÃO GRAMATICAL que se aplica a muitas frases diferentes: tempos verbais (Present Simple, Past Continuous...), formação de perguntas, voz passiva, comparativos/superlativos, condicionais, ordem das palavras na frase, etc. Se a dúvida é "COMO a frase é construída/conjugada?", é STRUCTURE. Uma preposição ou expressão de lugar isolada NUNCA é STRUCTURE, mesmo que aluno costume confundir isso — ela é sempre VOCABULARY.`,
     ``,
-    `Gere entre ${vocabRange[0]} e ${vocabRange[1]} itens do tipo VOCABULARY e entre ${structureRange[0]} e ${structureRange[1]} itens do tipo STRUCTURE relevantes ao texto.`,
+    only
+      ? `Gere SOMENTE itens do tipo ${only} desta vez — ${pedido[0]} relevantes ao texto. Não gere o outro tipo; ele é extraído em outra chamada.`
+      : `Gere ${pedido.join(" e ")} relevantes ao texto.`,
     `Cada item VOCABULARY deve preencher "metadata" no formato de VocabMetadata (type, level, phonetic, is_visual, key_image_words, meanings, forms, examples, ...) e precisa ter no MÍNIMO 2 exemplos de uso ("examples") diferentes entre si.`,
     `Cada item STRUCTURE deve preencher "metadata" no formato de StructureMetadata (level, structure_type, explanation, examples com word_order, ...) e precisa ter no MÍNIMO 3 exemplos de uso ("examples") diferentes entre si, cada um com seu próprio "word_order".`,
     `Não invente conteúdo fora do que está implícito no texto. Não repita o mesmo "lemma" duas vezes.`,

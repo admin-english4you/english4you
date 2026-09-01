@@ -14,6 +14,12 @@ import {
 } from '@/lib/openai';
 import { AppError } from '@/lib/errors';
 import { partitionByLanguage, findLanguageViolations } from './practice.language';
+import {
+  MAX_VOCAB_PER_CALL,
+  MAX_STRUCTURE_PER_CALL,
+  splitRangeByChunkSize,
+  splitCountByChunkSize,
+} from './practice.chunking';
 import { Role } from '@/modules/user/user.types';
 import {
   GenerateMoreReport,
@@ -266,11 +272,39 @@ export const practiceService = {
         comprehensiveQuiz = quiz;
         listeningQuiz = listening;
       } else {
-        const [soloVocab, quiz] = await Promise.all([
-          extractLearningItems({ text: plainText, levelHint: lesson.level, vocabRange: SOLO_VOCAB, structureRange: SOLO_STRUCTURE }),
+        // Vocabulário e estrutura em CHAMADAS PARALELAS menores, não uma
+        // pedindo tudo — ver `MAX_VOCAB_PER_CALL`/`MAX_STRUCTURE_PER_CALL` pro
+        // 504 real que motivou isso. Cada chamada vê o texto INTEIRO da aula;
+        // só o que ela precisa GERAR fica menor.
+        const vocabRanges = splitRangeByChunkSize(SOLO_VOCAB, MAX_VOCAB_PER_CALL);
+        const structureRanges = splitRangeByChunkSize(SOLO_STRUCTURE, MAX_STRUCTURE_PER_CALL);
+
+        const [vocabChunks, structureChunks, quiz] = await Promise.all([
+          Promise.all(
+            vocabRanges.map((vocabRange) =>
+              extractLearningItems({
+                text: plainText,
+                levelHint: lesson.level,
+                vocabRange,
+                structureRange: [0, 0],
+                only: 'VOCABULARY',
+              })
+            )
+          ),
+          Promise.all(
+            structureRanges.map((structureRange) =>
+              extractLearningItems({
+                text: plainText,
+                levelHint: lesson.level,
+                vocabRange: [0, 0],
+                structureRange,
+                only: 'STRUCTURE',
+              })
+            )
+          ),
           generateComprehensiveQuiz({ text: plainText, transcript: '', levelHint: lesson.level }),
         ]);
-        vocabItems = soloVocab;
+        vocabItems = [...vocabChunks.flat(), ...structureChunks.flat()];
         comprehensiveQuiz = quiz;
       }
 
@@ -413,16 +447,45 @@ export const practiceService = {
     if (vocabCount > 0 || structureCount > 0) {
       let raw: RawLearningItem[] = [];
       try {
-        const result = await extractMoreLearningItems({
-          text: plainText || transcript,
-          levelHint: lesson.level,
-          vocabCount,
-          structureCount,
-          existingLemmas: existingItems.map((item) => item.lemma),
-          allowInvented,
-        });
-        raw = result.items;
-        if (result.reason) reasons.push(result.reason);
+        // Chamadas paralelas menores, por tipo E em lotes — mesmo motivo da
+        // extração inicial (ver `MAX_VOCAB_PER_CALL`/`MAX_STRUCTURE_PER_CALL`):
+        // o teto desta tela é 20+20, bem acima do que uma chamada aguenta
+        // dentro dos 60s da Vercel, especialmente em STRUCTURE.
+        const lemmas = existingItems.map((item) => item.lemma);
+        const calls: Promise<{ items: RawLearningItem[]; reason: string | null }>[] = [];
+
+        for (const n of splitCountByChunkSize(vocabCount, MAX_VOCAB_PER_CALL)) {
+          calls.push(
+            extractMoreLearningItems({
+              text: plainText || transcript,
+              levelHint: lesson.level,
+              vocabCount: n,
+              structureCount: 0,
+              existingLemmas: lemmas,
+              allowInvented,
+              only: 'VOCABULARY',
+            })
+          );
+        }
+        for (const n of splitCountByChunkSize(structureCount, MAX_STRUCTURE_PER_CALL)) {
+          calls.push(
+            extractMoreLearningItems({
+              text: plainText || transcript,
+              levelHint: lesson.level,
+              vocabCount: 0,
+              structureCount: n,
+              existingLemmas: lemmas,
+              allowInvented,
+              only: 'STRUCTURE',
+            })
+          );
+        }
+
+        const results = await Promise.all(calls);
+        raw = results.flatMap((r) => r.items);
+        for (const r of results) {
+          if (r.reason) reasons.push(r.reason);
+        }
       } catch (err) {
         console.error('OpenAI (gerar mais itens) falhou:', err);
         throw new AppError('Falha ao gerar itens com IA. Tente novamente em instantes.');
