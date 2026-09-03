@@ -368,7 +368,11 @@ export async function sendClassRecordingEmail({
   const prazo = availableUntil.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
   try {
-    await resend.emails.send({
+    // O SDK não lança em erro de API (rate limit, endereço inválido etc.) —
+    // devolve `{ data, error }`. Sem checar `error` aqui, um 429 do Resend
+    // loga "enviado com sucesso" mesmo tendo falhado (foi assim que o envio
+    // pra um aluno se perdeu silenciosamente no backfill de gravações).
+    const { error } = await resend.emails.send({
       from: FROM,
       to: [email],
       subject: `Gravação disponível: ${lessonTitle}`,
@@ -381,6 +385,7 @@ export async function sendClassRecordingEmail({
         action: { label: "Assistir gravação", href: recordingUrl },
       }),
     });
+    if (error) throw new Error(error.message);
     console.log(`[Resend] E-mail de gravação disponível enviado para ${email}`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
