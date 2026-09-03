@@ -173,7 +173,7 @@ export async function endStreamCall(recordId: string): Promise<void> {
  * se a assinatura for inválida. `rawBody` precisa ser o texto cru da request
  * (não `request.json()`, que reformataria os bytes que a assinatura cobre).
  */
-export function verifyAndParseStreamWebhook(rawBody: string, signature: string) {
+export function verifyAndParseStreamWebhook(rawBody: string | Buffer, signature: string) {
   if (!streamClient) return null;
   try {
     return streamClient.verifyAndParseWebhook(rawBody, signature);

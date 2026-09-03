@@ -33,9 +33,14 @@ export async function POST(request: Request) {
     return new Response("Too many requests", { status: 429 });
   }
 
-  // Texto cru, obrigatório: request.json() reformataria os bytes que a
-  // assinatura HMAC cobre, invalidando a verificação.
-  const rawBody = await request.text();
+  // Bytes crus, obrigatório: request.json() reformataria os bytes que a
+  // assinatura HMAC cobre, invalidando a verificação. request.text() também
+  // corrompe: decodifica como UTF-8, e o Stream comprime com gzip os
+  // eventos maiores (call.recording_ready, call.ended, stats_report_ready,
+  // session_*) — os bytes gzip (magic 0x1f 0x8b) não são UTF-8 válido, então
+  // .text() os destrói antes mesmo do SDK tentar descomprimir, e a
+  // verificação de assinatura falha (401) só para esses eventos maiores.
+  const rawBody = Buffer.from(await request.arrayBuffer());
   const signature = request.headers.get("x-signature");
 
   if (!signature) {
