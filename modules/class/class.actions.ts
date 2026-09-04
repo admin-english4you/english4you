@@ -23,6 +23,7 @@ import {
   MarkAttendanceSchema,
   GetTeacherStudentDetailSchema,
   GetStudentCallAccessSchema,
+  GetTeacherCallAccessSchema,
   GetBoardAuthTokenSchema,
   RehostBoardContentImageSchema,
   DeleteBoardContentImagesSchema,
@@ -427,6 +428,25 @@ export async function getStudentCallAccessAction(input: z.infer<typeof GetStuden
     }
 
     return await classService.getStudentCallAccess(currentUser.id, data.recordId);
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Renova o token de entrada na call do professor — chamado pelo `TokenProvider`
+ * do SDK do Stream (ver `useStreamCall`) quando o token atual está prestes a
+ * expirar ou a conexão precisa reconectar. Mesma checagem de posse de
+ * `getTeacherCallAccess`: sem sessão ativa e sem permissão, sem token novo.
+ */
+export async function getTeacherCallAccessAction(input: z.infer<typeof GetTeacherCallAccessSchema>) {
+  const safeAction = createSafeAction(GetTeacherCallAccessSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    return await classService.getTeacherCallAccess(currentUser.id, data.recordId);
   });
 
   return safeAction(input);

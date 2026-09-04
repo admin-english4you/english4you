@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PhoneCall, Users, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CallRoom } from "@/components/video/CallRoom";
@@ -107,6 +107,19 @@ export function VideoPanel({
     };
   }, [wantsToJoin, classRecordId]);
 
+  // Pedido pelo CallRoom a cada (re)conexão do SDK — não só o valor de
+  // `callAccess` (que sai de escopo, congelado) mas o resultado FRESCO de
+  // toda vez que o Stream pede um token novo (ex: o anterior expirou).
+  // `classRecordId` é a única dependência estável — a identidade da função
+  // não pode mudar a cada poll, ou o CallRoom recriaria o client do Stream
+  // no meio de uma chamada em andamento.
+  const getToken = useCallback(async () => {
+    const result = await getStudentCallAccessAction({ recordId: classRecordId });
+    if (!result.success) throw new Error(result.error);
+    if (!result.data) throw new Error("Esta chamada não está mais disponível.");
+    return result.data.token;
+  }, [classRecordId]);
+
   const markedRef = useRef(false);
   const handleJoined = () => {
     setWasEverConnected(true);
@@ -155,7 +168,7 @@ export function VideoPanel({
         <div className="flex flex-col">
           <CallRoom
             apiKey={callAccess.apiKey}
-            token={callAccess.token}
+            getToken={getToken}
             callId={callAccess.callId}
             userId={selfId}
             userName={selfName}

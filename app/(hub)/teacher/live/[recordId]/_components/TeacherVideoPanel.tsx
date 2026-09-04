@@ -1,12 +1,13 @@
 "use client";
 
+import { useCallback } from "react";
 import { Users, Video } from "lucide-react";
 import { CallRoom } from "@/components/video/CallRoom";
 import { ParticipantGrid } from "@/components/video/ParticipantGrid";
 import { CallControlsBar } from "@/components/video/CallControlsBar";
 import { RecordingsList } from "@/components/video/RecordingsList";
 import { getInitials } from "@/components/ui/avatar";
-import { startCallRecordingAction } from "@/modules/class/class.actions";
+import { getTeacherCallAccessAction, startCallRecordingAction } from "@/modules/class/class.actions";
 import type { ClassmateSummary } from "@/modules/class/class.types";
 import type { CallAccess } from "@/lib/stream-server";
 import { CallControls, type CallStatus } from "./CallControls";
@@ -41,6 +42,16 @@ export function TeacherVideoPanel({
 }: TeacherVideoPanelProps) {
   const isLiveWithAccess = status === "LIVE" && callAccess !== null;
 
+  // Ver o mesmo padrão em VideoPanel.tsx (aluno): busca um token FRESCO a
+  // cada (re)conexão do SDK, não só o do carimbo inicial — é o que corrige o
+  // corte automático em 1h (token nunca era renovado).
+  const getToken = useCallback(async () => {
+    const result = await getTeacherCallAccessAction({ recordId });
+    if (!result.success) throw new Error(result.error);
+    if (!result.data) throw new Error("Esta chamada não está mais disponível.");
+    return result.data.token;
+  }, [recordId]);
+
   return (
     <div className="flex h-full flex-col bg-slate-900">
       <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
@@ -58,7 +69,7 @@ export function TeacherVideoPanel({
         {isLiveWithAccess ? (
           <CallRoom
             apiKey={callAccess.apiKey}
-            token={callAccess.token}
+            getToken={getToken}
             callId={callAccess.callId}
             userId={selfId}
             userName={selfName}

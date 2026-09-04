@@ -5,7 +5,13 @@ import { StreamVideoClient, type Call } from "@stream-io/video-react-sdk";
 
 interface UseStreamCallParams {
   apiKey: string;
-  token: string;
+  /**
+   * Busca um token de entrada válido — chamado pelo SDK do Stream ao conectar
+   * e de novo em toda reconexão automática (ex: o token anterior expirou).
+   * Passar uma string estática aqui foi o que fazia toda aula cair sozinha
+   * depois de 1h: o SDK nunca tinha como pedir um token novo.
+   */
+  getToken: () => Promise<string>;
   callId: string;
   userId: string;
   userName: string;
@@ -37,7 +43,7 @@ interface UseStreamCallResult {
  */
 export function useStreamCall({
   apiKey,
-  token,
+  getToken,
   callId,
   userId,
   userName,
@@ -50,9 +56,9 @@ export function useStreamCall({
       new StreamVideoClient({
         apiKey,
         user: { id: userId, name: userName, image: userImage ?? undefined },
-        token,
+        tokenProvider: getToken,
       }),
-    [apiKey, token, userId, userName, userImage]
+    [apiKey, getToken, userId, userName, userImage]
   );
 
   const call = useMemo(() => client.call("default", callId), [client, callId]);

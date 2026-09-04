@@ -199,6 +199,30 @@ async function closeIfExpired(record: ClassRecord): Promise<ClassRecord> {
 }
 
 /**
+ * Salvaguarda para a mesma lacuna de `closeIfExpired`, só que sem depender de
+ * alguém abrir A PRÓPRIA aula: se professor e alunos saírem de uma call sem
+ * que ninguém volte a essa página específica, o registro fica "ao vivo" para
+ * sempre (sem cron neste projeto, nada mais o revalidaria). Em vez de um job
+ * agendado, a varredura é acoplada aos dashboards mais visitados do sistema
+ * (professor e admin, chamada de `getTeacherClassesOverview`/`getAllClasses`)
+ * — quem quer que abra qualquer um deles destrava toda call esquecida do
+ * sistema, não só a própria.
+ */
+async function sweepExpiredCalls(): Promise<void> {
+  const cutoff = new Date(Date.now() - CALL_MAX_DURATION_MS);
+  const expired = await classRepository.findExpiredLiveRecords(cutoff);
+  if (expired.length === 0) return;
+
+  await Promise.all(
+    expired.map(async (record) => {
+      await stopCallRecording(record.id);
+      await endStreamCall(record.id);
+      await classRepository.updateRecordCompleted(record.id, true);
+    })
+  );
+}
+
+/**
  * Espelha quem pode ler/escrever o board ao vivo desta aula no Realtime
  * Database — só a lista de ids gravada aqui pelo servidor (via Admin SDK,
  * que ignora as regras) é que as regras em database.rules.json aceitam como
@@ -394,6 +418,7 @@ export const classService = {
   /** Stats do professor: quantas turmas titulares + próximas 3 aulas (titular ou substituto). */
   async getTeacherClassesOverview(teacherUserId: string): Promise<TeacherOverview> {
     const teacher = await userService.getTeacherById(teacherUserId);
+    await sweepExpiredCalls();
 
     const [titularClasses, upcomingRaw] = await Promise.all([
       classRepository.findByTeacherId(teacher.id),
@@ -871,6 +896,7 @@ export const classService = {
 
   async getAllClasses(actingRole: Role): Promise<ClassGroupListItem[]> {
     assertAdmin(actingRole);
+    await sweepExpiredCalls();
     const classes = await classRepository.findAll();
     const teacherIds = Array.from(new Set(classes.map((c) => c.teacherId).filter((v): v is string => Boolean(v))));
 

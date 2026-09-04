@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { classGroupsTable, classRecordsTable } from './class.schema';
 import { lessonsTable } from '@/modules/lesson/lesson.schema';
-import { eq, desc, asc, and, ne, lt, gte, or, isNull, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, ne, lt, gte, or, isNull, isNotNull, sql } from 'drizzle-orm';
 import {
   ClassGroup,
   ClassRecord,
@@ -159,6 +159,21 @@ export const classRepository = {
   async findRecordById(id: string): Promise<ClassRecord | undefined> {
     return await db.query.classRecordsTable.findFirst({
       where: eq(classRecordsTable.id, id),
+    });
+  },
+
+  /**
+   * Aulas com uma call ao vivo (`callStartedAt` != null, `completed` = false)
+   * que já passaram do `cutoff` — usado pela varredura sem cron que fecha
+   * calls esquecidas (ver `classService.sweepExpiredCalls`).
+   */
+  async findExpiredLiveRecords(cutoff: Date): Promise<ClassRecord[]> {
+    return await db.query.classRecordsTable.findMany({
+      where: and(
+        isNotNull(classRecordsTable.callStartedAt),
+        eq(classRecordsTable.completed, false),
+        lt(classRecordsTable.callStartedAt, cutoff)
+      ),
     });
   },
 

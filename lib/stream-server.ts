@@ -43,6 +43,17 @@ export function recordingAvailableUntil(recordedAt: Date = new Date()): Date {
 const CALL_TYPE = "default";
 
 /**
+ * Validade do JWT de entrada na call. Antes disto, o token era gerado com
+ * `validity_in_seconds: 3600` (1h) e nunca era renovado no cliente — o Stream
+ * derrubava a conexão exatamente 1h depois de entrar, bem antes do limite de
+ * verdade de 2h da aula (`CALL_MAX_DURATION_MS`, `class.service.ts`). O
+ * cliente agora renova o token via `TokenProvider` (ver `useStreamCall`), mas
+ * esta margem continua generosa de propósito: cobre reconexões automáticas do
+ * SDK mesmo se uma renovação pontual falhar.
+ */
+const TOKEN_VALIDITY_SECONDS = 3 * 60 * 60; // 3 horas
+
+/**
  * Id determinístico da chamada a partir do id da aula (class_records.id).
  * Evita precisar de uma coluna extra só pra guardar "qual é o callId desta
  * aula" — e o webhook consegue voltar de `call_cid` (`type:id`) pro
@@ -117,7 +128,10 @@ export async function ensureCallAndGenerateToken({
     },
   });
 
-  const token = streamClient.generateUserToken({ user_id: userId, validity_in_seconds: 3600 });
+  const token = streamClient.generateUserToken({
+    user_id: userId,
+    validity_in_seconds: TOKEN_VALIDITY_SECONDS,
+  });
 
   return { apiKey, token, callId };
 }

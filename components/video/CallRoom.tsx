@@ -10,7 +10,8 @@ import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 interface CallRoomProps {
   apiKey: string;
-  token: string;
+  /** Ver `useStreamCall` — busca um token novo a cada (re)conexão, não só na primeira. */
+  getToken: () => Promise<string>;
   callId: string;
   userId: string;
   userName: string;
@@ -29,7 +30,7 @@ interface CallRoomProps {
  */
 export function CallRoom({
   apiKey,
-  token,
+  getToken,
   callId,
   userId,
   userName,
@@ -38,7 +39,7 @@ export function CallRoom({
   onLeft,
   children,
 }: CallRoomProps) {
-  const { client, call, error } = useStreamCall({ apiKey, token, callId, userId, userName, userImage });
+  const { client, call, error } = useStreamCall({ apiKey, getToken, callId, userId, userName, userImage });
 
   if (error) {
     return (
