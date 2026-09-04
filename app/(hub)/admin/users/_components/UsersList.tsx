@@ -19,6 +19,27 @@ import { User } from "@/modules/user/user.types";
 import type { Package } from "@/modules/finance/finance.types";
 import { applyScholarshipDiscount, formatCents } from "@/modules/finance/finance.utils";
 
+const ROLE_LABELS: Record<Role, string> = {
+  STUDENT: "Aluno",
+  TEACHER: "Professor",
+  ADMIN: "Admin",
+};
+
+const EXPORT_FILENAME_BY_ROLE: Record<string, string> = {
+  ALL: "usuarios",
+  STUDENT: "alunos",
+  TEACHER: "professores",
+  ADMIN: "admins",
+};
+
+/** Envolve em aspas só quando precisa (contém `;`, aspas ou quebra de linha) — dobrando aspas internas, regra padrão de CSV. */
+function escapeCsvField(value: string): string {
+  if (/[";\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
 interface UsersListProps {
   initialUsers: User[];
   /** Pacotes ativos — o contrato do aluno é gerado a partir do escolhido aqui. */
@@ -159,6 +180,47 @@ export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersLi
     }
   };
 
+  /**
+   * Exporta a lista FILTRADA (respeita busca + filtro de perfil já aplicados
+   * na tela) como CSV. Ponto e vírgula como separador, não vírgula: é o que o
+   * Excel em pt-BR espera (vírgula é separador decimal por aqui), senão o
+   * arquivo abre com tudo numa coluna só.
+   */
+  const handleExportUsers = () => {
+    if (filteredUsers.length === 0) {
+      toast.error("Nenhum usuário para exportar com os filtros atuais.");
+      return;
+    }
+
+    const header = ["Nome", "E-mail", "Perfil", "Telefone", "Status", "Data de cadastro"];
+    const rows = filteredUsers.map((user) => [
+      user.name,
+      user.email,
+      ROLE_LABELS[user.role],
+      user.phone ?? "",
+      user.status === "Active" ? "Ativo" : "Inativo",
+      new Date(user.createdAt).toLocaleDateString("pt-BR"),
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((row) => row.map(escapeCsvField).join(";"))
+      .join("\r\n");
+
+    // BOM no início: sem ele o Excel (Windows) interpreta acentos como
+    // caracteres corrompidos em vez de UTF-8.
+    const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${EXPORT_FILENAME_BY_ROLE[filterRole] ?? "usuarios"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`${rows.length} usuário${rows.length === 1 ? "" : "s"} exportado${rows.length === 1 ? "" : "s"}.`);
+  };
+
   const filteredUsers = usersList.filter((u) => {
     const matchesRole = filterRole === "ALL" || u.role === filterRole;
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -176,7 +238,7 @@ export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersLi
           <Button variant="outline" className="flex-1 sm:flex-initial" onClick={handleShareInstallLink}>
             <Share2 className="w-4 h-4 mr-2" /> Link do App
           </Button>
-          <Button variant="outline" className="flex-1 sm:flex-initial">
+          <Button variant="outline" className="flex-1 sm:flex-initial" onClick={handleExportUsers}>
             <Download className="w-4 h-4 mr-2" /> Exportar
           </Button>
           <Button
