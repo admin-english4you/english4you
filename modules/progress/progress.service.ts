@@ -1,4 +1,4 @@
-import { AppError } from '@/lib/errors';
+import { AppError, BlockedPracticeError } from '@/lib/errors';
 import { dayKeyToDate, startOfWeekKey, toDayKey, todayKey } from '@/lib/date';
 import { classService } from '@/modules/class/class.service';
 import { practiceService } from '@/modules/practice/practice.service';
@@ -385,16 +385,22 @@ async function resolveOwnedDay(
   return day;
 }
 
-/** Estados que nunca podem ser abertos nem registrados, seja qual for o caminho. */
+/**
+ * Estados que nunca podem ser abertos nem registrados, seja qual for o caminho.
+ *
+ * `BlockedPracticeError` (não `AppError`) porque o aluno TEM posse do dia —
+ * ele só está num estado que não permite abrir agora. A page.tsx precisa
+ * distinguir isso de "não existe" para não renderizar um 404.
+ */
 function assertNotBlocked(day: PracticeDayState): void {
   if (day.status === 'EMPTY') {
-    throw new AppError('Esta prática ainda não tem conteúdo disponível.');
+    throw new BlockedPracticeError('Esta prática ainda não tem conteúdo disponível.');
   }
   if (day.status === 'LOCKED_FUTURE') {
-    throw new AppError('Esta prática ainda não foi liberada.');
+    throw new BlockedPracticeError('Esta prática ainda não foi liberada.');
   }
   if (day.status === 'EXPIRED') {
-    throw new AppError('Esta prática expirou. Desbloqueie com XP para refazer.');
+    throw new BlockedPracticeError('Esta prática expirou. Desbloqueie com XP para refazer.');
   }
 }
 
@@ -408,7 +414,7 @@ async function assertPlayableDay(
   assertNotBlocked(day);
 
   if (day.status === 'COMPLETED') {
-    throw new AppError('Você já concluiu esta prática. Desbloqueie com XP para refazer.');
+    throw new BlockedPracticeError('Você já concluiu esta prática. Desbloqueie com XP para refazer.');
   }
   if (!isPlayable(day.status)) {
     throw new AppError('Esta prática não está disponível.');

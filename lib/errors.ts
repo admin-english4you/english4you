@@ -10,3 +10,16 @@ export class AppError extends Error {
     this.name = "AppError";
   }
 }
+
+/**
+ * Regra de negócio que bloqueia uma prática que o aluno *possui* (dia já
+ * concluído, expirado, ou ainda no futuro) — diferente de não achar/não ter
+ * posse do recurso. UI deve redirecionar com uma mensagem, nunca renderizar
+ * como "página não encontrada".
+ */
+export class BlockedPracticeError extends AppError {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlockedPracticeError";
+  }
+}

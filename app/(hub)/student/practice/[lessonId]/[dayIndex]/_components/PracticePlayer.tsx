@@ -90,13 +90,16 @@ export function PracticePlayer({ session }: PracticePlayerProps) {
       });
 
       if (result.success && result.data) {
+        // Não chamar router.refresh() aqui: isso re-executa a page.tsx da
+        // própria rota, que agora vê o dia como COMPLETED e chama notFound(),
+        // derrubando esta tela de resultado no meio da animação. A revalidação
+        // de /student/practice feita pela action já é suficiente.
         setSavedXp(result.data.xpEarned);
-        router.refresh();
       } else if (!result.success) {
         setSaveError(result.error);
       }
     });
-  }, [session.lessonId, session.dayIndex, router]);
+  }, [session.lessonId, session.dayIndex]);
 
   const advance = useCallback(() => {
     if (isLastItem) finish();
