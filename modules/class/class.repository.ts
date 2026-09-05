@@ -54,6 +54,13 @@ export const classRepository = {
     });
   },
 
+  /** Turmas ativas que usam este plano — usado para propagar novas lições do plano. */
+  async findActiveByPlanId(planId: string): Promise<ClassGroup[]> {
+    return await db.query.classGroupsTable.findMany({
+      where: and(eq(classGroupsTable.planId, planId), eq(classGroupsTable.status, 'ACTIVE')),
+    });
+  },
+
   /** Turmas onde este professor é o titular. Usa o índice class_groups_teacher_idx. */
   async findByTeacherId(teacherId: string): Promise<ClassGroup[]> {
     return await db.query.classGroupsTable.findMany({

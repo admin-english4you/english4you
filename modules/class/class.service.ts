@@ -24,7 +24,7 @@ import {
   TeacherStudentDetail,
 } from './class.types';
 import { ScheduleSlot, WeekdayEnum } from './class.schema';
-import { addDaysToKey, todayKey, weekdayIndex, zonedWallClockToUtc } from '@/lib/date';
+import { addDaysToKey, todayKey, toDayKey, weekdayIndex, zonedWallClockToUtc } from '@/lib/date';
 import {
   CallAccess,
   endStreamCall,
@@ -114,6 +114,75 @@ async function generateClassRecords(classGroupId: string): Promise<void> {
 
   const records = buildScheduleRecords(classGroupId, classGroup.schedule, lessons);
   await classRepository.createRecords(records);
+}
+
+/**
+ * Acha o próximo horário do `schedule` estritamente depois de `after`. Usado
+ * para encaixar uma lição nova no fim da grade já existente de uma turma, sem
+ * mexer nas datas das aulas já agendadas.
+ */
+function nextScheduleSlotAfter(schedule: ScheduleSlot[], after: Date): Date {
+  const sortedSlots = [...schedule].sort((a, b) => {
+    const weekdayDiff = WEEKDAY_ORDER.indexOf(a.weekday) - WEEKDAY_ORDER.indexOf(b.weekday);
+    return weekdayDiff !== 0 ? weekdayDiff : a.time.localeCompare(b.time);
+  });
+
+  let cursor = toDayKey(after);
+  const maxIterations = 14; // uma volta completa de semana já é suficiente pra achar o próximo slot
+
+  for (let i = 0; i < maxIterations; i++) {
+    const currentWeekday = jsDayToWeekday(weekdayIndex(cursor));
+    const matchingSlots = sortedSlots.filter((slot) => slot.weekday === currentWeekday);
+
+    for (const slot of matchingSlots) {
+      const candidate = combineDayKeyAndTime(cursor, slot.time);
+      if (candidate.getTime() > after.getTime()) {
+        return candidate;
+      }
+    }
+
+    cursor = addDaysToKey(cursor, 1);
+  }
+
+  // Nunca deveria acontecer: `schedule` sempre tem ao menos um slot (ver ScheduleSchema).
+  throw new AppError('Não foi possível calcular o próximo horário da turma.');
+}
+
+/**
+ * Propaga uma lição nova do plano para todas as turmas ATIVAS que já usam
+ * esse plano, encaixando-a no fim da grade de cada uma (não regera nada:
+ * preserva as aulas já agendadas/concluídas e só acrescenta uma linha).
+ *
+ * Chamado pelo fluxo de "adicionar lição ao plano" — turmas INACTIVE/COMPLETED
+ * ficam de fora por serem somente-leitura (ver assertClassIsMutable).
+ */
+async function propagateLessonToAssignedClasses(lessonId: string, planId: string): Promise<void> {
+  const classGroups = await classRepository.findActiveByPlanId(planId);
+  if (classGroups.length === 0) return;
+
+  await Promise.all(
+    classGroups.map(async (classGroup) => {
+      const existingRecords = await classRepository.findRecordsByClassGroupId(classGroup.id);
+      if (existingRecords.some((r) => r.lessonId === lessonId)) return;
+
+      const lastDate = existingRecords.reduce<Date | null>(
+        (latest, r) => (!latest || r.date > latest ? r.date : latest),
+        null
+      );
+      const nextDate = nextScheduleSlotAfter(classGroup.schedule, lastDate ?? new Date());
+
+      await classRepository.createRecords([
+        {
+          classGroupId: classGroup.id,
+          lessonId,
+          teacherId: null,
+          date: nextDate,
+          completed: false,
+          attendance: [],
+        },
+      ]);
+    })
+  );
 }
 
 function assertAdmin(actingRole: Role) {
@@ -1003,6 +1072,15 @@ export const classService = {
     const updated = await classRepository.updatePlan(classGroupId, planId);
     await generateClassRecords(classGroupId);
     return updated;
+  },
+
+  /**
+   * Encaixa uma lição recém-criada no fim da grade de todas as turmas ATIVAS
+   * que já usam o plano — chamado pelo módulo `plan` sempre que uma lição é
+   * adicionada a um plano já atribuído a turmas.
+   */
+  async propagateLessonToAssignedClasses(lessonId: string, planId: string): Promise<void> {
+    await propagateLessonToAssignedClasses(lessonId, planId);
   },
 
   async addStudent(actingRole: Role, classGroupId: string, studentId: string): Promise<void> {

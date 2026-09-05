@@ -1,5 +1,6 @@
 import { planRepository } from './plan.repository';
 import { lessonService } from '@/modules/lesson/lesson.service';
+import { classService } from '@/modules/class/class.service';
 import { Lesson } from '@/modules/lesson/lesson.types';
 import { Plan, CreatePlanInput } from './plan.types';
 import { Role } from '@/modules/user/user.types';
@@ -74,6 +75,10 @@ export const planService = {
     const lesson = await lessonService.createLessonInPlan(actingRole, lessonData);
     const nextOrder = await planRepository.getNextOrder(planId);
     await planRepository.addLessonToPlan(planId, lesson.id, nextOrder);
+
+    // Turmas que já usam este plano não devem esperar uma reatribuição manual
+    // pra enxergar a lição nova — ela é encaixada no fim da grade de cada uma.
+    await classService.propagateLessonToAssignedClasses(lesson.id, planId);
 
     return lesson;
   },

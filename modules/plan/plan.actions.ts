@@ -65,6 +65,9 @@ export async function addLessonToPlanAction(input: z.infer<typeof AddLessonToPla
     const { planId, ...lessonData } = data;
     const result = await planService.addLessonToPlan(currentUser.role, planId, lessonData);
     revalidatePath(`/admin/plans/${planId}`);
+    // A lição pode ter sido encaixada na grade de turmas já atribuídas a este
+    // plano — revalida a árvore de turmas (ids não são conhecidos aqui).
+    revalidatePath('/admin/classes', 'layout');
     return result;
   });
 
