@@ -29,6 +29,25 @@ export type ClassRecordDetail = ClassRecord & {
   teacher: User | null;
 };
 
+/** Lição de um plano, para escolher a partir de onde ele passa a valer numa turma que já teve aulas. */
+export type PlanLessonOption = {
+  id: string;
+  order: number;
+  title: string;
+  alreadyTaught: boolean;
+  /** Aulas que seriam geradas se o plano passasse a valer a partir desta lição. */
+  scheduledCount: number;
+  /** Aulas pendentes da turma que ficariam sem lição (e seriam excluídas) começando por esta. */
+  uncoveredCount: number;
+};
+
+/** O que a troca de plano faria, para o admin conferir antes de confirmar. */
+export type PlanAssignmentPreview = {
+  /** Aulas ainda não realizadas que serão apagadas na troca. */
+  pendingCount: number;
+  options: PlanLessonOption[];
+};
+
 /** View completa de uma turma para a página de detalhes. */
 export type ClassGroupDetail = ClassGroup & {
   teacher: User | null;

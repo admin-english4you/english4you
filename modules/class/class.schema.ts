@@ -132,6 +132,13 @@ export const AssignTeacherSchema = z.object({
 export const AssignPlanSchema = z.object({
   classGroupId: z.uuid(),
   planId: z.uuid(),
+  /** Obrigatório (validado no service) quando a turma já tem aulas concluídas. */
+  startFromLessonId: z.uuid().optional(),
+});
+
+export const GetPlanAssignmentPreviewSchema = z.object({
+  classGroupId: z.uuid(),
+  planId: z.uuid(),
 });
 
 export const AddStudentSchema = z.object({
@@ -165,6 +172,16 @@ export const ArchiveClassSchema = z.object({
 export const AssignSubstituteTeacherSchema = z.object({
   classRecordId: z.uuid(),
   teacherId: z.uuid(),
+});
+
+/** Move uma aula avulsa para outro dia/horário (hora de parede no fuso da aplicação). */
+export const UpdateClassRecordDateSchema = z.object({
+  classRecordId: z.uuid(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida')
+    .refine((value) => new Date(`${value}T00:00:00Z`).toISOString().startsWith(value), 'Data inválida'),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido (use HH:MM)'),
 });
 
 // Schemas do fluxo de sala de aula do professor

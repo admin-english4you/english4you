@@ -61,6 +61,28 @@ export const classRepository = {
     });
   },
 
+  /** Quantas turmas (de qualquer status) usam cada plano. Planos sem turma não aparecem. */
+  async countByPlan(): Promise<{ planId: string; count: number }[]> {
+    const rows = await db
+      .select({
+        planId: classGroupsTable.planId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(classGroupsTable)
+      .where(isNotNull(classGroupsTable.planId))
+      .groupBy(classGroupsTable.planId);
+
+    return rows.flatMap((row) => (row.planId ? [{ planId: row.planId, count: row.count }] : []));
+  },
+
+  /** Desvincula o plano de todas as turmas que o usam (qualquer status). */
+  async clearPlanId(planId: string): Promise<void> {
+    await db
+      .update(classGroupsTable)
+      .set({ planId: null, updatedAt: new Date() })
+      .where(eq(classGroupsTable.planId, planId));
+  },
+
   /** Turmas onde este professor é o titular. Usa o índice class_groups_teacher_idx. */
   async findByTeacherId(teacherId: string): Promise<ClassGroup[]> {
     return await db.query.classGroupsTable.findMany({
@@ -217,6 +239,23 @@ export const classRepository = {
       .where(eq(classRecordsTable.id, recordId))
       .returning();
     return record;
+  },
+
+  async updateRecordDate(recordId: string, date: Date): Promise<ClassRecord> {
+    const [record] = await db
+      .update(classRecordsTable)
+      .set({ date })
+      .where(eq(classRecordsTable.id, recordId))
+      .returning();
+    return record;
+  },
+
+  async updateRecordsDates(updates: { id: string; date: Date }[]): Promise<void> {
+    await Promise.all(
+      updates.map(({ id, date }) =>
+        db.update(classRecordsTable).set({ date }).where(eq(classRecordsTable.id, id))
+      )
+    );
   },
 
   async updateRecordBoard(recordId: string, boardContent: string): Promise<ClassRecord> {

@@ -3,10 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpenCheck, Calendar, CheckCircle2, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { toast } from "@/components/ui/toaster";
 import { ClassRecordDetail } from "@/modules/class/class.types";
 import { User } from "@/modules/user/user.types";
-import { assignSubstituteTeacherAction } from "@/modules/class/class.actions";
+import { assignSubstituteTeacherAction, updateClassRecordDateAction } from "@/modules/class/class.actions";
+import { formatTimeInZone, toDayKey } from "@/lib/date";
 
 interface LessonsListProps {
   classGroupId: string;
@@ -42,8 +45,27 @@ function LessonCard({
   const [selectedTeacherId, setSelectedTeacherId] = useState(record.teacherId ?? "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const currentDay = toDayKey(new Date(record.date));
+  const currentTime = formatTimeInZone(new Date(record.date));
+  const [day, setDay] = useState(currentDay);
+  const [time, setTime] = useState(currentTime);
+
   const hasSubstitute = Boolean(record.teacherId);
   const hasChanges = selectedTeacherId && selectedTeacherId !== (record.teacherId ?? "");
+  const canEditDate = isEditable && !record.completed && !record.callStartedAt;
+  const dateChanged = Boolean(day && time) && (day !== currentDay || time !== currentTime);
+
+  const handleSaveDate = () => {
+    startTransition(async () => {
+      const result = await updateClassRecordDateAction({ classRecordId: record.id, date: day, time });
+      if (result.success) {
+        toast.success("Data da aula atualizada.");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  };
 
   const handleSave = () => {
     if (!selectedTeacherId) return;
@@ -74,6 +96,20 @@ function LessonCard({
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           <span className="capitalize">{formatDate(record.date)}</span>
         </div>
+        {canEditDate && (
+          <div className="flex items-center gap-2 mt-2">
+            <Input type="date" className="w-40" value={day} onChange={(e) => setDay(e.target.value)} />
+            <Input type="time" className="w-28" value={time} onChange={(e) => setTime(e.target.value)} />
+            <button
+              type="button"
+              onClick={handleSaveDate}
+              disabled={!dateChanged || isPending}
+              className="text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-30 disabled:hover:text-primary shrink-0"
+            >
+              Salvar data
+            </button>
+          </div>
+        )}
         {errorMessage && <p className="text-[11px] text-rose-600 mt-1">{errorMessage}</p>}
       </div>
 
@@ -125,7 +161,7 @@ export function LessonsList({ records, teachers, defaultTeacher, isEditable }: L
       ) : (
         <div className="space-y-3">
           {records.map((record) => (
-            <LessonCard key={record.id} record={record} teachers={teachers} defaultTeacher={defaultTeacher} isEditable={isEditable} />
+            <LessonCard key={`${record.id}-${new Date(record.date).getTime()}`} record={record} teachers={teachers} defaultTeacher={defaultTeacher} isEditable={isEditable} />
           ))}
         </div>
       )}

@@ -59,6 +59,10 @@ export const UpdatePlanSchema = z.object({
   status: PlanStatusEnum.optional(),
 });
 
+export const DeletePlanSchema = z.object({
+  planId: z.uuid(),
+});
+
 /** Cria a lição e já a anexa ao final da ordem deste plano, num único fluxo. */
 export const AddLessonToPlanSchema = z.object({
   planId: z.uuid(),

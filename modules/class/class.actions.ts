@@ -7,6 +7,7 @@ import {
   UpdateClassBasicSchema,
   AssignTeacherSchema,
   AssignPlanSchema,
+  GetPlanAssignmentPreviewSchema,
   AddStudentSchema,
   RemoveStudentSchema,
   TransferStudentSchema,
@@ -14,6 +15,7 @@ import {
   ReactivateClassSchema,
   ArchiveClassSchema,
   AssignSubstituteTeacherSchema,
+  UpdateClassRecordDateSchema,
   StartCallSchema,
   StartCallRecordingSchema,
   EndCallSchema,
@@ -103,9 +105,28 @@ export async function assignPlanAction(input: z.infer<typeof AssignPlanSchema>) 
       throw new AppError("Usuário não autenticado.");
     }
 
-    const result = await classService.assignPlan(currentUser.role, data.classGroupId, data.planId);
+    const result = await classService.assignPlan(currentUser.role, data.classGroupId, data.planId, {
+      startFromLessonId: data.startFromLessonId,
+    });
     revalidatePath(`/admin/classes/${data.classGroupId}`);
     return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action (leitura): lições do plano, quais a turma já teve e quantas
+ * aulas ficariam sem cobertura — alimenta a confirmação da troca de plano.
+ */
+export async function getPlanAssignmentPreviewAction(input: z.infer<typeof GetPlanAssignmentPreviewSchema>) {
+  const safeAction = createSafeAction(GetPlanAssignmentPreviewSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    return await classService.getPlanAssignmentPreview(currentUser.role, data.classGroupId, data.planId);
   });
 
   return safeAction(input);
@@ -234,6 +255,27 @@ export async function assignSubstituteTeacherAction(input: z.infer<typeof Assign
     }
 
     const result = await classService.assignSubstituteTeacher(currentUser.role, data.classRecordId, data.teacherId);
+    revalidatePath(`/admin/classes/${result.classGroupId}`);
+    return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para mover uma aula avulsa para outro dia/horário.
+ */
+export async function updateClassRecordDateAction(input: z.infer<typeof UpdateClassRecordDateSchema>) {
+  const safeAction = createSafeAction(UpdateClassRecordDateSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    const result = await classService.updateRecordDate(currentUser.role, data.classRecordId, {
+      date: data.date,
+      time: data.time,
+    });
     revalidatePath(`/admin/classes/${result.classGroupId}`);
     return result;
   });

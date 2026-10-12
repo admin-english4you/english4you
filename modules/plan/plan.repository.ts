@@ -37,6 +37,11 @@ export const planRepository = {
     return plan;
   },
 
+  /** Remove o plano; `plan_lessons` cai em cascata, as lições em si permanecem. */
+  async delete(id: string): Promise<void> {
+    await db.delete(plansTable).where(eq(plansTable.id, id));
+  },
+
   async getOrderedLessonIds(planId: string): Promise<{ lessonId: string; order: number }[]> {
     const rows = await db.query.planLessonsTable.findMany({
       where: eq(planLessonsTable.planId, planId),

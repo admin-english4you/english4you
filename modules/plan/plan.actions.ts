@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   CreatePlanSchema,
   UpdatePlanSchema,
+  DeletePlanSchema,
   AddLessonToPlanSchema,
   RemoveLessonFromPlanSchema,
   ReorderPlanLessonsSchema,
@@ -47,6 +48,25 @@ export async function updatePlanAction(input: z.infer<typeof UpdatePlanSchema>) 
     revalidatePath("/admin/plans");
     revalidatePath(`/admin/plans/${planId}`);
     return result;
+  });
+
+  return safeAction(input);
+}
+
+/**
+ * Server Action para excluir um plano; turmas que o usam são desvinculadas.
+ */
+export async function deletePlanAction(input: z.infer<typeof DeletePlanSchema>) {
+  const safeAction = createSafeAction(DeletePlanSchema, async (data) => {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      throw new AppError("Usuário não autenticado.");
+    }
+
+    await planService.deletePlan(currentUser.role, data.planId);
+    revalidatePath("/admin/plans");
+    revalidatePath("/admin/classes", "layout");
+    return { planId: data.planId };
   });
 
   return safeAction(input);

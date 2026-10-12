@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Dropdown, DropdownItem } from "@/components/ui/dropdown";
-import { MoreVertical, Loader2, AlertTriangle, Users, Plus } from "lucide-react";
+import { MoreVertical, Loader2, AlertTriangle, Users, Plus, Pencil } from "lucide-react";
 import { ClassGroup, ClassGroupDetail } from "@/modules/class/class.types";
 import { User } from "@/modules/user/user.types";
 import { Plan } from "@/modules/plan/plan.types";
@@ -17,6 +17,7 @@ import { TeacherAssignmentCard } from "./TeacherAssignmentCard";
 import { PlanAssignmentCard } from "./PlanAssignmentCard";
 import { StudentRosterCard } from "./StudentRosterCard";
 import { LessonsList } from "./LessonsList";
+import { EditClassModal } from "./EditClassModal";
 
 interface ClassDetailProps {
   classData: ClassGroupDetail;
@@ -34,6 +35,7 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const isEditable = classData.status === "ACTIVE";
   const isFull = classData.students.length >= classData.maxStudents;
@@ -100,6 +102,16 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
           <Button
             type="button"
             size="sm"
+            variant="outline"
+            onClick={() => setIsEditModalOpen(true)}
+            disabled={!isEditable}
+          >
+            <Pencil className="w-4 h-4 mr-1" /> Editar Turma
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
             onClick={() => setIsAddStudentModalOpen(true)}
             disabled={!isEditable || isFull}
             className="bg-primary hover:bg-primary/80 text-primary-foreground"
@@ -134,7 +146,13 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TeacherAssignmentCard classGroupId={classData.id} currentTeacher={classData.teacher} teachers={teachers} isEditable={isEditable} />
-          <PlanAssignmentCard classGroupId={classData.id} currentPlan={classData.plan} activePlans={activePlans} isEditable={isEditable} />
+          <PlanAssignmentCard
+            classGroupId={classData.id}
+            currentPlan={classData.plan}
+            activePlans={activePlans}
+            isEditable={isEditable}
+            hasCompletedLessons={classData.records.some((record) => record.completed)}
+          />
         </div>
 
         <StudentRosterCard
@@ -155,6 +173,15 @@ export function ClassDetail({ classData, teachers, availableStudents, activePlan
           isEditable={isEditable}
         />
       </div>
+
+      <EditClassModal
+        key={`${classData.name}-${classData.updatedAt.toString()}`}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        classGroupId={classData.id}
+        name={classData.name}
+        schedule={classData.schedule}
+      />
 
       <Modal isOpen={confirmAction === "deactivate"} onClose={closeConfirm} title="Desativar Turma">
         <div className="p-6 space-y-4">

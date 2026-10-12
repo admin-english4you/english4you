@@ -59,6 +59,23 @@ export const planService = {
     return await planRepository.update(planId, data);
   },
 
+  /**
+   * Exclui o plano. Turmas que o usam são desvinculadas primeiro (a FK de
+   * class_groups.plan_id não tem ON DELETE). Sem transação (neon-http): se o
+   * delete falhar depois do desvínculo, repetir a operação é seguro.
+   */
+  async deletePlan(actingRole: Role, planId: string): Promise<void> {
+    assertAdmin(actingRole);
+
+    const plan = await planRepository.findById(planId);
+    if (!plan) {
+      throw new AppError('Plano não encontrado.');
+    }
+
+    await classService.unlinkPlanFromClasses(actingRole, planId);
+    await planRepository.delete(planId);
+  },
+
   /** Cria a lição (via lessonService) e a anexa ao final da ordem deste plano. */
   async addLessonToPlan(
     actingRole: Role,

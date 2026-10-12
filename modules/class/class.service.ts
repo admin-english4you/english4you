@@ -15,6 +15,7 @@ import {
   CreateClassGroupInput,
   NewClassRecord,
   PendingRecordingView,
+  PlanAssignmentPreview,
   StudentClassOverview,
   StudentClassRecordDetail,
   StudentTaughtRecord,
@@ -24,6 +25,7 @@ import {
   TeacherStudentDetail,
 } from './class.types';
 import { ScheduleSlot, WeekdayEnum } from './class.schema';
+import { generateSlotDates, jsDayToWeekday, sortScheduleSlots } from './class.utils';
 import { addDaysToKey, todayKey, toDayKey, weekdayIndex, zonedWallClockToUtc } from '@/lib/date';
 import {
   CallAccess,
@@ -40,12 +42,6 @@ import { uploadBufferToStorage, deleteStorageFileByUrl, fetchExternalImage } fro
 import crypto from 'crypto';
 
 const WEEKDAY_ORDER = WeekdayEnum.options;
-
-function jsDayToWeekday(jsDay: number): ScheduleSlot['weekday'] {
-  // getDay(): 0 = domingo ... 6 = sábado
-  const map: ScheduleSlot['weekday'][] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  return map[jsDay];
-}
 
 /**
  * Monta o instante da aula a partir do dia e do horário do `schedule`.
@@ -66,54 +62,44 @@ function combineDayKeyAndTime(dayKey: string, time: string): Date {
  * (seção "Algoritmo de geração de ClassRecord") para a explicação completa.
  */
 function buildScheduleRecords(classGroupId: string, schedule: ScheduleSlot[], lessons: Lesson[]): NewClassRecord[] {
-  const sortedSlots = [...schedule].sort((a, b) => {
-    const weekdayDiff = WEEKDAY_ORDER.indexOf(a.weekday) - WEEKDAY_ORDER.indexOf(b.weekday);
-    return weekdayDiff !== 0 ? weekdayDiff : a.time.localeCompare(b.time);
-  });
+  const dates = generateSlotDates(schedule, lessons.length, todayKey());
 
-  const records: NewClassRecord[] = [];
-  // O calendário é percorrido em dias do fuso da aplicação ('YYYY-MM-DD'), não
-  // em Date, para que a virada de dia não dependa do fuso do processo.
-  let cursor = todayKey();
-  let lessonIndex = 0;
-
-  const maxIterations = 7 * lessons.length + 14; // margem de segurança, nunca deveria ser atingido
-  let iterations = 0;
-
-  while (lessonIndex < lessons.length && iterations < maxIterations) {
-    const currentWeekday = jsDayToWeekday(weekdayIndex(cursor));
-    const matchingSlots = sortedSlots.filter((slot) => slot.weekday === currentWeekday);
-
-    for (const slot of matchingSlots) {
-      if (lessonIndex >= lessons.length) break;
-      const lesson = lessons[lessonIndex];
-      records.push({
-        classGroupId,
-        lessonId: lesson.id,
-        teacherId: null,
-        date: combineDayKeyAndTime(cursor, slot.time),
-        completed: false,
-        attendance: [],
-      });
-      lessonIndex += 1;
-    }
-
-    cursor = addDaysToKey(cursor, 1);
-    iterations += 1;
-  }
-
-  return records;
+  return dates.map((date, index) => ({
+    classGroupId,
+    lessonId: lessons[index].id,
+    teacherId: null,
+    date,
+    completed: false,
+    attendance: [],
+  }));
 }
 
-async function generateClassRecords(classGroupId: string): Promise<void> {
-  const classGroup = await classRepository.findById(classGroupId);
-  if (!classGroup || !classGroup.planId) return;
+/**
+ * Redistribui as aulas ainda não dadas pelo novo `schedule` da turma, a partir
+ * de hoje. Só `date` muda: id, quadro, professor substituto e presença ficam.
+ * Aulas concluídas e a que está ao vivo agora não são tocadas.
+ *
+ * A ordem vem do plano (ordem das lições); sem plano, mantém a ordem atual por
+ * data. Sem transação (neon-http): cada update é independente, então repetir a
+ * operação após uma falha parcial converge para o mesmo resultado.
+ */
+async function rescheduleOpenRecords(classGroup: ClassGroup): Promise<void> {
+  const records = await classRepository.findRecordsByClassGroupId(classGroup.id);
+  const open = records.filter((r) => !r.completed && !r.callStartedAt);
+  if (open.length === 0) return;
 
-  const lessons = await planService.getOrderedLessonsForPlan(classGroup.planId);
-  if (lessons.length === 0) return;
+  let ordered = open;
+  if (classGroup.planId) {
+    const lessons = await planService.getOrderedLessonsForPlan(classGroup.planId);
+    const lessonIndex = new Map(lessons.map((lesson, index) => [lesson.id, index]));
+    const positionOf = (lessonId: string) => lessonIndex.get(lessonId) ?? Number.MAX_SAFE_INTEGER;
+    ordered = [...open].sort(
+      (a, b) => positionOf(a.lessonId) - positionOf(b.lessonId) || a.date.getTime() - b.date.getTime()
+    );
+  }
 
-  const records = buildScheduleRecords(classGroupId, classGroup.schedule, lessons);
-  await classRepository.createRecords(records);
+  const dates = generateSlotDates(classGroup.schedule, ordered.length, todayKey());
+  await classRepository.updateRecordsDates(ordered.map((record, index) => ({ id: record.id, date: dates[index] })));
 }
 
 /**
@@ -1021,16 +1007,19 @@ export const classService = {
     }
     assertClassIsMutable(classGroup);
 
-    if (data.schedule) {
-      const existingRecords = await classRepository.findRecordsByClassGroupId(classGroupId);
-      if (existingRecords.some((r) => !r.completed)) {
-        throw new AppError(
-          'Não é possível alterar o horário: existem aulas ainda não concluídas. Reatribua o plano de ensino depois de ajustar o horário para regerar a grade.'
-        );
-      }
+    const scheduleChanged =
+      data.schedule !== undefined &&
+      JSON.stringify(sortScheduleSlots(data.schedule)) !== JSON.stringify(sortScheduleSlots(classGroup.schedule));
+
+    const updated = await classRepository.updateBasic(classGroupId, data);
+
+    // Trocar o horário padrão reagenda as aulas ainda não dadas; as já
+    // concluídas (e a que está ao vivo) mantêm suas datas.
+    if (scheduleChanged) {
+      await rescheduleOpenRecords(updated);
     }
 
-    return await classRepository.updateBasic(classGroupId, data);
+    return updated;
   },
 
   async assignTeacher(actingRole: Role, classGroupId: string, teacherId: string): Promise<ClassGroup> {
@@ -1049,7 +1038,25 @@ export const classService = {
     return await classRepository.updateTeacher(classGroupId, teacherId);
   },
 
-  async assignPlan(actingRole: Role, classGroupId: string, planId: string): Promise<ClassGroup> {
+  /**
+   * Atribui (ou troca) o plano da turma.
+   *
+   * Turma sem aulas concluídas: regera a grade inteira do plano. Turma que já
+   * teve aulas: `startFromLessonId` é obrigatório e diz a partir de qual lição
+   * do NOVO plano as aulas restantes passam a valer. As concluídas ficam como
+   * estão; as pendentes são apagadas e regeradas (a partir de hoje) só com as
+   * lições do plano dali em diante, pulando as que a turma já teve (uma lição
+   * só pode aparecer uma vez por turma — ver `class_records_group_lesson_uq`).
+   *
+   * Sem transação (neon-http): tudo é validado antes de apagar qualquer coisa;
+   * se a criação das aulas falhar depois, repetir a operação converge.
+   */
+  async assignPlan(
+    actingRole: Role,
+    classGroupId: string,
+    planId: string,
+    options: { startFromLessonId?: string } = {}
+  ): Promise<ClassGroup> {
     assertAdmin(actingRole);
 
     const classGroup = await classRepository.findById(classGroupId);
@@ -1064,14 +1071,81 @@ export const classService = {
     }
 
     const existingRecords = await classRepository.findRecordsByClassGroupId(classGroupId);
-    if (existingRecords.some((r) => r.completed)) {
-      throw new AppError('Não é possível trocar o plano: já existem aulas concluídas registradas nesta turma.');
+    const taughtLessonIds = new Set(existingRecords.filter((r) => r.completed).map((r) => r.lessonId));
+
+    if (taughtLessonIds.size > 0 && !options.startFromLessonId) {
+      throw new AppError(
+        'Esta turma já tem aulas concluídas: escolha a partir de qual aula do novo plano as aulas restantes devem continuar.'
+      );
+    }
+    if (existingRecords.some((r) => !r.completed && r.callStartedAt)) {
+      throw new AppError('Há uma aula em andamento nesta turma. Encerre-a antes de trocar o plano.');
+    }
+
+    const planLessons = await planService.getOrderedLessonsForPlan(planId);
+    let startIndex = 0;
+    if (options.startFromLessonId) {
+      startIndex = planLessons.findIndex((lesson) => lesson.id === options.startFromLessonId);
+      if (startIndex < 0) {
+        throw new AppError('A aula escolhida não pertence ao plano selecionado.');
+      }
+    }
+
+    const lessonsToSchedule = planLessons.slice(startIndex).filter((lesson) => !taughtLessonIds.has(lesson.id));
+    if (planLessons.length > 0 && lessonsToSchedule.length === 0) {
+      throw new AppError('Não há aulas restantes no plano a partir da aula escolhida (a turma já teve todas).');
     }
 
     await classRepository.deleteNonCompletedRecords(classGroupId);
     const updated = await classRepository.updatePlan(classGroupId, planId);
-    await generateClassRecords(classGroupId);
+    await classRepository.createRecords(buildScheduleRecords(classGroupId, classGroup.schedule, lessonsToSchedule));
     return updated;
+  },
+
+  /**
+   * Prévia da troca de plano de uma turma que já teve aulas: as lições do
+   * plano para escolher o ponto de partida (`alreadyTaught` marca as que a
+   * turma já deu e não podem ser repetidas) e, para cada ponto de partida,
+   * quantas aulas seriam geradas e quantas das pendentes ficariam sem lição.
+   */
+  async getPlanAssignmentPreview(
+    actingRole: Role,
+    classGroupId: string,
+    planId: string
+  ): Promise<PlanAssignmentPreview> {
+    assertAdmin(actingRole);
+
+    const classGroup = await classRepository.findById(classGroupId);
+    if (!classGroup) {
+      throw new AppError('Turma não encontrada.');
+    }
+
+    const plan = await planService.getPlanById(planId);
+    if (!plan) {
+      throw new AppError('Plano não encontrado.');
+    }
+
+    const [lessons, records] = await Promise.all([
+      planService.getOrderedLessonsForPlan(planId),
+      classRepository.findRecordsByClassGroupId(classGroupId),
+    ]);
+    const taught = new Set(records.filter((r) => r.completed).map((r) => r.lessonId));
+    const pendingCount = records.filter((r) => !r.completed).length;
+
+    // Mesma regra do `assignPlan`: do ponto de partida em diante, menos as lições que a turma já teve.
+    const options = lessons.map((lesson, index) => {
+      const scheduledCount = lessons.slice(index).filter((l) => !taught.has(l.id)).length;
+      return {
+        id: lesson.id,
+        order: index + 1,
+        title: lesson.title,
+        alreadyTaught: taught.has(lesson.id),
+        scheduledCount,
+        uncoveredCount: Math.max(0, pendingCount - scheduledCount),
+      };
+    });
+
+    return { pendingCount, options };
   },
 
   /**
@@ -1081,6 +1155,24 @@ export const classService = {
    */
   async propagateLessonToAssignedClasses(lessonId: string, planId: string): Promise<void> {
     await propagateLessonToAssignedClasses(lessonId, planId);
+  },
+
+  /** Quantas turmas usam cada plano, indexado por planId — alimenta o aviso ao excluir um plano. */
+  async getClassCountByPlan(actingRole: Role): Promise<Record<string, number>> {
+    assertAdmin(actingRole);
+    const rows = await classRepository.countByPlan();
+    return Object.fromEntries(rows.map((row) => [row.planId, row.count]));
+  },
+
+  /**
+   * Desvincula o plano de todas as turmas que o usam, preservando as aulas já
+   * geradas (class_records referenciam lições, não o plano). Chamado pelo
+   * módulo `plan` antes de excluir o plano, para não violar a FK de
+   * class_groups.plan_id.
+   */
+  async unlinkPlanFromClasses(actingRole: Role, planId: string): Promise<void> {
+    assertAdmin(actingRole);
+    await classRepository.clearPlanId(planId);
   },
 
   async addStudent(actingRole: Role, classGroupId: string, studentId: string): Promise<void> {
@@ -1221,5 +1313,39 @@ export const classService = {
     }
 
     return await classRepository.updateRecordTeacher(classRecordId, teacherId);
+  },
+
+  /**
+   * Move uma aula avulsa para outro dia/horário. Qualquer data é aceita (sem
+   * exigir ordem entre as aulas), mas aulas já dadas ou ao vivo ficam de fora:
+   * mexer na data de uma call em andamento quebra a checagem de "aula de hoje"
+   * da sala, e a data de uma aula concluída é histórico.
+   */
+  async updateRecordDate(
+    actingRole: Role,
+    classRecordId: string,
+    input: { date: string; time: string }
+  ): Promise<ClassRecord> {
+    assertAdmin(actingRole);
+
+    const record = await classRepository.findRecordById(classRecordId);
+    if (!record) {
+      throw new AppError('Aula não encontrada.');
+    }
+
+    const classGroup = await classRepository.findById(record.classGroupId);
+    if (!classGroup) {
+      throw new AppError('Turma não encontrada.');
+    }
+    assertClassIsMutable(classGroup);
+
+    if (record.completed) {
+      throw new AppError('Não é possível alterar a data de uma aula já concluída.');
+    }
+    if (record.callStartedAt) {
+      throw new AppError('Não é possível alterar a data de uma aula que já foi iniciada.');
+    }
+
+    return await classRepository.updateRecordDate(classRecordId, combineDayKeyAndTime(input.date, input.time));
   },
 };

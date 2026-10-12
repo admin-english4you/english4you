@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PlansList } from "./_components/PlansList";
 import { planService } from "@/modules/plan/plan.service";
+import { classService } from "@/modules/class/class.service";
 import { getCurrentUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 
 export default async function AdminPlansPage() {
   const user = await getCurrentUser();
-  const plans = user ? await planService.getAllPlans(user.role) : [];
+  const [plans, classCountByPlan] = user
+    ? await Promise.all([planService.getAllPlans(user.role), classService.getClassCountByPlan(user.role)])
+    : [[], {}];
 
-  return <PlansList initialPlans={plans} />;
+  return <PlansList initialPlans={plans} classCountByPlan={classCountByPlan} />;
 }
