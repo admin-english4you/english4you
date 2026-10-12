@@ -5,13 +5,17 @@ import {
   extractLearningItems,
   extractMoreLearningItems,
   generateComprehensiveQuiz,
-  generateListeningQuiz,
   generateMoreQuizQuestions,
+  generateClipScript,
+  synthesizeDialogue,
+  formatClipTranscript,
+  generateClipQuestions,
   RawLearningItem,
   RawComprehensiveQuiz,
-  RawQuizQuestion,
   RawSectionedQuizQuestion,
+  RawClipQuestion,
 } from '@/lib/openai';
+import { uploadBufferToStorage, deleteStorageFileByUrl } from '@/lib/storage-upload';
 import { AppError } from '@/lib/errors';
 import { partitionByLanguage, findLanguageViolations } from './practice.language';
 import {
@@ -23,6 +27,8 @@ import {
 import { Role } from '@/modules/user/user.types';
 import {
   GenerateMoreReport,
+  ClipVoice,
+  ListeningClip,
   LearningItem,
   NewLearningItem,
   QuizQuestion,
@@ -135,19 +141,6 @@ function flattenComprehensiveQuiz(
   );
 }
 
-function mapListeningQuiz(lessonId: string, questions: RawQuizQuestion[]): NewQuizQuestion[] {
-  return questions.map((q): NewQuizQuestion => ({
-    lessonId,
-    renderMode: 'listening_choice',
-    section: null,
-    question: q.question,
-    options: q.options,
-    correctIndex: q.correctIndex,
-    explanation: q.explanation ?? null,
-    reviewStatus: 'APPROVED',
-  }));
-}
-
 /**
  * Service do módulo de Prática (LearningItems e QuizQuestions gerados via IA).
  */
@@ -175,25 +168,58 @@ export const practiceService = {
   },
 
   /**
-   * O que a lição consegue oferecer de prática. `hasListening` é o que decide,
-   * junto do `audioUrl`, se o ciclo usa o dia 6 como compreensão auditiva.
+   * O que a lição consegue oferecer de prática. `hasListening` decide se o
+   * ciclo usa o dia 6 como compreensão auditiva.
+   *
+   * Conta só listening que dá para TOCAR: pergunta com clipe sempre; pergunta
+   * antiga (sem clipe) só se a lição ainda tiver o áudio da aula.
    */
-  async getLessonPracticeCapabilities(lessonId: string): Promise<{
+  async getLessonPracticeCapabilities(
+    lessonId: string,
+    lessonAudioUrl: string | null = null
+  ): Promise<{
     hasListening: boolean;
     vocabCount: number;
     structureCount: number;
     sectionCoverage: QuizCoverage;
   }> {
-    const [counts, coverage] = await Promise.all([
+    const [counts, coverage, listening] = await Promise.all([
       practiceRepository.countApprovedItemsByType(lessonId),
       practiceRepository.countApprovedQuizQuestionsByModeAndSection(lessonId),
+      practiceRepository.countApprovedListeningByKind(lessonId),
     ]);
+    const playableListening = listening.withClip + (lessonAudioUrl ? listening.legacy : 0);
 
     return {
-      hasListening: coverage.listening > 0,
+      hasListening: playableListening > 0,
       vocabCount: counts.vocab,
       structureCount: counts.structure,
-      sectionCoverage: coverage,
+      sectionCoverage: { ...coverage, listening: playableListening },
+    };
+  },
+
+  /**
+   * Perguntas do dia de listening com o áudio de cada uma. Se a lição tem
+   * áudios curtos, só eles entram; as perguntas antigas (áudio da aula
+   * inteiro) só aparecem enquanto não houver nenhum clipe.
+   */
+  async getPlayableListeningQuestions(
+    lessonId: string,
+    lessonAudioUrl: string | null
+  ): Promise<{ questions: QuizQuestion[]; audioUrlByQuestionId: Map<string, string> }> {
+    const withClip = await practiceRepository.findApprovedClipQuestions(lessonId);
+    if (withClip.length > 0) {
+      return {
+        questions: withClip.map((row) => row.question),
+        audioUrlByQuestionId: new Map(withClip.map((row) => [row.question.id, row.audioUrl])),
+      };
+    }
+
+    if (!lessonAudioUrl) return { questions: [], audioUrlByQuestionId: new Map() };
+    const legacy = await practiceRepository.findApprovedLegacyListeningQuestions(lessonId);
+    return {
+      questions: legacy,
+      audioUrlByQuestionId: new Map(legacy.map((q) => [q.id, lessonAudioUrl])),
     };
   },
 
@@ -248,7 +274,6 @@ export const practiceService = {
 
     let vocabItems: RawLearningItem[] = [];
     let comprehensiveQuiz: RawComprehensiveQuiz | null = null;
-    let listeningQuiz: RawQuizQuestion[] = [];
 
     try {
       let transcript = lesson.transcript ?? '';
@@ -260,17 +285,17 @@ export const practiceService = {
       }
 
       if (hasMedia) {
-        const [textVocab, mediaVocab, quiz, listening] = await Promise.all([
+        // O áudio da AULA alimenta só vocabulário e quiz: as perguntas de
+        // listening agora vêm dos áudios curtos da prática (ver createAiClip).
+        const [textVocab, mediaVocab, quiz] = await Promise.all([
           plainText
             ? extractLearningItems({ text: plainText, levelHint: lesson.level, vocabRange: TEXT_BATCH_VOCAB, structureRange: TEXT_BATCH_STRUCTURE })
             : Promise.resolve([]),
           extractLearningItems({ text: transcript, levelHint: lesson.level, vocabRange: MEDIA_BATCH_VOCAB, structureRange: MEDIA_BATCH_STRUCTURE }),
           generateComprehensiveQuiz({ text: plainText, transcript, levelHint: lesson.level }),
-          generateListeningQuiz({ transcript, levelHint: lesson.level }),
         ]);
         vocabItems = [...textVocab, ...mediaVocab];
         comprehensiveQuiz = quiz;
-        listeningQuiz = listening;
       } else {
         // Vocabulário e estrutura em CHAMADAS PARALELAS menores, não uma
         // pedindo tudo — ver `MAX_VOCAB_PER_CALL`/`MAX_STRUCTURE_PER_CALL` pro
@@ -333,7 +358,7 @@ export const practiceService = {
     }
 
     const mergedVocab = mergeDedupeAndCap(languageChecked);
-    const quizQuestions = [...flattenComprehensiveQuiz(lessonId, comprehensiveQuiz), ...mapListeningQuiz(lessonId, listeningQuiz)];
+    const quizQuestions = flattenComprehensiveQuiz(lessonId, comprehensiveQuiz);
 
     // Sem item nenhum não adianta gravar só o quiz: a lição fica pela metade
     // (dias 1 a 4 da prática saem vazios, porque flashcard/gap fill/monte a
@@ -677,4 +702,160 @@ export const practiceService = {
       explanation: data.explanation?.trim() ? data.explanation.trim() : null,
     });
   },
+
+  // ---------------------------------------------------------------------------
+  // Áudios curtos da prática de listening
+  // ---------------------------------------------------------------------------
+
+  async getClipsForLesson(actingRole: Role, lessonId: string): Promise<ListeningClip[]> {
+    assertAdmin(actingRole);
+    return await practiceRepository.findClipsByLessonId(lessonId);
+  },
+
+  /**
+   * Gera UM áudio curto com IA: roteiro a partir do conteúdo da lição, voz
+   * (TTS) e as perguntas sobre ele. Um clipe por chamada para caber nos 60s
+   * da Vercel — o lote ("5 áudios de 30s") é o cliente chamando várias vezes.
+   *
+   * Nada é gravado se a IA falhar: o upload só acontece com roteiro, áudio e
+   * perguntas em mãos.
+   */
+  async createAiClip(
+    actingRole: Role,
+    lessonId: string,
+    options: { targetSeconds: number; questionCount: number; voice: ClipVoice }
+  ): Promise<ListeningClip> {
+    assertAdmin(actingRole);
+
+    const lesson = await lessonService.getLessonById(actingRole, lessonId);
+    if (!lesson) throw new AppError('Lição não encontrada.');
+
+    const content = [stripHtml(lesson.content), lesson.transcript ?? ''].filter(Boolean).join('\n\n');
+    if (!content) {
+      throw new AppError('Adicione conteúdo escrito à lição antes de gerar áudios com IA.');
+    }
+
+    const existing = await practiceRepository.findClipsByLessonId(lessonId);
+
+    let script: string;
+    let audio: Buffer;
+    let questions: RawClipQuestion[];
+    try {
+      const lines = await generateClipScript({
+        content,
+        levelHint: lesson.level,
+        targetSeconds: options.targetSeconds,
+        avoid: existing.map((clip) => clip.transcript),
+      });
+      script = formatClipTranscript(lines);
+      [audio, questions] = await Promise.all([
+        synthesizeDialogue(lines, options.voice),
+        generateClipQuestions({ transcript: script, levelHint: lesson.level, count: options.questionCount }),
+      ]);
+    } catch (err) {
+      console.error('[Prática] Falha ao gerar áudio com IA:', err);
+      throw new AppError('Falha ao gerar o áudio com IA. Tente novamente em instantes.');
+    }
+
+    const audioUrl = await uploadBufferToStorage(
+      `lessons/${lessonId}/clips/${crypto.randomUUID()}.mp3`,
+      audio,
+      'audio/mpeg'
+    );
+
+    const clip = await practiceRepository.createClip({
+      lessonId,
+      source: 'AI',
+      audioUrl,
+      transcript: script,
+      targetSeconds: options.targetSeconds,
+      questionCount: options.questionCount,
+      voice: options.voice,
+    });
+    await practiceRepository.createQuizQuestions(clipQuestionsToInsert(lessonId, clip.id, questions));
+    return clip;
+  },
+
+  /**
+   * Áudio enviado pelo admin. Usa a transcrição colada ou pede à IA; se a
+   * transcrição ou as perguntas falharem, o arquivo já enviado é apagado.
+   */
+  async createUploadedClip(
+    actingRole: Role,
+    lessonId: string,
+    file: { buffer: Buffer; contentType: string; extension: string },
+    options: { transcript?: string; questionCount: number }
+  ): Promise<ListeningClip> {
+    assertAdmin(actingRole);
+
+    const lesson = await lessonService.getLessonById(actingRole, lessonId);
+    if (!lesson) throw new AppError('Lição não encontrada.');
+
+    const audioUrl = await uploadBufferToStorage(
+      `lessons/${lessonId}/clips/${crypto.randomUUID()}.${file.extension}`,
+      file.buffer,
+      file.contentType
+    );
+
+    let transcript = options.transcript?.trim() ?? '';
+    let questions: RawClipQuestion[];
+    try {
+      if (!transcript) {
+        transcript = (await transcribeMedia(audioUrl, inferMimeType(audioUrl))).trim();
+      }
+      if (!transcript) {
+        throw new Error('Transcrição vazia.');
+      }
+      questions = await generateClipQuestions({ transcript, levelHint: lesson.level, count: options.questionCount });
+    } catch (err) {
+      console.error('[Prática] Falha ao processar áudio enviado:', err);
+      await deleteStorageFileByUrl(audioUrl);
+      throw new AppError(
+        'Não foi possível transcrever o áudio ou gerar as perguntas. Tente de novo ou cole a transcrição.'
+      );
+    }
+
+    const clip = await practiceRepository.createClip({
+      lessonId,
+      source: 'UPLOAD',
+      audioUrl,
+      transcript,
+      targetSeconds: null,
+      questionCount: options.questionCount,
+      voice: null,
+    });
+    await practiceRepository.createQuizQuestions(clipQuestionsToInsert(lessonId, clip.id, questions));
+    return clip;
+  },
+
+  /** Corrige o texto do clipe. Não regera o áudio nem as perguntas. */
+  async updateClipTranscript(actingRole: Role, clipId: string, transcript: string): Promise<ListeningClip> {
+    assertAdmin(actingRole);
+    const clip = await practiceRepository.findClipById(clipId);
+    if (!clip) throw new AppError('Áudio não encontrado.');
+    return await practiceRepository.updateClipTranscript(clipId, transcript);
+  },
+
+  /** Apaga o clipe, o arquivo e (em cascata) as perguntas dele. */
+  async deleteClip(actingRole: Role, clipId: string): Promise<void> {
+    assertAdmin(actingRole);
+    const clip = await practiceRepository.findClipById(clipId);
+    if (!clip) throw new AppError('Áudio não encontrado.');
+    await practiceRepository.deleteClipById(clipId);
+    await deleteStorageFileByUrl(clip.audioUrl);
+  },
 };
+
+function clipQuestionsToInsert(lessonId: string, clipId: string, questions: RawClipQuestion[]): NewQuizQuestion[] {
+  return questions.map((q) => ({
+    lessonId,
+    clipId,
+    renderMode: 'listening_choice',
+    section: null,
+    question: q.question,
+    options: q.options,
+    correctIndex: q.correctIndex,
+    explanation: q.explanation ?? null,
+    reviewStatus: 'APPROVED',
+  }));
+}

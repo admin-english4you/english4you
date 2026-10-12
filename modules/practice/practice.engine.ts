@@ -27,7 +27,6 @@ import type {
 
 export const PRACTICE_CYCLE_LENGTH = 6;
 export const XP_PER_DAY = 20;
-export const REDO_UNLOCK_COST = 40;
 export const WEEKLY_XP_GOAL = 100;
 
 /** Quantos itens no máximo uma sessão apresenta. */
@@ -123,8 +122,6 @@ export interface ResolveStatusContext {
   todayKey: string;
   /** practiceDayKey -> XP ganho na conclusão. */
   completedKeys: Map<string, number>;
-  /** practiceDayKey dos dias comprados com XP. */
-  unlockedKeys: Set<string>;
   /** practiceDayKey dos dias sem conteúdo aprovado para o modo. */
   emptyKeys: Set<string>;
 }
@@ -133,8 +130,10 @@ export interface ResolveStatusContext {
  * Decide o status de cada dia. Função pura de decisão — a tabela abaixo é
  * avaliada de cima para baixo e a primeira condição verdadeira vence.
  *
- * Regra de XP: um dia comprado NUNCA dá XP, tenha sido perdido ou esteja
- * sendo refeito. Um caminho de código só, sem brecha de farming.
+ * Nada é bloqueado por data: o status só posiciona o dia em relação a hoje.
+ * Regra de XP: a PRIMEIRA conclusão de qualquer dia (passado, hoje ou futuro)
+ * vale XP; refazer um dia concluído vale 0. O XP só indica quanto o aluno
+ * pratica — não compra nada.
  */
 export function resolvePracticeDayStates(
   days: PracticeDayDescriptor[],
@@ -144,33 +143,28 @@ export function resolvePracticeDayStates(
     const key = practiceDayKey(day.lessonId, day.dayIndex);
     const completedXp = ctx.completedKeys.get(key);
     const isCompleted = completedXp !== undefined;
-    const isUnlocked = ctx.unlockedKeys.has(key);
-    const isFuture = compareDayKeys(day.dateKey, ctx.todayKey) > 0;
+    const dateOrder = compareDayKeys(day.dateKey, ctx.todayKey);
 
     let status: PracticeDayStatus;
     if (ctx.emptyKeys.has(key)) status = 'EMPTY';
-    else if (isFuture) status = 'LOCKED_FUTURE';
-    else if (isCompleted && isUnlocked) status = 'REPLAYABLE';
     else if (isCompleted) status = 'COMPLETED';
-    else if (day.dateKey === ctx.todayKey) status = 'AVAILABLE';
-    else if (isUnlocked) status = 'REPLAYABLE';
-    else status = 'EXPIRED';
+    else if (dateOrder === 0) status = 'AVAILABLE';
+    else if (dateOrder > 0) status = 'UPCOMING';
+    else status = 'LATE';
 
     return {
       ...day,
       status,
       xpEarned: completedXp ?? null,
-      // Só faz sentido oferecer compra para o que passou e não está comprado.
-      unlockCost: status === 'EXPIRED' || status === 'COMPLETED' ? REDO_UNLOCK_COST : null,
-      // Replay comprado não vale XP.
-      xpReward: status === 'AVAILABLE' ? XP_PER_DAY : 0,
+      // Primeira conclusão vale XP, seja qual for a data; refazer, não.
+      xpReward: isCompleted ? 0 : XP_PER_DAY,
     };
   });
 }
 
-/** Um dia só abre o player nestes estados. */
+/** Só um dia sem conteúdo não abre o player. */
 export function isPlayable(status: PracticeDayStatus): boolean {
-  return status === 'AVAILABLE' || status === 'REPLAYABLE';
+  return status !== 'EMPTY';
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +245,8 @@ interface AssembleInput {
   items: LearningItem[];
   /** Já filtradas por modo/seção e APPROVED. */
   questions: QuizQuestion[];
+  /** Listening: o áudio que cada pergunta toca (o clipe dela, ou o da aula no legado). */
+  audioUrlByQuestionId?: ReadonlyMap<string, string>;
   maxItems?: number;
 }
 
@@ -434,6 +430,7 @@ export function assemblePracticeItems(input: AssembleInput): PracticeItem[] {
             options: question.options,
             correctIndex: question.correctIndex,
             explanation: question.explanation ?? undefined,
+            audioUrl: input.audioUrlByQuestionId?.get(question.id),
           },
         },
       }));

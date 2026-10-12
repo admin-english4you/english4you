@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { learningItemsTable, quizQuestionsTable } from './practice.schema';
-import { eq, and, asc, inArray, sql } from 'drizzle-orm';
+import { learningItemsTable, quizQuestionsTable, listeningClipsTable } from './practice.schema';
+import { eq, and, asc, inArray, isNull, isNotNull, sql } from 'drizzle-orm';
 import {
   LearningItem,
   NewLearningItem,
@@ -8,6 +8,8 @@ import {
   NewQuizQuestion,
   QuizRenderMode,
   QuizSectionType,
+  ListeningClip,
+  NewListeningClip,
 } from './practice.types';
 
 export interface QuizCoverage {
@@ -199,5 +201,87 @@ export const practiceRepository = {
       }
     }
     return coverage;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Áudios curtos da prática de listening
+  // ---------------------------------------------------------------------------
+
+  async createClip(data: NewListeningClip): Promise<ListeningClip> {
+    const [clip] = await db.insert(listeningClipsTable).values(data).returning();
+    return clip;
+  },
+
+  async findClipsByLessonId(lessonId: string): Promise<ListeningClip[]> {
+    return await db.query.listeningClipsTable.findMany({
+      where: eq(listeningClipsTable.lessonId, lessonId),
+      orderBy: [asc(listeningClipsTable.createdAt)],
+    });
+  },
+
+  async findClipById(id: string): Promise<ListeningClip | undefined> {
+    return await db.query.listeningClipsTable.findFirst({ where: eq(listeningClipsTable.id, id) });
+  },
+
+  async updateClipTranscript(id: string, transcript: string): Promise<ListeningClip> {
+    const [clip] = await db
+      .update(listeningClipsTable)
+      .set({ transcript })
+      .where(eq(listeningClipsTable.id, id))
+      .returning();
+    return clip;
+  },
+
+  /** As perguntas do clipe caem junto (FK com cascade). */
+  async deleteClipById(id: string): Promise<void> {
+    await db.delete(listeningClipsTable).where(eq(listeningClipsTable.id, id));
+  },
+
+  /** Perguntas de listening aprovadas, separadas entre com clipe e legado (áudio da aula). */
+  async countApprovedListeningByKind(lessonId: string): Promise<{ withClip: number; legacy: number }> {
+    const rows = await db
+      .select({
+        withClip: sql<number>`count(*) filter (where ${quizQuestionsTable.clipId} is not null)`,
+        legacy: sql<number>`count(*) filter (where ${quizQuestionsTable.clipId} is null)`,
+      })
+      .from(quizQuestionsTable)
+      .where(
+        and(
+          eq(quizQuestionsTable.lessonId, lessonId),
+          eq(quizQuestionsTable.reviewStatus, 'APPROVED'),
+          eq(quizQuestionsTable.renderMode, 'listening_choice')
+        )
+      );
+    return { withClip: Number(rows[0]?.withClip ?? 0), legacy: Number(rows[0]?.legacy ?? 0) };
+  },
+
+  /** Perguntas de listening aprovadas COM clipe, cada uma com o áudio do seu clipe. */
+  async findApprovedClipQuestions(lessonId: string): Promise<{ question: QuizQuestion; audioUrl: string }[]> {
+    return await db
+      .select({ question: quizQuestionsTable, audioUrl: listeningClipsTable.audioUrl })
+      .from(quizQuestionsTable)
+      .innerJoin(listeningClipsTable, eq(listeningClipsTable.id, quizQuestionsTable.clipId))
+      .where(
+        and(
+          eq(quizQuestionsTable.lessonId, lessonId),
+          eq(quizQuestionsTable.reviewStatus, 'APPROVED'),
+          eq(quizQuestionsTable.renderMode, 'listening_choice'),
+          isNotNull(quizQuestionsTable.clipId)
+        )
+      )
+      .orderBy(asc(quizQuestionsTable.createdAt));
+  },
+
+  /** Perguntas de listening antigas, feitas sobre o áudio da aula. */
+  async findApprovedLegacyListeningQuestions(lessonId: string): Promise<QuizQuestion[]> {
+    return await db.query.quizQuestionsTable.findMany({
+      where: and(
+        eq(quizQuestionsTable.lessonId, lessonId),
+        eq(quizQuestionsTable.reviewStatus, 'APPROVED'),
+        eq(quizQuestionsTable.renderMode, 'listening_choice'),
+        isNull(quizQuestionsTable.clipId)
+      ),
+      orderBy: [asc(quizQuestionsTable.createdAt)],
+    });
   },
 };

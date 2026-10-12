@@ -14,9 +14,8 @@ export type PracticeDayUnlock = z.infer<typeof PracticeDayUnlockSchema>;
 export type NewPracticeDayUnlock = typeof practiceDayUnlocksTable.$inferInsert;
 export type PracticeDayRef = z.infer<typeof PracticeDayRefSchema>;
 
-/** Saldo derivado das duas tabelas — nunca armazenado (ver progress.repository). */
+/** XP é só indicativo de prática: total e da semana, derivados das conclusões. */
 export interface XpSummary {
-  balance: number;
   earnedTotal: number;
   earnedThisWeek: number;
 }
@@ -37,20 +36,16 @@ export interface PracticePathView {
   sections: PracticeLessonSection[];
   /** Dias liberados hoje — podem vir de lições diferentes (ciclos se sobrepõem). */
   today: PracticeDayState[];
+  /** Dias que passaram sem ser feitos, ainda liberados. Mais antigo primeiro. */
+  late: PracticeDayState[];
   xp: XpSummary;
   weeklyGoal: number;
-  unlockCost: number;
   todayKey: string;
 }
 
 export interface CompleteDayResult {
   xpEarned: number;
-  newBalance: number;
+  newTotal: number;
   wasReplay: boolean;
   renderMode: PracticeMode;
-}
-
-export interface PurchaseResult {
-  xpSpent: number;
-  newBalance: number;
 }

@@ -4,11 +4,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Check,
-  Coins,
+  FastForward,
   Headphones,
   HelpCircle,
   Layers,
-  Lock,
   MessageSquareText,
   Play,
   Shuffle,
@@ -31,18 +30,16 @@ const MODE_ICONS: Record<PracticeMode, typeof Layers> = {
 
 interface PathDayNodeProps {
   day: PracticeDayState;
-  /** Aberto quando o dia é comprável — o pai decide o que mostrar. */
-  onPurchase: (day: PracticeDayState) => void;
   index: number;
 }
 
-export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
+export function PathDayNode({ day, index }: PathDayNodeProps) {
   const Icon = MODE_ICONS[day.renderMode];
   const label = PRACTICE_MODE_LABELS[day.renderMode];
   const href = `/student/practice/${day.lessonId}/${day.dayIndex}`;
 
-  const isPlayable = day.status === "AVAILABLE" || day.status === "REPLAYABLE";
-  const isPurchasable = day.status === "EXPIRED" || day.status === "COMPLETED";
+  // Tudo abre, exceto dia sem conteúdo: adiantar, recuperar e refazer são livres.
+  const isPlayable = day.status !== "EMPTY";
 
   const circle = (
     <div className="flex flex-col items-center gap-2 text-center">
@@ -61,20 +58,19 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
           className={cn(
             "relative flex h-14 w-14 items-center justify-center rounded-full border-4 transition-transform",
             day.status === "COMPLETED" && "border-emerald-200 bg-emerald-500 text-white",
-            day.status === "REPLAYABLE" && "border-violet-200 bg-violet-500 text-white",
             day.status === "AVAILABLE" && "border-primary/30 bg-primary text-primary-foreground shadow-lg",
-            day.status === "LOCKED_FUTURE" && "border-slate-100 bg-slate-200 text-slate-400",
-            day.status === "EXPIRED" && "border-amber-100 bg-slate-300 text-slate-600",
+            day.status === "UPCOMING" && "border-sky-100 bg-sky-100 text-sky-700",
+            day.status === "LATE" && "border-amber-200 bg-amber-400 text-amber-950",
             day.status === "EMPTY" && "border-dashed border-slate-300 bg-slate-50 text-slate-300",
-            (isPlayable || isPurchasable) && "group-hover:scale-105"
+            isPlayable && "group-hover:scale-105"
           )}
         >
           {day.status === "COMPLETED" ? (
             <Check className="h-6 w-6" />
           ) : day.status === "AVAILABLE" ? (
             <Play className="h-6 w-6 fill-current" />
-          ) : day.status === "LOCKED_FUTURE" ? (
-            <Lock className="h-5 w-5" />
+          ) : day.status === "UPCOMING" ? (
+            <FastForward className="h-5 w-5" />
           ) : day.status === "EMPTY" ? (
             <Slash className="h-5 w-5" />
           ) : (
@@ -82,12 +78,6 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
           )}
         </div>
 
-        {isPurchasable && (
-          <span className="absolute -right-1 -top-1 flex items-center gap-0.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow">
-            <Coins className="h-2.5 w-2.5" />
-            {day.unlockCost}
-          </span>
-        )}
       </div>
 
       <div className="w-20">
@@ -97,6 +87,12 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
         <p className="truncate text-[11px] font-medium leading-tight text-slate-600" title={label}>
           {label}
         </p>
+        {day.status === "LATE" && (
+          <p className="text-[10px] font-semibold leading-tight text-amber-700">Atrasado</p>
+        )}
+        {day.status === "COMPLETED" && (
+          <p className="text-[10px] font-semibold leading-tight text-emerald-700">Refazer</p>
+        )}
       </div>
     </div>
   );
@@ -112,15 +108,6 @@ export function PathDayNode({ day, onPurchase, index }: PathDayNodeProps) {
         <Link href={href} aria-label={`${label} — dia ${day.dayIndex}`}>
           {circle}
         </Link>
-      ) : isPurchasable ? (
-        <button
-          type="button"
-          onClick={() => onPurchase(day)}
-          aria-label={`Desbloquear ${label} do dia ${day.dayIndex} por ${day.unlockCost} XP`}
-          className="cursor-pointer"
-        >
-          {circle}
-        </button>
       ) : (
         <div
           aria-label={`${label} — dia ${day.dayIndex}, indisponível`}

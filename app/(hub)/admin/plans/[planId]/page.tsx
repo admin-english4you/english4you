@@ -4,7 +4,7 @@ import { planService } from "@/modules/plan/plan.service";
 import { practiceService } from "@/modules/practice/practice.service";
 import { getCurrentUser } from "@/lib/auth-server";
 import { PlanDetail } from "./_components/PlanDetail";
-import { LearningItem, QuizQuestion } from "@/modules/practice/practice.types";
+import { LearningItem, ListeningClip, QuizQuestion } from "@/modules/practice/practice.types";
 
 /**
  * Teto de execução das Server Actions desta rota, em segundos.
@@ -56,12 +56,18 @@ export default async function AdminPlanDetailPage({ params }: AdminPlanDetailPag
   );
   const quizQuestionsByLessonId = Object.fromEntries(quizQuestionsEntries) as Record<string, QuizQuestion[]>;
 
+  const clipsEntries = await Promise.all(
+    lessons.map(async (lesson) => [lesson.id, await practiceService.getClipsForLesson(user.role, lesson.id)] as const)
+  );
+  const clipsByLessonId = Object.fromEntries(clipsEntries) as Record<string, ListeningClip[]>;
+
   return (
     <PlanDetail
       plan={plan}
       lessons={lessons}
       learningItemsByLessonId={learningItemsByLessonId}
       quizQuestionsByLessonId={quizQuestionsByLessonId}
+      clipsByLessonId={clipsByLessonId}
     />
   );
 }

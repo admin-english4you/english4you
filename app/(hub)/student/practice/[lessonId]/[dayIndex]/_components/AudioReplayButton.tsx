@@ -9,8 +9,8 @@ interface AudioReplayButtonProps {
   label?: string;
 }
 
-/** Player mínimo do áudio da lição, com repetições ilimitadas. */
-export function AudioReplayButton({ src, label = "Ouça o áudio da aula" }: AudioReplayButtonProps) {
+/** Player mínimo do áudio da pergunta, com repetições ilimitadas. */
+export function AudioReplayButton({ src, label = "Ouça o áudio" }: AudioReplayButtonProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
 

@@ -5,6 +5,8 @@ import {
   AIGeneratedLearningItemsSchema,
   AIGeneratedComprehensiveQuizSchema,
   AIGeneratedListeningQuizSchema,
+  AIGeneratedClipScriptSchema,
+  AIGeneratedClipQuestionsSchema,
   AIGeneratedSectionedQuizQuestionSchema,
   AIGeneratedSectionedQuizSchema,
 } from "@/modules/practice/practice.schema";
@@ -24,6 +26,16 @@ const MODEL = "gpt-4.1-mini";
  * vídeo — extrair a trilha exigiria ffmpeg no runtime. Ver `transcribeMedia`.
  */
 const TRANSCRIBE_MODEL = "gpt-4o-transcribe";
+
+/** Voz da prática de listening. O mini-tts aceita `instructions` de tom e ritmo. */
+const TTS_MODEL = "gpt-4o-mini-tts";
+
+/**
+ * Ritmo de fala pedido no roteiro: ~130 palavras/min, mais lento que o nativo
+ * (~150), porque quem ouve é aprendiz. É o que converte "30 segundos" em
+ * tamanho de texto — o TTS não tem parâmetro de duração.
+ */
+const WORDS_PER_SECOND = 2.2;
 
 /** Limite de upload da API de transcrição da OpenAI. */
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -476,30 +488,6 @@ export async function generateComprehensiveQuiz(
   return result.data;
 }
 
-/**
- * Gera 5-10 perguntas de múltipla escolha sobre trechos/momentos ESPECÍFICOS
- * da transcrição (não compreensão geral — isso já é a seção "comprehension"
- * do quiz combinado). Usado só quando a lição tem áudio.
- */
-export async function generateListeningQuiz(params: {
-  transcript: string;
-  levelHint: string;
-}): Promise<RawQuizQuestion[]> {
-  const parsed = await requestJson({
-    prompt: buildListeningQuizPrompt(params),
-    schemaName: "listening_quiz",
-    schema: arrayRootSchema(AIGeneratedListeningQuizSchema),
-  });
-
-  const items = (parsed as { items?: unknown } | null)?.items ?? [];
-  const result = AIGeneratedListeningQuizSchema.safeParse(items);
-  if (!result.success) {
-    console.error("[OpenAI] Resposta do quiz de listening não bate com o formato esperado:", result.error);
-    return [];
-  }
-  return result.data;
-}
-
 function buildComprehensiveQuizPrompt(params: ComprehensiveQuizParams): string {
   const { text, transcript, levelHint } = params;
   return [
@@ -517,20 +505,6 @@ function buildComprehensiveQuizPrompt(params: ComprehensiveQuizParams): string {
     `--- TEXTO DA AULA ---`,
     text || "(sem conteúdo escrito)",
     ...(transcript ? ["", "--- TRANSCRIÇÃO DO ÁUDIO ---", transcript] : []),
-  ].join("\n");
-}
-
-function buildListeningQuizPrompt(params: { transcript: string; levelHint: string }): string {
-  const { transcript, levelHint } = params;
-  return [
-    `Você é um especialista em ensino de inglês como língua estrangeira, nível ${levelHint}.`,
-    `A partir da transcrição de áudio abaixo, crie entre 5 e 10 perguntas de múltipla escolha (4 alternativas, exatamente 1 correta) sobre TRECHOS OU MOMENTOS ESPECÍFICOS do áudio — teste se o aluno prestou atenção a detalhes pontuais (o que uma pessoa específica disse, um número, um horário, uma decisão tomada em um momento específico da conversa), não o entendimento geral do conteúdo como um todo.`,
-    `Sempre que possível, ancore a pergunta numa citação ou momento específico da transcrição (ex: "Quando o palestrante diz '...', o que ele quer dizer?").`,
-    `Cada pergunta precisa ter exatamente 4 alternativas plausíveis, "correctIndex" apontando a única correta (0 a 3), e pode incluir uma breve "explanation".`,
-    `Responda estritamente no formato JSON solicitado, sem texto adicional. Devolva as perguntas no campo "items".`,
-    ``,
-    `--- TRANSCRIÇÃO ---`,
-    transcript,
   ].join("\n");
 }
 
@@ -668,4 +642,125 @@ function buildExtractionPrompt(params: ExtractItemsParams): string {
     `--- TEXTO DA AULA ---`,
     text,
   ].join("\n");
+}
+
+// -----------------------------------------------------------------------------
+// Áudios curtos da prática de listening
+// -----------------------------------------------------------------------------
+
+export type RawClipQuestion = z.infer<typeof AIGeneratedClipQuestionsSchema>[number];
+
+/** Roteiro curto em inglês a partir do conteúdo da lição, no tamanho da duração pedida. */
+export async function generateClipScript(params: {
+  content: string;
+  levelHint: string;
+  targetSeconds: number;
+  /** Roteiros já existentes na lição, para não repetir o mesmo trecho. */
+  avoid: string[];
+}): Promise<ClipLine[]> {
+  const words = Math.round(params.targetSeconds * WORDS_PER_SECOND);
+  const parsed = await requestJson({
+    prompt: [
+      `Você é um especialista em ensino de inglês como língua estrangeira, nível ${params.levelHint}.`,
+      `Escreva o roteiro de um áudio CURTO de prática de compreensão auditiva, EM INGLÊS, com cerca de ${words} palavras (± 15%) — isso dá uns ${params.targetSeconds} segundos de fala.`,
+      `Use o vocabulário e as estruturas do conteúdo da aula abaixo, numa situação concreta: um diálogo curto entre duas pessoas OU um recado/anúncio/narração curta. Inclua detalhes específicos (nomes, números, horários, lugares) que possam virar pergunta.`,
+      `O nível de dificuldade deve ser ${params.levelHint}. Não use marcações de palco nem descrições de som — só o texto que será falado.`,
+      `Devolva o roteiro em "lines": uma entrada por fala, com "speaker" (nome da pessoa; em narração, use "Narrator") e "text" (só o que ela fala, sem o nome). No máximo 2 pessoas e 10 falas.`,
+      ...buildExclusionBlock("Áudios que já existem nesta lição", params.avoid, 10),
+      `Responda estritamente no formato JSON solicitado.`,
+      ``,
+      `--- CONTEÚDO DA AULA ---`,
+      params.content,
+    ].join("\n"),
+    schemaName: "listening_clip_script",
+    schema: toStrictSchema(z.toJSONSchema(AIGeneratedClipScriptSchema)) as JsonSchema,
+  });
+
+  const result = AIGeneratedClipScriptSchema.safeParse(parsed);
+  const lines = result.success
+    ? result.data.lines
+        .map((line) => ({ speaker: line.speaker.trim() || "Narrator", text: line.text.trim() }))
+        .filter((line) => line.text)
+    : [];
+  if (lines.length === 0) {
+    throw new Error("A IA não devolveu um roteiro de áudio válido.");
+  }
+  return lines;
+}
+
+export interface ClipLine {
+  speaker: string;
+  text: string;
+}
+
+/** Roteiro legível (com os nomes) — é o que vira a transcrição e a fonte das perguntas. */
+export function formatClipTranscript(lines: ClipLine[]): string {
+  const speakers = new Set(lines.map((line) => line.speaker));
+  const isNarration = speakers.size === 1;
+  return lines.map((line) => (isNarration ? line.text : `${line.speaker}: ${line.text}`)).join("\n");
+}
+
+/** Segunda voz do diálogo: a primeira da lista que não seja a principal. */
+const ALTERNATE_VOICES = ["cedar", "marin", "ash", "coral"];
+
+/** Uma fala em mp3 (voz nativa, ritmo calmo de aula). */
+async function synthesizeLine(text: string, voice: string): Promise<Buffer> {
+  if (!openai) throw new Error("OpenAI não configurada.");
+
+  const response = await openai.audio.speech.create({
+    model: TTS_MODEL,
+    voice,
+    input: text,
+    response_format: "mp3",
+    instructions: "Speak clear, natural English at a calm pace for language learners.",
+  });
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * Áudio do roteiro inteiro: uma chamada de TTS por fala, em paralelo, cada
+ * personagem com a sua voz, e os mp3 emendados na ordem (frames mp3 podem ser
+ * concatenados direto e tocam como um arquivo só).
+ */
+export async function synthesizeDialogue(lines: ClipLine[], mainVoice: string): Promise<Buffer> {
+  const voiceBySpeaker = new Map<string, string>();
+  for (const line of lines) {
+    if (voiceBySpeaker.has(line.speaker)) continue;
+    const used = new Set(voiceBySpeaker.values());
+    const voice = voiceBySpeaker.size === 0 ? mainVoice : ALTERNATE_VOICES.find((v) => !used.has(v) && v !== mainVoice) ?? mainVoice;
+    voiceBySpeaker.set(line.speaker, voice);
+  }
+
+  const parts = await Promise.all(lines.map((line) => synthesizeLine(line.text, voiceBySpeaker.get(line.speaker)!)));
+  return Buffer.concat(parts);
+}
+
+/** 1 a 3 perguntas sobre detalhes de UM áudio curto. */
+export async function generateClipQuestions(params: {
+  transcript: string;
+  levelHint: string;
+  count: number;
+}): Promise<RawClipQuestion[]> {
+  const parsed = await requestJson({
+    prompt: [
+      `Você é um especialista em ensino de inglês como língua estrangeira, nível ${params.levelHint}.`,
+      `Abaixo está a transcrição de um áudio curto que o aluno vai OUVIR (sem ler). Crie exatamente ${params.count} pergunta(s) de múltipla escolha sobre informações específicas ditas no áudio (quem, o quê, quando, onde, quanto), respondíveis só por quem ouviu.`,
+      `Pergunta e alternativas em inglês, simples e no nível ${params.levelHint}. Exatamente 4 alternativas plausíveis, "correctIndex" (0 a 3) apontando a única correta, e uma breve "explanation" em português.`,
+      `Não repita a mesma informação em duas perguntas. Responda estritamente no formato JSON solicitado, com as perguntas no campo "items".`,
+      ``,
+      `--- TRANSCRIÇÃO DO ÁUDIO ---`,
+      params.transcript,
+    ].join("\n"),
+    schemaName: "listening_clip_questions",
+    schema: arrayRootSchema(AIGeneratedClipQuestionsSchema),
+  });
+
+  const items = (parsed as { items?: unknown } | null)?.items ?? [];
+  const result = AIGeneratedClipQuestionsSchema.safeParse(items);
+  if (!result.success) {
+    console.error("[OpenAI] Perguntas do áudio não batem com o formato esperado:", result.error);
+    throw new Error("A IA não devolveu perguntas válidas para o áudio.");
+  }
+  return result.data.slice(0, params.count);
 }

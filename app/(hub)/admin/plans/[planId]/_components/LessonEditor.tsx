@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
 import { findRemovedOwnImages, type ContentImageUploaders } from "@/components/editor/content-image-sync";
 import { Lesson } from "@/modules/lesson/lesson.types";
-import { LearningItem, QuizQuestion, QuizSectionType } from "@/modules/practice/practice.types";
+import { LearningItem, ListeningClip, QuizQuestion, QuizSectionType } from "@/modules/practice/practice.types";
 import { LESSON_STATUS_LABELS, LESSON_STATUS_STYLES } from "@/modules/lesson/lesson.utils";
 import {
   updateLessonAction,
@@ -43,12 +43,14 @@ import { runAction } from "@/lib/run-action";
 import { GenerateMorePanel } from "./GenerateMorePanel";
 import { LearningItemDetailModal } from "./LearningItemDetailModal";
 import { QuizQuestionDetailModal } from "./QuizQuestionDetailModal";
+import { ListeningClipsPanel } from "./ListeningClipsPanel";
 
 interface LessonEditorProps {
   planId: string;
   lesson: Lesson;
   learningItems: LearningItem[];
   quizQuestions: QuizQuestion[];
+  clips: ListeningClip[];
 }
 
 const QUIZ_SECTION_GROUPS: { section: QuizSectionType; label: string }[] = [
@@ -217,7 +219,7 @@ function QuizQuestionRow({
   );
 }
 
-export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: LessonEditorProps) {
+export function LessonEditor({ planId, lesson, learningItems, quizQuestions, clips }: LessonEditorProps) {
   const router = useRouter();
   const [isSavePending, startSaveTransition] = useTransition();
   const [isMediaPending, startMediaTransition] = useTransition();
@@ -271,27 +273,27 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
 
   const pendingCount = learningItems.filter((i) => i.reviewStatus === "PENDING").length;
   const pendingQuestionCount = quizQuestions.filter((q) => q.reviewStatus === "PENDING").length;
-  const hasMedia = Boolean(lesson.audioUrl || lesson.videoUrl);
 
   const missingSections = QUIZ_SECTION_GROUPS.filter(
     ({ section }) => !quizQuestions.some((q) => q.renderMode === "quiz_comprehensive" && q.section === section && q.reviewStatus === "APPROVED")
   );
-  const hasApprovedListening = quizQuestions.some((q) => q.renderMode === "listening_choice" && q.reviewStatus === "APPROVED");
+  // Listening agora vem dos áudios curtos da prática (opcionais). As perguntas
+  // antigas, feitas sobre o áudio da aula, continuam valendo até o admin trocar.
+  const clipQuestions = quizQuestions.filter((q) => q.renderMode === "listening_choice" && q.clipId);
+  const legacyListening = quizQuestions.filter((q) => q.renderMode === "listening_choice" && !q.clipId);
 
   const canActivate =
     lesson.status === "DISABLED" &&
     learningItems.length > 0 &&
     pendingCount === 0 &&
     pendingQuestionCount === 0 &&
-    missingSections.length === 0 &&
-    (!hasMedia || hasApprovedListening);
+    missingSections.length === 0;
 
   const activationBlockReason = (() => {
     if (learningItems.length === 0) return "Gere os itens de prática e as perguntas de compreensão antes de ativar.";
     if (pendingCount > 0) return `Revise (aprove ou remova) os ${pendingCount} item(ns) de prática pendente(s) antes de ativar.`;
     if (pendingQuestionCount > 0) return `Revise (aprove ou remova) as ${pendingQuestionCount} pergunta(s) pendente(s) antes de ativar.`;
     if (missingSections.length > 0) return `Falta pelo menos 1 pergunta aprovada na seção "${missingSections[0].label}".`;
-    if (hasMedia && !hasApprovedListening) return "Falta pelo menos 1 pergunta aprovada de Áudio/Vídeo Específico.";
     return null;
   })();
 
@@ -567,28 +569,35 @@ export function LessonEditor({ planId, lesson, learningItems, quizQuestions }: L
                   );
                 })}
 
-                {hasMedia && (
+                {legacyListening.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-1.5">
-                      <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Áudio/Vídeo Específico</h4>
-                      {!hasApprovedListening && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                          faltando
-                        </span>
-                      )}
+                      <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Listening antigo (áudio da aula)
+                      </h4>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                        {clipQuestions.length > 0 ? "substituído pelos áudios da prática" : "em uso até criar áudios da prática"}
+                      </span>
                     </div>
                     <div className="space-y-1.5">
-                      {quizQuestions
-                        .filter((q) => q.renderMode === "listening_choice")
-                        .map((q) => (
-                          <QuizQuestionRow key={q.id} question={q} planId={planId} onOpenDetails={setDetailQuestion} />
-                        ))}
+                      {legacyListening.map((q) => (
+                        <QuizQuestionRow key={q.id} question={q} planId={planId} onOpenDetails={setDetailQuestion} />
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
             )}
           </div>
+
+          <ListeningClipsPanel
+            planId={planId}
+            lessonId={lesson.id}
+            lessonIsActive={lesson.status === "ACTIVE"}
+            clips={clips}
+            clipQuestions={clipQuestions}
+            onOpenQuestion={setDetailQuestion}
+          />
 
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             {activateError && (

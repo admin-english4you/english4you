@@ -18,7 +18,8 @@ interface TodayPracticeCardProps {
  * ativas, o aluno tem mais de uma atividade liberada, de lições diferentes.
  */
 export function TodayPracticeCard({ days }: TodayPracticeCardProps) {
-  const playable = days.filter((d) => d.status === "AVAILABLE" || d.status === "REPLAYABLE");
+  // Os do dia que ainda não foram feitos; concluído hoje aparece como "tudo feito".
+  const playable = days.filter((d) => d.status === "AVAILABLE");
 
   if (playable.length === 0) {
     const allDone = days.length > 0 && days.every((d) => d.status === "COMPLETED");
@@ -74,7 +75,7 @@ export function TodayPracticeCard({ days }: TodayPracticeCardProps) {
               className="bg-white font-bold text-primary hover:bg-primary/10"
               size="sm"
             >
-              {day.status === "REPLAYABLE" ? "Refazer" : "Começar"}
+              Começar
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </div>

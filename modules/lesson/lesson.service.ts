@@ -39,14 +39,8 @@ async function assertLessonContentReady(actingRole: Role, lesson: Lesson): Promi
     throw new AppError(`Gere e aprove ao menos uma pergunta da seção "${missingSection}" antes de ativar a lição.`);
   }
 
-  // Só `audioUrl`: a compreensão auditiva nasce da transcrição, e a
-  // transcrição só existe para áudio (ver lib/openai.ts). Cobrar a pergunta de
-  // listening de uma lição só-vídeo travaria a ativação para sempre, já que
-  // `practiceService.generateLearningItems` não geraria nenhuma.
-  const hasMedia = Boolean(lesson.audioUrl);
-  if (hasMedia && coverage.listening === 0) {
-    throw new AppError('Gere e aprove ao menos uma pergunta de compreensão auditiva antes de ativar a lição.');
-  }
+  // Listening não é exigido: vem dos áudios curtos da prática, que são
+  // opcionais. Sem eles, os dias 5 e 6 dividem o quiz (ver buildCycleModes).
 }
 
 /**

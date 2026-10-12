@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_ITEMS_PER_SESSION,
-  REDO_UNLOCK_COST,
   XP_PER_DAY,
   assemblePracticeItems,
   buildCycleForClassRecord,
@@ -124,6 +123,7 @@ function makeQuestion(
     lessonId: 'lesson-a',
     renderMode,
     section,
+    clipId: null,
     question: `Pergunta ${id}?`,
     options: ['a', 'b', 'c', 'd'],
     correctIndex: 1,
@@ -282,14 +282,15 @@ describe('resolvePracticeDayStates', () => {
   const emptyCtx = {
     todayKey: '2026-08-08',
     completedKeys: new Map<string, number>(),
-    unlockedKeys: new Set<string>(),
     emptyKeys: new Set<string>(),
   };
 
-  it('dia futuro é LOCKED_FUTURE', () => {
+  it('dia futuro é UPCOMING e já pode ser adiantado, valendo XP', () => {
     const states = resolvePracticeDayStates(days, emptyCtx);
-    expect(states.find((s) => s.dateKey === '2026-08-09')?.status).toBe('LOCKED_FUTURE');
-    expect(states.find((s) => s.dateKey === '2026-08-10')?.status).toBe('LOCKED_FUTURE');
+    const future = states.find((s) => s.dateKey === '2026-08-10');
+    expect(future?.status).toBe('UPCOMING');
+    expect(isPlayable('UPCOMING')).toBe(true);
+    expect(future?.xpReward).toBe(XP_PER_DAY);
   });
 
   it('o dia de hoje é AVAILABLE e vale XP', () => {
@@ -298,61 +299,39 @@ describe('resolvePracticeDayStates', () => {
     expect(today?.xpReward).toBe(XP_PER_DAY);
   });
 
-  it('dia passado não feito é EXPIRED e comprável', () => {
+  it('dia passado não feito é LATE, liberado e ainda vale XP', () => {
     const past = resolvePracticeDayStates(days, emptyCtx).find((s) => s.dateKey === '2026-08-05');
-    expect(past?.status).toBe('EXPIRED');
-    expect(past?.unlockCost).toBe(REDO_UNLOCK_COST);
-    expect(past?.xpReward).toBe(0);
+    expect(past?.status).toBe('LATE');
+    expect(isPlayable('LATE')).toBe(true);
+    expect(past?.xpReward).toBe(XP_PER_DAY);
   });
 
-  it('dia concluído é COMPLETED e expõe o XP ganho', () => {
+  it('dia concluído é COMPLETED, pode ser refeito e não vale XP de novo', () => {
     const states = resolvePracticeDayStates(days, {
       ...emptyCtx,
       completedKeys: new Map([[practiceDayKey('lesson-a', 1), XP_PER_DAY]]),
     });
     const completed = states.find((s) => s.dayIndex === 1);
     expect(completed?.status).toBe('COMPLETED');
+    expect(isPlayable('COMPLETED')).toBe(true);
     expect(completed?.xpEarned).toBe(XP_PER_DAY);
+    expect(completed?.xpReward).toBe(0);
   });
 
-  it('dia concluído E comprado é REPLAYABLE e NÃO dá XP', () => {
+  it('dia futuro já concluído (adiantado) aparece como COMPLETED', () => {
     const states = resolvePracticeDayStates(days, {
       ...emptyCtx,
-      completedKeys: new Map([[practiceDayKey('lesson-a', 1), XP_PER_DAY]]),
-      unlockedKeys: new Set([practiceDayKey('lesson-a', 1)]),
+      completedKeys: new Map([[practiceDayKey('lesson-a', 6), XP_PER_DAY]]),
     });
-    const replay = states.find((s) => s.dayIndex === 1);
-    expect(replay?.status).toBe('REPLAYABLE');
-    expect(replay?.xpReward).toBe(0);
+    expect(states.find((s) => s.dayIndex === 6)?.status).toBe('COMPLETED');
   });
 
-  it('dia perdido e comprado é REPLAYABLE e NÃO dá XP', () => {
-    const states = resolvePracticeDayStates(days, {
-      ...emptyCtx,
-      unlockedKeys: new Set([practiceDayKey('lesson-a', 2)]),
-    });
-    const replay = states.find((s) => s.dayIndex === 2);
-    expect(replay?.status).toBe('REPLAYABLE');
-    expect(replay?.xpReward).toBe(0);
-    expect(replay?.xpEarned).toBeNull();
-  });
-
-  it('EMPTY vence todas as outras condições e não é comprável', () => {
+  it('EMPTY vence todas as outras condições e é o único injogável', () => {
     const states = resolvePracticeDayStates(days, {
       ...emptyCtx,
       emptyKeys: new Set([practiceDayKey('lesson-a', 4)]),
     });
-    const empty = states.find((s) => s.dayIndex === 4);
-    expect(empty?.status).toBe('EMPTY'); // seria AVAILABLE (é hoje)
-    expect(empty?.unlockCost).toBeNull();
-  });
-
-  it('isPlayable libera apenas AVAILABLE e REPLAYABLE', () => {
-    expect(isPlayable('AVAILABLE')).toBe(true);
-    expect(isPlayable('REPLAYABLE')).toBe(true);
-    expect(isPlayable('COMPLETED')).toBe(false);
-    expect(isPlayable('EXPIRED')).toBe(false);
-    expect(isPlayable('LOCKED_FUTURE')).toBe(false);
+    expect(states.find((s) => s.dayIndex === 4)?.status).toBe('EMPTY'); // seria AVAILABLE (é hoje)
     expect(isPlayable('EMPTY')).toBe(false);
   });
 });
@@ -704,6 +683,23 @@ describe('assemblePracticeItems — quizzes', () => {
     });
     expect(result).toHaveLength(3);
     expect(result[0].renderMode).toBe('listening_choice');
+  });
+
+  it('listening_choice leva o áudio de cada pergunta', () => {
+    const questions = ['lis0', 'lis1'].map((id) => makeQuestion(id, null, 'listening_choice'));
+    const result = assemblePracticeItems({
+      ...baseAssemble,
+      dayIndex: 6,
+      renderMode: 'listening_choice',
+      quizSections: null,
+      questions,
+      audioUrlByQuestionId: new Map([
+        ['lis0', 'https://clip-a.mp3'],
+        ['lis1', 'https://clip-b.mp3'],
+      ]),
+    });
+    const byId = Object.fromEntries(result.map((item) => [item.id, item.data.quiz?.audioUrl]));
+    expect(byId).toEqual({ lis0: 'https://clip-a.mp3', lis1: 'https://clip-b.mp3' });
   });
 
   it('devolve vazio sem perguntas', () => {

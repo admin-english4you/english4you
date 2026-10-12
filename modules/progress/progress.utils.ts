@@ -23,20 +23,18 @@ export const PRACTICE_MODE_HINTS: Record<PracticeMode, string> = {
 };
 
 export const DAY_STATUS_LABELS: Record<PracticeDayStatus, string> = {
-  LOCKED_FUTURE: 'Em breve',
+  UPCOMING: 'Pode adiantar',
   AVAILABLE: 'Disponível hoje',
   COMPLETED: 'Concluído',
-  EXPIRED: 'Perdido',
-  REPLAYABLE: 'Liberado para refazer',
+  LATE: 'Atrasado',
   EMPTY: 'Sem conteúdo',
 };
 
 export const DAY_STATUS_STYLES: Record<PracticeDayStatus, string> = {
-  LOCKED_FUTURE: 'bg-slate-100 text-slate-500 border-slate-200',
+  UPCOMING: 'bg-sky-50 text-sky-700 border-sky-200',
   AVAILABLE: 'bg-primary/10 text-primary border-primary/20',
   COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  EXPIRED: 'bg-amber-50 text-amber-700 border-amber-200',
-  REPLAYABLE: 'bg-violet-50 text-violet-700 border-violet-200',
+  LATE: 'bg-amber-50 text-amber-700 border-amber-200',
   EMPTY: 'bg-slate-50 text-slate-400 border-dashed border-slate-300',
 };
 

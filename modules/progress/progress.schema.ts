@@ -58,6 +58,8 @@ export const practiceDayCompletionsTable = pgTable(
  * O unique index é parte da corretude, não só performance: é ele que faz o
  * `ON CONFLICT DO NOTHING` do gasto atômico funcionar (ver progress.repository).
  */
+// LEGADO: a compra de dias com XP foi removida (tudo é liberado e o XP só
+// indica prática). A tabela fica para preservar o histórico; nada a lê.
 export const practiceDayUnlocksTable = pgTable(
   'practice_day_unlocks',
   {
@@ -88,4 +90,3 @@ export const PracticeDayRefSchema = z.object({
 });
 
 export const CompletePracticeDaySchema = PracticeDayRefSchema;
-export const PurchasePracticeDaySchema = PracticeDayRefSchema;

@@ -4,16 +4,14 @@ import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatDayKeyPtBr } from "@/lib/date";
-import type { PracticeDayState } from "@/modules/practice/practice.types";
 import type { PracticeLessonSection } from "@/modules/progress/progress.types";
 import { PathDayNode } from "./PathDayNode";
 
 interface PathLessonSectionProps {
   section: PracticeLessonSection;
-  onPurchase: (day: PracticeDayState) => void;
 }
 
-export function PathLessonSection({ section, onPurchase }: PathLessonSectionProps) {
+export function PathLessonSection({ section }: PathLessonSectionProps) {
   const total = section.days.length;
   const percent = total > 0 ? Math.round((section.completedCount / total) * 100) : 0;
   const isDone = total > 0 && section.completedCount === total;
@@ -60,7 +58,7 @@ export function PathLessonSection({ section, onPurchase }: PathLessonSectionProp
         <div className="flex min-w-max items-start gap-2 px-2 sm:justify-between sm:gap-1">
           {section.days.map((day, i) => (
             <div key={day.dayIndex} className="flex items-start">
-              <PathDayNode day={day} onPurchase={onPurchase} index={i} />
+              <PathDayNode day={day} index={i} />
               {i < section.days.length - 1 && (
                 <span
                   aria-hidden

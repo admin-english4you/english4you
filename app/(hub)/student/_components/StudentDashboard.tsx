@@ -12,11 +12,12 @@ import type { PracticeDayState } from "@/modules/practice/practice.types";
 import type { XpSummary } from "@/modules/progress/progress.types";
 import { PRACTICE_MODE_HINTS, PRACTICE_MODE_LABELS, formatXp } from "@/modules/progress/progress.utils";
 import type { User } from "@/modules/user/user.types";
+import { LatePracticeCard } from "../practice/_components/LatePracticeCard";
 
 interface StudentDashboardProps {
   user: User;
   overview: StudentClassOverview | null;
-  todayPractice: PracticeDayState[];
+  todayPractice: { today: PracticeDayState[]; late: PracticeDayState[] };
   xp: XpSummary;
   todayKey: string;
 }
@@ -35,8 +36,8 @@ export function StudentDashboard({
   // servidor (`getStudentCallAccess`): não importa qual professor iniciou,
   // nem se foi adiantada ou atrasada — se está ao vivo, aparece aqui.
   const liveRecord = overview?.upcomingRecords.find((r) => r.callStartedAt && !r.completed) ?? null;
-  const playableToday = todayPractice.filter(
-    (d) => d.status === "AVAILABLE" || d.status === "REPLAYABLE"
+  const playableToday = todayPractice.today.filter(
+    (d) => d.status === "AVAILABLE"
   );
   const nextPractice = playableToday[0] ?? null;
 
@@ -128,7 +129,7 @@ export function StudentDashboard({
             icon={<Trophy className="h-6 w-6" />}
             tone="emerald"
             label="Seu XP"
-            value={formatXp(xp.balance)}
+            value={formatXp(xp.earnedTotal)}
           />
         </div>
 
@@ -212,6 +213,8 @@ export function StudentDashboard({
                 Nada liberado hoje. Sua prática começa no dia seguinte à aula.
               </p>
             )}
+
+            <LatePracticeCard days={todayPractice.late} limit={3} />
 
             <Button
               render={<Link href="/student/practice" />}

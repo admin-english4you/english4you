@@ -7,11 +7,12 @@ import { formatXp } from "@/modules/progress/progress.utils";
 
 interface WeeklyXpBarProps {
   earnedThisWeek: number;
-  balance: number;
+  /** XP acumulado desde o início — só indicativo de quanto o aluno já praticou. */
+  total: number;
   goal: number;
 }
 
-export function WeeklyXpBar({ earnedThisWeek, balance, goal }: WeeklyXpBarProps) {
+export function WeeklyXpBar({ earnedThisWeek, total, goal }: WeeklyXpBarProps) {
   const percent = goal > 0 ? Math.min(100, Math.round((earnedThisWeek / goal) * 100)) : 0;
   const reached = earnedThisWeek >= goal;
 
@@ -25,10 +26,10 @@ export function WeeklyXpBar({ earnedThisWeek, balance, goal }: WeeklyXpBarProps)
           <p className="mt-1 text-2xl font-bold text-slate-900">{formatXp(earnedThisWeek)}</p>
         </div>
         <div className="rounded-lg bg-amber-50 px-3 py-2 text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Saldo</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Total</p>
           <p className="flex items-center gap-1 text-sm font-bold text-amber-700">
             <Trophy className="h-3.5 w-3.5" />
-            {balance}
+            {total}
           </p>
         </div>
       </div>

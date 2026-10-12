@@ -103,6 +103,34 @@ export const learningItemsTable = pgTable('learning_items', {
 export const LearningItemReviewStatusEnum = z.enum(learningItemReviewStatusEnumDb.enumValues);
 
 export const quizRenderModeEnumDb = pgEnum('quiz_question_render_mode', ['quiz_comprehensive', 'listening_choice']);
+
+export const listeningClipSourceEnumDb = pgEnum('listening_clip_source', ['AI', 'UPLOAD']);
+export const ListeningClipSourceEnum = z.enum(listeningClipSourceEnumDb.enumValues);
+
+/**
+ * Áudio curto da prática de compreensão auditiva (dia de `listening_choice`).
+ *
+ * Substitui o uso do áudio da AULA nas perguntas de listening: o aluno ouvia o
+ * áudio inteiro para responder sobre um trecho. Cada clipe é curto, gerado
+ * pela IA a partir do conteúdo da lição (`AI`) ou enviado pelo admin
+ * (`UPLOAD`), e tem as próprias perguntas (`quiz_questions.clip_id`).
+ * `transcript` é a fonte das perguntas: o roteiro (IA) ou a transcrição
+ * (upload, feita pela IA ou colada pelo admin).
+ */
+export const listeningClipsTable = pgTable('listening_clips', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  lessonId: uuid('lesson_id').notNull().references(() => lessonsTable.id, { onDelete: 'cascade' }),
+  source: listeningClipSourceEnumDb('source').notNull(),
+  audioUrl: varchar('audio_url', { length: 500 }).notNull(),
+  transcript: text('transcript').notNull(),
+  /** Duração pedida pelo admin (só clipes gerados pela IA). */
+  targetSeconds: integer('target_seconds'),
+  questionCount: integer('question_count').notNull().default(1),
+  voice: varchar('voice', { length: 50 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => [
+  index('listening_clips_lesson_idx').on(table.lessonId),
+]);
 export const quizSectionEnumDb = pgEnum('quiz_question_section', ['vocabulary', 'grammar', 'context', 'comprehension']);
 
 export const QuizRenderModeEnum = z.enum(quizRenderModeEnumDb.enumValues);
@@ -127,9 +155,15 @@ export const quizQuestionsTable = pgTable('quiz_questions', {
   correctIndex: integer('correct_index').notNull(),
   explanation: text('explanation'),
   reviewStatus: learningItemReviewStatusEnumDb('review_status').notNull().default('APPROVED'),
+  /**
+   * Clipe de áudio da pergunta de listening. Null = pergunta antiga (legado),
+   * feita sobre o áudio da aula: continua tocando `lessons.audioUrl`.
+   */
+  clipId: uuid('clip_id').references(() => listeningClipsTable.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
   index('quiz_questions_lesson_idx').on(table.lessonId),
+  index('quiz_questions_clip_idx').on(table.clipId),
   index('quiz_questions_lesson_mode_section_idx').on(table.lessonId, table.renderMode, table.section),
 ]);
 
@@ -189,6 +223,45 @@ export const AIGeneratedSectionedQuizQuestionSchema = z.object({
 });
 
 export const AIGeneratedSectionedQuizSchema = z.array(AIGeneratedSectionedQuizQuestionSchema);
+
+export const ListeningClipSchema = createSelectSchema(listeningClipsTable);
+
+/** Vozes do TTS da OpenAI oferecidas ao admin (todas falam inglês nativo). */
+export const ClipVoiceEnum = z.enum(['marin', 'cedar', 'coral', 'sage', 'ash', 'verse']);
+
+export const CLIP_TARGET_SECONDS = [15, 30, 45, 60, 90] as const;
+
+export const CreateAiClipSchema = z.object({
+  lessonId: z.uuid(),
+  planId: z.uuid(),
+  targetSeconds: z.number().int().min(10).max(120),
+  questionCount: z.number().int().min(1).max(3).default(1),
+  voice: ClipVoiceEnum.default('marin'),
+});
+
+export const UpdateClipTranscriptSchema = z.object({
+  clipId: z.uuid(),
+  planId: z.uuid(),
+  transcript: z.string().trim().min(1, 'A transcrição não pode ficar vazia.'),
+});
+
+export const DeleteClipSchema = z.object({
+  clipId: z.uuid(),
+  planId: z.uuid(),
+});
+
+/** Roteiro de um clipe, pedido à IA. */
+/**
+ * Roteiro em falas separadas. Cada fala vira um trecho de TTS com a voz do
+ * seu personagem — num texto corrido, o TTS lia o nome da pessoa ("Waiter:")
+ * e podia engolir a última fala.
+ */
+export const AIGeneratedClipScriptSchema = z.object({
+  lines: z.array(z.object({ speaker: z.string(), text: z.string() })).min(1),
+});
+
+/** 1-3 perguntas sobre UM clipe curto (o schema de listening antigo exigia 5-10). */
+export const AIGeneratedClipQuestionsSchema = z.array(AIGeneratedQuizQuestionSchema).min(1).max(3);
 
 export const ApproveQuizQuestionSchema = z.object({
   questionId: z.uuid(),
@@ -278,12 +351,49 @@ export const DeleteLearningItemSchema = z.object({
  * com um schema mais frouxo abriria a porta para um item editado à mão quebrar
  * um render mode que o item gerado nunca quebraria.
  */
-export const UpdateLearningItemSchema = z.object({
-  itemId: z.uuid(),
-  planId: z.uuid(),
-  lemma: z.string().trim().min(1, 'O termo não pode ficar vazio.'),
-  metadata: LearningItemMetadataSchema,
-});
+export const UpdateLearningItemSchema = z
+  .object({
+    itemId: z.uuid(),
+    planId: z.uuid(),
+    lemma: z.string().trim().min(1, 'O termo não pode ficar vazio.'),
+    metadata: LearningItemMetadataSchema,
+  })
+  .superRefine((data, ctx) => {
+    // Só na edição manual: itens gerados pela IA não passam por aqui, e barrar
+    // um lote inteiro por causa de uma contração tokenizada diferente seria pior.
+    data.metadata.examples.forEach((example, index) => {
+      if (!('word_order' in example)) return;
+      if (!wordOrderMatchesText(example as z.infer<typeof StructureMetadataSchema>['examples'][number])) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['metadata', 'examples', index, 'word_order'],
+          message: `Exemplo ${index + 1}: as palavras do "monte a frase" precisam ser as mesmas da frase, na mesma ordem.`,
+        });
+      }
+    });
+  });
+
+/** Palavras de uma frase normalizadas para comparação (minúsculas, sem pontuação). */
+export function sentenceTokens(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, ''))
+    .filter(Boolean);
+}
+
+/**
+ * O banco de palavras do "monte a frase" bate com a frase do exemplo?
+ *
+ * Se divergirem, o aluno monta uma frase diferente da que aparece como
+ * resposta, e o "completar a frase" pode descartar o item em silêncio.
+ */
+export function wordOrderMatchesText(example: { text: string; word_order: { word: string; index: number }[] }): boolean {
+  const fromWords = [...example.word_order]
+    .sort((a, b) => a.index - b.index)
+    .flatMap((w) => sentenceTokens(w.word));
+  const fromText = sentenceTokens(example.text);
+  return fromWords.length === fromText.length && fromWords.every((word, i) => word === fromText[i]);
+}
 
 /** Edição manual de uma pergunta de quiz pelo admin. */
 export const UpdateQuizQuestionSchema = z
@@ -327,6 +437,6 @@ export const PracticeItemSchema = z.object({
     flashcard: z.object({ front: z.string(), back: z.string(), imageUrl: z.string().nullable().optional(), useTTS: z.boolean().default(true) }).optional(),
     gapFill: z.object({ sentenceWithGap: z.string(), correctAnswer: z.string(), fullSentenceForTTS: z.string().optional() }).optional(),
     unscramble: z.object({ scrambledWords: z.array(z.string()), correctOrder: z.array(z.string()) }).optional(),
-    quiz: z.object({ question: z.string(), options: z.array(z.string()), correctIndex: z.number(), explanation: z.string().optional() }).optional(),
+    quiz: z.object({ question: z.string(), options: z.array(z.string()), correctIndex: z.number(), explanation: z.string().optional(), audioUrl: z.string().optional() }).optional(),
   })
 });

@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/modal";
 import { Plus, ChevronUp, ChevronDown, PlayCircle, FileText, Pencil } from "lucide-react";
 import { Plan } from "@/modules/plan/plan.types";
 import { Lesson } from "@/modules/lesson/lesson.types";
-import { LearningItem, QuizQuestion } from "@/modules/practice/practice.types";
+import { LearningItem, ListeningClip, QuizQuestion } from "@/modules/practice/practice.types";
 import { PLAN_STATUS_LABELS, PLAN_STATUS_STYLES } from "@/modules/plan/plan.utils";
 import { LESSON_STATUS_LABELS, LESSON_STATUS_STYLES } from "@/modules/lesson/lesson.utils";
 import { addLessonToPlanAction, reorderPlanLessonsAction, updatePlanAction } from "@/modules/plan/plan.actions";
@@ -28,6 +28,7 @@ interface PlanDetailProps {
   lessons: Lesson[];
   learningItemsByLessonId: Record<string, LearningItem[]>;
   quizQuestionsByLessonId: Record<string, QuizQuestion[]>;
+  clipsByLessonId: Record<string, ListeningClip[]>;
 }
 
 const PLAN_STATUS_OPTIONS = [
@@ -44,7 +45,7 @@ const EditPlanFormSchema = z.object({
 
 type EditPlanFormInput = z.infer<typeof EditPlanFormSchema>;
 
-export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestionsByLessonId }: PlanDetailProps) {
+export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestionsByLessonId, clipsByLessonId }: PlanDetailProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(lessons[0]?.id ?? null);
@@ -250,6 +251,7 @@ export function PlanDetail({ plan, lessons, learningItemsByLessonId, quizQuestio
                 lesson={selectedLesson}
                 learningItems={learningItemsByLessonId[selectedLesson.id] ?? []}
                 quizQuestions={quizQuestionsByLessonId[selectedLesson.id] ?? []}
+                clips={clipsByLessonId[selectedLesson.id] ?? []}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center p-8">

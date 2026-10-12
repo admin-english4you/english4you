@@ -1,30 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import type { PracticeDayState } from "@/modules/practice/practice.types";
 import type { PracticePathView } from "@/modules/progress/progress.types";
 import { WeeklyXpBar } from "./WeeklyXpBar";
 import { TodayPracticeCard } from "./TodayPracticeCard";
+import { LatePracticeCard } from "./LatePracticeCard";
 import { PathLessonSection } from "./PathLessonSection";
-import { PurchaseDayModal } from "./PurchaseDayModal";
 
 interface PracticePathProps {
   path: PracticePathView;
 }
 
 export function PracticePath({ path }: PracticePathProps) {
-  const [dayToPurchase, setDayToPurchase] = useState<PracticeDayState | null>(null);
   const hasSections = path.sections.length > 0;
 
   return (
     <AppLayout role="STUDENT">
       <PageHeader
         title="Prática"
-        description="Uma atividade nova por dia para fixar o que você viu em aula."
+        description="Seis atividades por aula para fixar o que você viu. Faça no seu ritmo: dá para adiantar, recuperar e refazer."
         className="mb-6"
       />
 
@@ -43,31 +40,22 @@ export function PracticePath({ path }: PracticePathProps) {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-1 lg:order-2">
             <TodayPracticeCard days={path.today} />
+            <LatePracticeCard days={path.late} />
             <WeeklyXpBar
               earnedThisWeek={path.xp.earnedThisWeek}
-              balance={path.xp.balance}
+              total={path.xp.earnedTotal}
               goal={path.weeklyGoal}
             />
           </div>
 
           <div className="space-y-5 lg:col-span-2 lg:order-1">
             {path.sections.map((section) => (
-              <PathLessonSection
-                key={section.lessonId}
-                section={section}
-                onPurchase={setDayToPurchase}
-              />
+              <PathLessonSection key={section.lessonId} section={section} />
             ))}
           </div>
         </div>
       )}
 
-      <PurchaseDayModal
-        day={dayToPurchase}
-        cost={path.unlockCost}
-        balance={path.xp.balance}
-        onClose={() => setDayToPurchase(null)}
-      />
     </AppLayout>
   );
 }

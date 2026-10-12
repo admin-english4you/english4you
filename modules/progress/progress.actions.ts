@@ -6,7 +6,7 @@ import { createSafeAction } from "@/lib/safe-action";
 import { getCurrentUser } from "@/lib/auth-server";
 import { AppError } from "@/lib/errors";
 import { progressService } from "./progress.service";
-import { CompletePracticeDaySchema, PurchasePracticeDaySchema } from "./progress.schema";
+import { CompletePracticeDaySchema } from "./progress.schema";
 
 /**
  * O cliente envia APENAS { lessonId, dayIndex } — nunca XP, nunca score, nunca
@@ -21,27 +21,6 @@ export async function completePracticeDayAction(
     if (!currentUser) throw new AppError("Usuário não autenticado.");
 
     const result = await progressService.completePracticeDay(
-      currentUser.id,
-      data.lessonId,
-      data.dayIndex
-    );
-
-    revalidatePath("/student/practice");
-    revalidatePath("/student");
-    return result;
-  });
-
-  return safeAction(input);
-}
-
-export async function purchasePracticeDayAction(
-  input: z.infer<typeof PurchasePracticeDaySchema>
-) {
-  const safeAction = createSafeAction(PurchasePracticeDaySchema, async (data) => {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new AppError("Usuário não autenticado.");
-
-    const result = await progressService.purchasePracticeDay(
       currentUser.id,
       data.lessonId,
       data.dayIndex

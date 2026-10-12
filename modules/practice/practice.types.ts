@@ -12,6 +12,9 @@ import {
   QuizRenderModeEnum,
   AIGeneratedQuizQuestionSchema,
   quizQuestionsTable,
+  ListeningClipSchema,
+  listeningClipsTable,
+  ClipVoiceEnum,
 } from './practice.schema';
 import { QuizSectionTypeEnum } from './practice.schema';
 
@@ -31,22 +34,30 @@ export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 export type NewQuizQuestion = typeof quizQuestionsTable.$inferInsert;
 export type AIGeneratedQuizQuestion = z.infer<typeof AIGeneratedQuizQuestionSchema>;
 
+export type ListeningClip = z.infer<typeof ListeningClipSchema>;
+export type NewListeningClip = typeof listeningClipsTable.$inferInsert;
+export type ClipVoice = z.infer<typeof ClipVoiceEnum>;
+
 // ---------------------------------------------------------------------------
 // Motor de prática (practice.engine.ts)
 // ---------------------------------------------------------------------------
 
+/**
+ * Tudo é jogável, exceto EMPTY: o aluno pode adiantar dias futuros, fazer os
+ * atrasados e refazer os concluídos quando quiser. O status só diz ONDE o dia
+ * está em relação a hoje — e o XP é indicativo de quanto ele pratica, não
+ * moeda (a primeira conclusão de cada dia vale XP; refazer, não).
+ */
 export type PracticeDayStatus =
-  /** O dia ainda não chegou. */
-  | 'LOCKED_FUTURE'
-  /** É hoje: jogável e vale XP. */
+  /** O dia ainda não chegou — mas já dá para adiantar. */
+  | 'UPCOMING'
+  /** É hoje. */
   | 'AVAILABLE'
-  /** Já foi feito; não pode ser refeito sem comprar. */
+  /** Já foi feito; pode ser refeito à vontade, sem XP. */
   | 'COMPLETED'
-  /** Passou e não foi feito: só jogável se comprado com XP. */
-  | 'EXPIRED'
-  /** Comprado com XP: jogável, mas NÃO dá XP. */
-  | 'REPLAYABLE'
-  /** A lição não tem conteúdo aprovado para este modo. Injogável e não comprável. */
+  /** Passou e não foi feito: continua liberado. */
+  | 'LATE'
+  /** A lição não tem conteúdo aprovado para este modo. Injogável. */
   | 'EMPTY';
 
 /** Um slot do ciclo: qual modo e, no caso de quiz, quais seções entram. */
@@ -91,8 +102,6 @@ export interface PracticeDayState extends PracticeDayDescriptor {
   status: PracticeDayStatus;
   /** XP já ganho neste dia, ou null se nunca foi concluído. */
   xpEarned: number | null;
-  /** Custo para desbloquear, preenchido apenas quando o dia é comprável. */
-  unlockCost: number | null;
 }
 
 /** Sessão pronta para o player: itens montados e metadados do dia. */
@@ -102,8 +111,7 @@ export interface PracticeSession {
   dayIndex: number;
   renderMode: PracticeMode;
   items: PracticeItem[];
-  audioUrl: string | null;
-  /** 0 quando é replay comprado. */
+  /** 0 quando o dia já foi concluído antes (refazer não dá XP). */
   xpReward: number;
   isReplay: boolean;
 }

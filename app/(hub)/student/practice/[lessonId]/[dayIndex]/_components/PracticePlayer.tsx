@@ -269,8 +269,9 @@ export function PracticePlayer({ session }: PracticePlayerProps) {
                 selectedIndex={selectedOption}
                 onSelect={setSelectedOption}
                 header={
-                  session.renderMode === "listening_choice" && session.audioUrl ? (
-                    <AudioReplayButton src={session.audioUrl} />
+                  session.renderMode === "listening_choice" && item.data.quiz.audioUrl ? (
+                    // `key` reinicia o player a cada pergunta: cada uma tem o seu áudio curto.
+                    <AudioReplayButton key={item.id} src={item.data.quiz.audioUrl} />
                   ) : undefined
                 }
               />

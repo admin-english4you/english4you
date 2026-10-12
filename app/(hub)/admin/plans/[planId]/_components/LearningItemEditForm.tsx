@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { updateLearningItemAction } from "@/modules/practice/practice.actions";
 import type { LearningItem, VocabMetadata, StructureMetadata } from "@/modules/practice/practice.types";
+import { wordOrderMatchesText } from "@/modules/practice/practice.schema";
 
 /**
  * Correção manual de um item de prática.
@@ -30,9 +31,25 @@ interface LearningItemEditFormProps {
 }
 
 interface ExampleDraft {
+  /** Posição do exemplo original de onde este veio; null = exemplo novo. */
+  originalIndex: number | null;
   text: string;
   translation: string;
   wordOrder: string;
+}
+
+/** Mínimos do schema: o motor precisa de exemplos suficientes para os dias de prática. */
+const MIN_EXAMPLES = { VOCABULARY: 2, STRUCTURE: 3 } as const;
+
+function wordsOf(wordOrder: string): string[] {
+  return wordOrder.split(/\s+/).filter(Boolean);
+}
+
+function wordOrderMatches(draft: ExampleDraft): boolean {
+  return wordOrderMatchesText({
+    text: draft.text,
+    word_order: wordsOf(draft.wordOrder).map((word, index) => ({ word, index })),
+  });
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -52,7 +69,8 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
   const [translation, setTranslation] = useState(item.metadata.translation ?? "");
   const [explanation, setExplanation] = useState(structure?.explanation ?? "");
   const [examples, setExamples] = useState<ExampleDraft[]>(() =>
-    item.metadata.examples.map((example) => ({
+    item.metadata.examples.map((example, index) => ({
+      originalIndex: index,
       text: example.text,
       translation: example.translation,
       wordOrder:
@@ -63,9 +81,23 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
   );
   const [saving, setSaving] = useState(false);
 
+  const minExamples = MIN_EXAMPLES[item.type];
+
   const patchExample = (index: number, patch: Partial<ExampleDraft>) => {
     setExamples((prev) => prev.map((ex, i) => (i === index ? { ...ex, ...patch } : ex)));
   };
+
+  const addExample = () => {
+    setExamples((prev) => [...prev, { originalIndex: null, text: "", translation: "", wordOrder: "" }]);
+  };
+
+  const removeExample = (index: number) => {
+    setExamples((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const mismatchedExamples = isVocab
+    ? []
+    : examples.flatMap((draft, index) => (draft.text.trim() && !wordOrderMatches(draft) ? [index] : []));
 
   const handleSave = async () => {
     setSaving(true);
@@ -74,8 +106,8 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
       ? ({
           ...vocab!,
           translation: translation.trim() || undefined,
-          examples: examples.map((draft, i) => ({
-            ...vocab!.examples[i],
+          examples: examples.map((draft) => ({
+            ...(draft.originalIndex !== null ? vocab!.examples[draft.originalIndex] : {}),
             text: draft.text,
             translation: draft.translation,
           })),
@@ -84,9 +116,10 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
           ...structure!,
           translation: translation.trim() || undefined,
           explanation,
-          examples: examples.map((draft, i) => {
-            const original = structure!.examples[i];
-            const words = draft.wordOrder.split(/\s+/).filter(Boolean);
+          examples: examples.map((draft) => {
+            const original = draft.originalIndex !== null ? structure!.examples[draft.originalIndex] : null;
+            // Exemplo sem banco de palavras preenchido usa as palavras da própria frase.
+            const words = wordsOf(draft.wordOrder).length > 0 ? wordsOf(draft.wordOrder) : wordsOf(draft.text);
             return {
               ...original,
               text: draft.text,
@@ -96,7 +129,7 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
               word_order: words.map((word, index) => ({
                 word,
                 index,
-                role: original.word_order[index]?.role ?? "word",
+                role: original?.word_order[index]?.role ?? "word",
               })),
             };
           }),
@@ -152,6 +185,22 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
         <div className="space-y-3">
           {examples.map((example, index) => (
             <div key={index} className="rounded-lg border border-slate-200 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-500">Exemplo {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeExample(index)}
+                  disabled={examples.length <= minExamples}
+                  title={
+                    examples.length <= minExamples
+                      ? `São necessários pelo menos ${minExamples} exemplos`
+                      : "Remover exemplo"
+                  }
+                  className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
               <input
                 type="text"
                 value={example.text}
@@ -170,25 +219,50 @@ export function LearningItemEditForm({ item, planId, onCancel, onSaved }: Learni
               {!isVocab && (
                 <div>
                   <Label>Palavras do &quot;monte a frase&quot; (em inglês, separadas por espaço)</Label>
-                  <input
-                    type="text"
-                    value={example.wordOrder}
-                    onChange={(e) => patchExample(index, { wordOrder: e.target.value })}
-                    lang="en"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={example.wordOrder}
+                      onChange={(e) => patchExample(index, { wordOrder: e.target.value })}
+                      lang="en"
+                      placeholder="vazio = usa as palavras da frase"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => patchExample(index, { wordOrder: wordsOf(example.text).join(" ") })}
+                      className="shrink-0 text-[11px] font-semibold text-primary hover:text-primary/80"
+                    >
+                      Usar a frase
+                    </button>
+                  </div>
+                  {mismatchedExamples.includes(index) && wordsOf(example.wordOrder).length > 0 && (
+                    <p className="mt-1 text-[11px] text-rose-600">
+                      As palavras não batem com a frase acima (mesmas palavras, na mesma ordem).
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={addExample}
+          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80"
+        >
+          <Plus className="h-3.5 w-3.5" /> Adicionar exemplo
+        </button>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button
+          onClick={handleSave}
+          disabled={saving || mismatchedExamples.some((i) => wordsOf(examples[i].wordOrder).length > 0)}
+        >
           {saving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
           Salvar
         </Button>
