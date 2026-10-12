@@ -61,6 +61,7 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
         role: user.role,
         status: user.status,
         avatarUrl: user.avatarUrl,
+        isTestUser: user.isTestUser,
         createdAt: user.createdAt,
         // Booleano, não o valor: a ficha precisa saber se HÁ identidade
         // preenchida (para escolher entre "ver dados" e "ainda não informou"),

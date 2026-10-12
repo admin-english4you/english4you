@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, pgEnum, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, pgEnum, index, boolean } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { isValidCpf, isValidPhone, normalizeCep, normalizeCpf, normalizePhone } from '@/lib/br-document';
@@ -17,6 +17,9 @@ export const usersTable = pgTable('users', {
   // Turma atual do aluno (nullable, sem FK para evitar import circular com class.schema.ts).
   // Um usuário pertence a no máximo uma turma por vez; integridade é garantida no Service.
   classGroupId: uuid('class_group_id'),
+  // Conta criada só para testar (ver scripts/seed-dev.ts). Serve para achá-las
+  // na lista de usuários e removê-las depois; não altera nenhuma permissão.
+  isTestUser: boolean('is_test_user').notNull().default(false),
 
   // ---------------------------------------------------------------------------
   // Identidade para assinatura de contrato.

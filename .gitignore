@@ -45,5 +45,8 @@ yarn-error.log*
 next-env.d.ts
 roteiro-testes.html
 
+# credenciais dos usuários de teste (dev)
+TEST_USERS.local.md
+
 .vercel
 .env*

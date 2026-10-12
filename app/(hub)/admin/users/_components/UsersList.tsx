@@ -222,7 +222,8 @@ export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersLi
   };
 
   const filteredUsers = usersList.filter((u) => {
-    const matchesRole = filterRole === "ALL" || u.role === filterRole;
+    const matchesRole =
+      filterRole === "ALL" || (filterRole === "TEST" ? u.isTestUser : u.role === filterRole);
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           u.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesRole && matchesSearch;
@@ -287,6 +288,14 @@ export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersLi
             >
               Admins
             </button>
+            <button
+              onClick={() => setFilterRole("TEST")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                filterRole === "TEST" ? "bg-violet-50 text-violet-700 border border-violet-200" : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              Teste
+            </button>
           </div>
 
           <div className="relative w-full sm:w-72">
@@ -328,8 +337,13 @@ export function UsersList({ initialUsers, packages, minFirstChargeDay }: UsersLi
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-900 group-hover:text-primary transition-colors">
+                      <div className="flex items-center gap-2 font-semibold text-slate-900 group-hover:text-primary transition-colors">
                         {user.name}
+                        {user.isTestUser && (
+                          <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">
+                            TESTE
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-400 font-medium md:text-xs">{user.id}</div>
                     </div>

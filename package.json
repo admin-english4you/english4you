@@ -11,6 +11,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:migrate:dev": "drizzle-kit migrate --config=drizzle.dev.config.ts",
+    "db:push:dev": "drizzle-kit push --config=drizzle.dev.config.ts",
+    "seed:dev": "npx tsx --env-file=.env.local --env-file=.env.development.local scripts/seed-dev.ts",
     "seed:admin": "npx tsx --env-file=.env.local scripts/seed-admin.ts",
     "db:generate:prod": "cross-env DB_ENV=production drizzle-kit generate",
     "db:migrate:prod": "cross-env DB_ENV=production drizzle-kit migrate",
@@ -22,7 +25,7 @@
     "database:deploy:prod": "npx -y firebase-tools@latest deploy --only database --project INSERIR_NOME_AQUI_PROD",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:reset": "npx tsx --env-file=.env.local scripts/reset-and-seed.ts"
+    "db:reset": "npx tsx --env-file=.env.local --env-file=.env.development.local scripts/reset-and-seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
