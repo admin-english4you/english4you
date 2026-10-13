@@ -36,4 +36,24 @@ if (app) {
   }
 }
 
+/**
+ * O SDK do RTDB não rejeita quando não consegue conectar/autenticar (ex.:
+ * credencial revogada) — fica reconectando para sempre e as operações ficam
+ * na fila, então um `await ref.set()` nunca termina e a função estoura o
+ * timeout da Vercel. Toda chamada ao RTDB no servidor passa por aqui pra
+ * falhar rápido em vez de travar a request.
+ */
+const RTDB_TIMEOUT_MS = 4000;
+
+export function withRtdbTimeout<T>(operation: Promise<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`[firebase-admin] RTDB timeout (${RTDB_TIMEOUT_MS}ms): ${label}`)),
+      RTDB_TIMEOUT_MS
+    );
+  });
+  return Promise.race([operation, timeout]).finally(() => clearTimeout(timer));
+}
+
 export { adminAuth, adminDb };

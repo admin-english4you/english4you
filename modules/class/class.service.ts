@@ -37,7 +37,7 @@ import {
 } from '@/lib/stream-server';
 import { notificationService } from '@/modules/notification/notification.service';
 import { sendClassRecordingEmail } from '@/lib/resend';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb, withRtdbTimeout } from '@/lib/firebase-admin';
 import { uploadBufferToStorage, deleteStorageFileByUrl, fetchExternalImage } from '@/lib/storage-upload';
 import crypto from 'crypto';
 
@@ -290,9 +290,13 @@ async function syncBoardMembers(recordId: string, memberIds: string[]): Promise<
   const members: Record<string, true> = {};
   for (const id of memberIds) members[id] = true;
   try {
-    await adminDb.ref(`class-boards/${recordId}/members`).set(members);
-  } catch {
-    // Best-effort — ver docblock acima.
+    await withRtdbTimeout(
+      adminDb.ref(`class-boards/${recordId}/members`).set(members),
+      `syncBoardMembers ${recordId}`
+    );
+  } catch (error) {
+    // Best-effort — ver docblock acima. Logado pra não esconder credencial quebrada.
+    console.error('[class] Falha ao sincronizar membros do board:', error);
   }
 }
 
@@ -786,7 +790,17 @@ export const classService = {
    */
   async getBoardAuthToken(userId: string, recordId: string): Promise<string | null> {
     if (!adminAuth || !adminDb) return null;
-    const snapshot = await adminDb.ref(`class-boards/${recordId}/members/${userId}`).once('value');
+    let snapshot;
+    try {
+      snapshot = await withRtdbTimeout(
+        adminDb.ref(`class-boards/${recordId}/members/${userId}`).once('value'),
+        `getBoardAuthToken ${recordId}`
+      );
+    } catch (error) {
+      // RTDB inalcançável: board ao vivo fica desligado, a sala segue funcionando.
+      console.error('[class] Falha ao verificar membro do board:', error);
+      return null;
+    }
     if (!snapshot.exists()) return null;
     return await adminAuth.createCustomToken(userId);
   },
