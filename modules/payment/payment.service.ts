@@ -1137,6 +1137,20 @@ export const paymentService = {
 
     if (isTerminal(subscription.status)) return;
 
+    // Este preapproval não é o que a linha tem registrado: ou a resposta do POST
+    // se perdeu (linha sem id), ou o aluno gerou DOIS checkouts para a mesma
+    // matrícula e autorizou os dois — cobrança em dobro, e o MP pausa o que
+    // falha e avisa o aluno por e-mail.
+    if (subscription.mpPreapprovalId !== mpPreapprovalId) {
+      const adopted = await this.resolveCompetingPreapproval(
+        subscription,
+        mpPreapprovalId,
+        preapproval.status
+      );
+      if (!adopted) return;
+      subscription.mpPreapprovalId = mpPreapprovalId;
+    }
+
     const mapped = mapMpPreapprovalStatus(preapproval.status);
     if (!mapped) return;
 
@@ -1169,6 +1183,60 @@ export const paymentService = {
         await this.cancelSubscription(replaced, 'CARD_REPLACED');
       }
     }
+  },
+
+  /**
+   * Decide o que fazer com um preapproval que chega para uma linha que já tem
+   * (ou ainda não tem) outro id. Devolve `true` quando ele passa a ser o da linha.
+   *
+   * - Linha sem id: adota (a resposta do POST se perdeu).
+   * - Chegou algo que não é `authorized` (pending/paused/cancelled): ignora. Um
+   *   checkout abandonado ou um duplicado já pausado não pode mexer no acesso
+   *   do aluno — antes, o `pending` de um duplicado sobrescrevia o status.
+   * - Chegou `authorized` e o registrado também está autorizado: é cobrança em
+   *   dobro. Mantém o registrado e cancela o novo no MP.
+   * - Chegou `authorized` e o registrado não está vivo: o novo é o que vale.
+   */
+  async resolveCompetingPreapproval(
+    subscription: StudentSubscription,
+    incomingId: string,
+    incomingStatus: string | undefined
+  ): Promise<boolean> {
+    if (!subscription.mpPreapprovalId) {
+      await paymentRepository.updateSubscription(subscription.id, { mpPreapprovalId: incomingId });
+      return true;
+    }
+
+    if (incomingStatus !== 'authorized' || !preApprovalClient) return false;
+
+    let registeredStatus: string | undefined;
+    try {
+      registeredStatus = (await preApprovalClient.get({ id: subscription.mpPreapprovalId })).status;
+    } catch (error) {
+      // Sem conseguir ler o registrado, não decidimos nada: o próximo evento
+      // (agora que não deduplicamos) reavalia.
+      console.error(
+        `[MercadoPago] Não foi possível checar o preapproval ${subscription.mpPreapprovalId}:`,
+        error
+      );
+      return false;
+    }
+
+    if (registeredStatus === 'authorized') {
+      console.warn(
+        `[MercadoPago] Assinatura duplicada ${incomingId} para a linha ${subscription.id} ` +
+          `(já tem ${subscription.mpPreapprovalId} autorizada) — cancelando a nova.`
+      );
+      try {
+        await preApprovalClient.update({ id: incomingId, body: { status: 'cancelled' } });
+      } catch (error) {
+        console.error(`[MercadoPago] Falha ao cancelar o duplicado ${incomingId}:`, error);
+      }
+      return false;
+    }
+
+    await paymentRepository.updateSubscription(subscription.id, { mpPreapprovalId: incomingId });
+    return true;
   },
 
   /**

@@ -1,5 +1,4 @@
 import { verifyMercadoPagoSignature } from "@/lib/mercado-pago";
-import { webhookEventService } from "@/modules/webhook-event/webhook-event.service";
 import { paymentService } from "@/modules/payment/payment.service";
 import { MercadoPagoWebhookSchema } from "@/modules/payment/payment.schema";
 import { isRateLimited } from "@/lib/rate-limit";
@@ -7,8 +6,9 @@ import { isRateLimited } from "@/lib/rate-limit";
 /**
  * Webhook do Mercado Pago — assinatura recorrente do aluno.
  *
- * Segue `.agents/skills/route-writer.md`: HMAC → valida payload → checa
- * idempotência → delega pro Service. Nenhuma lógica de negócio aqui.
+ * Segue `.agents/skills/route-writer.md`: HMAC → valida payload → delega pro
+ * Service (que é idempotente por reler o estado no MP). Nenhuma lógica de
+ * negócio aqui.
  *
  * Duas diferenças em relação ao webhook do Stream, ambas por conta de como o
  * Mercado Pago assina:
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     return new Response("Invalid payload", { status: 400 });
   }
 
-  const { type, action, data } = parsed.data;
+  const { type, data } = parsed.data;
 
   const requestId = request.headers.get("x-request-id");
   const queryDataId = new URL(request.url).searchParams.get("data.id");
@@ -88,13 +88,13 @@ export async function POST(request: Request) {
     return new Response("OK", { status: 200 });
   }
 
-  const eventId = `${type}:${action ?? "unknown"}:${data.id}`;
-  const isNew = await webhookEventService.recordIfNew("mercadopago", eventId, type);
-  if (!isNew) {
-    // Reentrega do provedor — já processado, responde OK sem reprocessar.
-    return new Response("OK", { status: 200 });
-  }
-
+  // SEM tabela de idempotência, de propósito. O MP manda `action=updated` várias
+  // vezes para o MESMO id (cobrança agendada → tentativa → recusada; assinatura
+  // autorizada → pausada), e deduplicar por `tipo:action:id` descartava tudo
+  // depois do primeiro — a cobrança ficava "em processamento" para sempre e a
+  // pausa nunca chegava ao banco. Reprocessar é seguro: o service não confia no
+  // corpo do evento, relê o estado atual no MP e faz upsert; os e-mails têm
+  // guarda própria.
   switch (type) {
     case "subscription_preapproval":
       await paymentService.syncPreapprovalFromWebhook(data.id);
