@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, Video } from "lucide-react";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown";
@@ -10,8 +10,12 @@ import {
   markNotificationReadAction,
 } from "@/modules/notification/notification.actions";
 import type { Notification } from "@/modules/notification/notification.types";
+import { useVisiblePolling } from "@/hooks/useVisiblePolling";
 
-const POLL_INTERVAL_MS = 60_000;
+// 2 min e só com a aba visível (ver `useVisiblePolling`): o poll de 1 min em
+// toda aba aberta impedia o banco de desligar. Ao voltar para a aba, atualiza
+// na hora; o aviso em tempo real de aula é o push, não este sino.
+const POLL_INTERVAL_MS = 120_000;
 
 function timeAgo(date: Date): string {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -26,33 +30,29 @@ function timeAgo(date: Date): string {
 /**
  * Substitui o sino decorativo antigo (ícone estático + bolinha vermelha
  * fixa) por notificações reais, persistidas no banco. Sem infra de realtime
- * no projeto — atualiza no mount e via poll simples, mesmo idioma do
- * poll leve usado no painel de vídeo do aluno.
+ * no projeto — atualiza no mount e via poll com a aba visível, mesmo idioma
+ * do poll leve usado no painel de vídeo do aluno.
  */
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
 
+  const mountedRef = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-
-    const load = () => {
-      getMyNotificationsAction().then((result) => {
-        if (cancelled || !result.success || !result.data) return;
-        setNotifications(result.data.notifications);
-        setUnreadCount(result.data.unreadCount);
-      });
-    };
-
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-
+    mountedRef.current = true;
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      mountedRef.current = false;
     };
   }, []);
+
+  useVisiblePolling(() => {
+    getMyNotificationsAction().then((result) => {
+      if (!mountedRef.current || !result.success || !result.data) return;
+      setNotifications(result.data.notifications);
+      setUnreadCount(result.data.unreadCount);
+    });
+  }, POLL_INTERVAL_MS);
 
   const handleOpen = (notification: Notification) => {
     if (!notification.readAt) {

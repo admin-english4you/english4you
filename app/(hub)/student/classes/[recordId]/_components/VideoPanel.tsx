@@ -11,6 +11,7 @@ import { getInitials } from "@/components/ui/avatar";
 import { getStudentCallAccessAction, markAttendanceAction } from "@/modules/class/class.actions";
 import type { ClassmateSummary } from "@/modules/class/class.types";
 import type { CallAccess } from "@/lib/stream-server";
+import { useVisiblePolling } from "@/hooks/useVisiblePolling";
 
 interface VideoPanelProps {
   classRecordId: string;
@@ -36,7 +37,7 @@ interface VideoPanelProps {
   onCallActiveChange?: (active: boolean) => void;
 }
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 10_000;
 
 /**
  * Chamada de vídeo real do aluno (Stream).
@@ -72,40 +73,42 @@ export function VideoPanel({
     onCallActiveChange?.(!!callAccess);
   }, [callAccess, onCallActiveChange]);
 
+  // Só para de revalidar depois que o aluno ENTROU de fato na chamada
+  // (CallStateWatcher assume dali em diante, ver handleLeft). Enquanto
+  // `wantsToJoin` é false — inclusive com `callAccess` já setado, tela
+  // "Entrar na chamada" — o poll continua: sem isso, um professor que
+  // encerra a aula enquanto o aluno está parado nessa tela nunca é
+  // percebido, e o botão de entrar fica ativo pra sempre, apontando pra
+  // uma call que já não existe mais (o aluno conseguiria efetivamente
+  // reabri-la ao clicar). O hook guarda o callback num ref, então cada
+  // resposta do poll (um token novo, mesmo que a call continue a mesma) não
+  // reinicia o ciclo nem dispara outro poll fora do intervalo.
+  //
+  // Também roda na hora (montagem e volta para a aba) — importante pra quem
+  // cai e reabre rápido — e para com a aba oculta (custo do banco, ver hook).
+  const pollActive = !wantsToJoin;
+  // Resposta que chega depois de o aluno clicar "Entrar" (ou de desmontar)
+  // é descartada — mesmo papel do antigo `cancelled` do efeito.
+  const pollActiveRef = useRef(pollActive);
   useEffect(() => {
-    // Só para de revalidar depois que o aluno ENTROU de fato na chamada
-    // (CallStateWatcher assume dali em diante, ver handleLeft). Enquanto
-    // `wantsToJoin` é false — inclusive com `callAccess` já setado, tela
-    // "Entrar na chamada" — o poll continua: sem isso, um professor que
-    // encerra a aula enquanto o aluno está parado nessa tela nunca é
-    // percebido, e o botão de entrar fica ativo pra sempre, apontando pra
-    // uma call que já não existe mais (o aluno conseguiria efetivamente
-    // reabri-la ao clicar). Depende só de `wantsToJoin`, não de `callAccess`
-    // — senão cada resposta do poll (um token novo, mesmo que a call
-    // continue a mesma) reiniciaria este efeito e disparava outro poll na
-    // hora, num ciclo sem o intervalo de 5s valer nada.
-    if (wantsToJoin) return;
+    pollActiveRef.current = pollActive;
+    return () => {
+      pollActiveRef.current = false;
+    };
+  }, [pollActive]);
 
-    let cancelled = false;
-    const poll = () => {
+  useVisiblePolling(
+    () => {
       getStudentCallAccessAction({ recordId: classRecordId }).then((result) => {
-        if (cancelled) return;
+        if (!pollActiveRef.current) return;
         if (result.success) {
           setCallAccess(result.data ?? null);
         }
       });
-    };
-
-    // Tenta na hora também, não só depois do primeiro intervalo — importante
-    // pra quem cai e reabre rápido (não faz sentido esperar até 5s à toa).
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [wantsToJoin, classRecordId]);
+    },
+    POLL_INTERVAL_MS,
+    pollActive
+  );
 
   // Pedido pelo CallRoom a cada (re)conexão do SDK — não só o valor de
   // `callAccess` (que sai de escopo, congelado) mas o resultado FRESCO de
