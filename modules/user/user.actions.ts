@@ -13,6 +13,13 @@ import { AppError } from "@/lib/errors";
 import { dayKeyToDate } from "@/lib/date";
 import { User } from "./user.types";
 import { toSessionUser } from "./user.session";
+import {
+  decodeSession,
+  encodeSession,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+  sessionCookieOptions,
+} from "@/lib/session";
 import { z } from "zod";
 
 /**
@@ -22,24 +29,18 @@ export async function loginAction(input: z.infer<typeof LoginSchema>) {
   const safeAction = createSafeAction(LoginSchema, async (data) => {
     const user = await userService.authenticateUser(data);
 
-    // Gravar cookie de sessão HTTP-only.
-    // `toSessionUser` remove CPF/endereço: o cookie é httpOnly mas NÃO é
-    // assinado nem criptografado, e não há motivo para dado pessoal
-    // regulado trafegar nele — nada que lê a sessão usa esses campos.
+    // Gravar cookie de sessão HTTP-only e assinado (ver lib/session.ts).
+    // `toSessionUser` remove CPF/endereço: o cookie é assinado mas NÃO é
+    // criptografado, e não há motivo para dado pessoal regulado trafegar
+    // nele — nada que lê a sessão usa esses campos.
     const cookieStore = await cookies();
     const sessionData = {
       user: toSessionUser(user),
       token: `token_${user.id}`,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
     };
 
-    cookieStore.set("e4y_session", JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 dias
-    });
+    cookieStore.set(SESSION_COOKIE, encodeSession(sessionData), sessionCookieOptions());
 
     const redirectUrl = getHomeRouteForRole(user.role);
     return { user, redirectUrl };
@@ -100,7 +101,7 @@ export async function createUserByAdminAction(input: z.infer<typeof CreateUserBy
  */
 export async function logoutAction() {
   const cookieStore = await cookies();
-  cookieStore.delete("e4y_session");
+  cookieStore.delete(SESSION_COOKIE);
   redirect("/login");
 }
 
@@ -136,20 +137,14 @@ export async function updateAvatarAction(formData: FormData): Promise<ActionResu
     const updatedUser = await userService.updateAvatar(currentUser.id, file);
 
     // Atualizar o cookie de sessão para manter os dados sincronizados
+    // Mantém o `expiresAt` original: trocar o avatar não estende a sessão.
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("e4y_session");
-    if (sessionCookie && sessionCookie.value) {
+    const sessionData = decodeSession(cookieStore.get(SESSION_COOKIE)?.value);
+    if (sessionData) {
       try {
-        const sessionData = JSON.parse(sessionCookie.value);
         // Mesma regra do login: identidade (CPF/endereço) não entra no cookie.
         sessionData.user = toSessionUser(updatedUser);
-        cookieStore.set("e4y_session", JSON.stringify(sessionData), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 7 * 24 * 60 * 60, // 7 dias
-        });
+        cookieStore.set(SESSION_COOKIE, encodeSession(sessionData), sessionCookieOptions());
       } catch (err) {
         console.error("Erro ao atualizar cookie de sessão:", err);
       }

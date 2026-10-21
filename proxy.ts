@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { decodeSession, SESSION_COOKIE } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -8,30 +9,30 @@ export async function proxy(request: NextRequest) {
   const publicRoutes = ["/", "/login", "/staff/login", "/forgot-password", "/definir-senha", "/instalar", "/manifest.webmanifest", "/sw.js"];
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith("/_next") || pathname.startsWith("/api"));
 
-  // Verificar se o usuário possui cookie de sessão
-  const sessionCookie = request.cookies.get("e4y_session");
+  // Sessão VERIFICADA (assinatura + validade, ver lib/session.ts) — um cookie
+  // adulterado, expirado ou no formato antigo conta como "sem sessão".
+  const rawCookie = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = decodeSession(rawCookie);
 
   // Se tentar acessar rotas protegidas (do grupo (hub): /admin, /teacher, /student) sem sessão
-  if (!sessionCookie && !isPublicRoute) {
+  if (!session && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    // Descarta o cookie inválido para não carregá-lo em toda request.
+    if (rawCookie) response.cookies.delete(SESSION_COOKIE);
+    return response;
   }
 
   // Se já estiver autenticado e tentar acessar rotas de auth (/login, /staff/login)
-  if (sessionCookie && (pathname === "/login" || pathname === "/staff/login")) {
-    try {
-      const sessionData = JSON.parse(sessionCookie.value);
-      const userRole = sessionData?.user?.role;
-      let targetRoute = "/student";
+  if (session && (pathname === "/login" || pathname === "/staff/login")) {
+    const userRole = session.user.role;
+    let targetRoute = "/student";
 
-      if (userRole === "ADMIN") targetRoute = "/admin";
-      else if (userRole === "TEACHER") targetRoute = "/teacher";
+    if (userRole === "ADMIN") targetRoute = "/admin";
+    else if (userRole === "TEACHER") targetRoute = "/teacher";
 
-      return NextResponse.redirect(new URL(targetRoute, request.url));
-    } catch {
-      // Se houver erro de parsing no cookie, apenas limpa e continua para o login
-    }
+    return NextResponse.redirect(new URL(targetRoute, request.url));
   }
 
   return NextResponse.next();

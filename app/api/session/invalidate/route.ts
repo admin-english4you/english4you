@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { SESSION_COOKIE } from "@/lib/session";
 
 /**
  * Limpa uma sessão órfã: o cookie `e4y_session` aponta para um `userId` que
@@ -13,6 +14,6 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request) {
   const cookieStore = await cookies();
-  cookieStore.delete("e4y_session");
+  cookieStore.delete(SESSION_COOKIE);
   return NextResponse.redirect(new URL("/login", request.url));
 }
