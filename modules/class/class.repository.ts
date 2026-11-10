@@ -145,6 +145,20 @@ export const classRepository = {
       .where(and(eq(classRecordsTable.classGroupId, classGroupId), eq(classRecordsTable.completed, false)));
   },
 
+  /** Apaga as aulas ainda não dadas nem iniciadas de uma lição numa turma (concluídas e ao vivo ficam). */
+  async deleteOpenRecordsByLesson(classGroupId: string, lessonId: string): Promise<void> {
+    await db
+      .delete(classRecordsTable)
+      .where(
+        and(
+          eq(classRecordsTable.classGroupId, classGroupId),
+          eq(classRecordsTable.lessonId, lessonId),
+          eq(classRecordsTable.completed, false),
+          isNull(classRecordsTable.callStartedAt)
+        )
+      );
+  },
+
   async findRecordsByClassGroupId(classGroupId: string): Promise<ClassRecord[]> {
     return await db.query.classRecordsTable.findMany({
       where: eq(classRecordsTable.classGroupId, classGroupId),

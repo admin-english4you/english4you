@@ -1171,6 +1171,31 @@ export const classService = {
     await propagateLessonToAssignedClasses(lessonId, planId);
   },
 
+  /**
+   * Tira a lição removida do plano da grade das turmas ATIVAS que o usam
+   * (só aulas ainda não dadas nem iniciadas) e reagenda o restante.
+   */
+  async removeLessonFromAssignedClasses(planId: string, lessonId: string): Promise<void> {
+    const classGroups = await classRepository.findActiveByPlanId(planId);
+    await Promise.all(
+      classGroups.map(async (classGroup) => {
+        await classRepository.deleteOpenRecordsByLesson(classGroup.id, lessonId);
+        // Fecha o buraco que a aula removida deixou na grade.
+        await rescheduleOpenRecords(classGroup);
+      })
+    );
+  },
+
+  /**
+   * Reaplica a ordem atual do plano às aulas ainda não dadas das turmas ATIVAS
+   * que o usam. O aluno enxerga as aulas pelas datas dos ClassRecords, não pela
+   * ordem do plano — sem isto, reordenar lições só valia para o admin.
+   */
+  async rescheduleClassesForPlan(planId: string): Promise<void> {
+    const classGroups = await classRepository.findActiveByPlanId(planId);
+    await Promise.all(classGroups.map((classGroup) => rescheduleOpenRecords(classGroup)));
+  },
+
   /** Quantas turmas usam cada plano, indexado por planId — alimenta o aviso ao excluir um plano. */
   async getClassCountByPlan(actingRole: Role): Promise<Record<string, number>> {
     assertAdmin(actingRole);

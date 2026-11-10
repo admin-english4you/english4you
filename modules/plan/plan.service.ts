@@ -103,6 +103,8 @@ export const planService = {
   async removeLessonFromPlan(actingRole: Role, planId: string, lessonId: string): Promise<void> {
     assertAdmin(actingRole);
     await planRepository.removeLessonFromPlan(planId, lessonId);
+    // Sem isto a aula continuava na grade dos alunos mesmo fora do plano.
+    await classService.removeLessonFromAssignedClasses(planId, lessonId);
   },
 
   /**
@@ -115,5 +117,9 @@ export const planService = {
     await Promise.all(
       orderedLessonIds.map((lessonId, index) => planRepository.updateLessonOrder(planId, lessonId, index))
     );
+
+    // As turmas que usam o plano guardam as aulas com data própria: sem
+    // reagendar, o aluno continua vendo a ordem antiga (lições novas por último).
+    await classService.rescheduleClassesForPlan(planId);
   },
 };
