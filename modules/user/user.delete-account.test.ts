@@ -14,6 +14,10 @@ const repoDeleteUser = vi.fn();
 const deleteStorageFileByUrl = vi.fn();
 const firebaseDeleteUser = vi.fn();
 
+vi.mock('@/modules/rate-limit/rate-limit.service', () => ({
+  rateLimitService: { allow: vi.fn().mockResolvedValue(true) },
+}));
+
 vi.mock('@/lib/firebase-admin', () => ({
   adminAuth: {
     deleteUser: (...a: unknown[]) => firebaseDeleteUser(...a),

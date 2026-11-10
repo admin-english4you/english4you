@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { pushNotificationService } from "@/modules/push-notification/push-notification.service";
 import { isReminderSlot } from "@/modules/push-notification/push-notification.copy";
 
@@ -12,9 +13,17 @@ import { isReminderSlot } from "@/modules/push-notification/push-notification.co
  * `Authorization: Bearer $CRON_SECRET` nas chamadas de cron quando essa env
  * var existe — não precisa configurar isso a mais em `vercel.json`.
  */
+/** Comparação em tempo constante — `!==` vaza, pelo tempo de resposta, quantos caracteres do segredo batem. */
+function isValidCronAuth(authHeader: string | null): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !authHeader) return false;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const received = Buffer.from(authHeader);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isValidCronAuth(request.headers.get("authorization"))) {
     return new Response("Unauthorized", { status: 401 });
   }
 

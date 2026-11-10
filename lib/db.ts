@@ -12,6 +12,7 @@ import * as financeSchema from '@/modules/finance/finance.schema';
 import * as contractSchema from '@/modules/contract/contract.schema';
 import * as paymentSchema from '@/modules/payment/payment.schema';
 import * as pushNotificationSchema from '@/modules/push-notification/push-notification.schema';
+import * as rateLimitSchema from '@/modules/rate-limit/rate-limit.schema';
 
 const databaseUrl = process.env.DATABASE_URL!;
 
@@ -34,5 +35,6 @@ export const db = drizzle(sql, {
     ...contractSchema,
     ...paymentSchema,
     ...pushNotificationSchema,
+    ...rateLimitSchema,
   }
 });

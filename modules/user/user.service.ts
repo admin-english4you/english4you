@@ -3,6 +3,7 @@ import { userRepository } from "./user.repository";
 import { adminAuth } from "@/lib/firebase-admin";
 import { sendUserInviteEmail, sendPasswordResetRequestEmail, sendAccountDeactivatedEmail } from "@/lib/resend";
 import { uploadBufferToStorage, deleteStorageFileByUrl } from "@/lib/storage-upload";
+import { rateLimitService } from '@/modules/rate-limit/rate-limit.service';
 import { AppError } from "@/lib/errors";
 import { toAppPasswordSetupLink } from "@/lib/firebase-action-link";
 import { getAppUrl } from "@/lib/mercado-pago";
@@ -441,7 +442,21 @@ export const userService = {
    * sucesso genérico (só o console loga a diferença), senão a própria
    * resposta da Action vira um oráculo de "quais e-mails são de alunos".
    */
-  async requestPasswordReset(email: string): Promise<void> {
+  async requestPasswordReset(email: string, clientIp = 'unknown'): Promise<void> {
+    // Limite DURÁVEL, por e-mail e por IP: sem ele esta rota pública vira
+    // máquina de spam (cada chamada gera um e-mail pago no Resend) e de
+    // bombardeio de uma caixa de entrada alheia. Estourou → sai em silêncio,
+    // com o mesmo retorno de sempre: responder diferente viraria oráculo.
+    const normalizedEmail = email.trim().toLowerCase();
+    const [emailOk, ipOk] = await Promise.all([
+      rateLimitService.allow('pwd-reset-email', normalizedEmail, { limit: 3, windowSeconds: 15 * 60 }),
+      rateLimitService.allow('pwd-reset-ip', clientIp, { limit: 10, windowSeconds: 15 * 60 }),
+    ]);
+    if (!emailOk || !ipOk) {
+      console.warn(`[Auth] Redefinição de senha bloqueada por limite de taxa (ip=${clientIp}).`);
+      return;
+    }
+
     const user = await userRepository.findByEmail(email);
     if (!user) {
       console.warn(`[Auth] Redefinição de senha pedida para e-mail não cadastrado: ${email}`);

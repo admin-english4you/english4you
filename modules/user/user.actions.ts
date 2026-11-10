@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { LoginSchema, CreateUserByAdminSchema, RevealIdentitySchema, RequestPasswordResetSchema, ResendInviteSchema } from "./user.schema";
@@ -59,7 +59,9 @@ export async function loginAction(input: z.infer<typeof LoginSchema>) {
  */
 export async function requestPasswordResetAction(input: z.infer<typeof RequestPasswordResetSchema>) {
   const safeAction = createSafeAction(RequestPasswordResetSchema, async (data) => {
-    await userService.requestPasswordReset(data.email);
+    const requestHeaders = await headers();
+    const clientIp = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    await userService.requestPasswordReset(data.email, clientIp);
     return { success: true };
   });
 

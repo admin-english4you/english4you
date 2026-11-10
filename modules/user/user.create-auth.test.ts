@@ -13,6 +13,10 @@ const createUser = vi.fn();
 const generatePasswordResetLink = vi.fn();
 const repoCreateUser = vi.fn();
 
+vi.mock('@/modules/rate-limit/rate-limit.service', () => ({
+  rateLimitService: { allow: vi.fn().mockResolvedValue(true) },
+}));
+
 vi.mock('@/lib/firebase-admin', () => ({
   adminAuth: {
     createUser: (...a: unknown[]) => createUser(...a),
